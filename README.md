@@ -135,7 +135,7 @@ One screen for project (`.mcp.json`), local and personal servers: check if they 
 
 ### 🔗 Inside Claude Code: branch-notes mod
 
-Install the **branch-notes mod** from Settings (Claude Code 2.1.287 or later). Claude Code then shows this branch's to-dos, PR and CI in one line above the prompt, adds `/todo`, `/memo` and `/notes`, and lets Claude read your notes while it works. Recommended community mods (token-weather, blast-radius, replay-theater, claude-hud) can be installed from Settings too.
+Install the **branch-notes mod** from Settings (Claude Code 2.1.287 or later). Claude Code then shows this branch's to-dos, PR and CI in one line above the prompt, adds `/todo`, `/memo` and `/notes`, and lets Claude read your notes while it works. As you type a prompt, it suggests matching skills, subagents and commands you have, items from your library (one press adds them to the project) and extensions to install. By default Haiku picks them through your own Claude Code once you stop typing; Settings can switch to keyword matching or turn it off. Recommended community mods (token-weather, blast-radius, replay-theater, claude-hud) can be installed from Settings too.
 
 ### 📌 Sidebar
 

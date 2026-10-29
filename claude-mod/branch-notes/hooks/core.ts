@@ -4,6 +4,7 @@
 // src-tauri/src/memo/repo.rs (`normalize_remote`).
 
 import type { BranchData, View } from "../types";
+import type { SuggestExport } from "./suggest";
 
 export type { BranchData, GitHubSummary, Todo, View } from "../types";
 
@@ -13,6 +14,8 @@ export type Export = {
   locale: "ko" | "en";
   paths: Record<string, string>;
   repos: Record<string, Record<string, BranchData>>;
+  /** Absent before app 0.1.476. */
+  suggest?: SuggestExport;
 };
 
 /** The heartbeat is rewritten every 30 seconds while the app runs. */
@@ -105,6 +108,13 @@ const WORDS = {
     todosTitle: "할 일",
     paneTitle: "브랜치 메모",
     pr: "PR",
+    suggest: "추천",
+    suggestLegend: "＋ 프로젝트에 추가 · ⬇ 확장 설치",
+    picking: "고르는 중…",
+    adding: (name: string) => `앱이 ${name}을(를) 프로젝트에 추가해요. 끝나면 알림이 와요.`,
+    installing: (name: string) =>
+      `앱이 ${name}을(를) 설치해요. 끝나면 알림이 오고, Claude Code를 다시 시작하면 써요.`,
+    noAppForSuggest: "Encela 앱이 켜져 있어야 추가·설치할 수 있어요.",
     context: (branch: string) =>
       `사용자가 이 저장소의 '${branch}' 브랜치에 남긴 메모와 할 일이에요 (Encela 앱). 작업 방향을 정할 때 참고하고, 끝낸 일은 사용자에게 /todo done 번호 로 체크하라고 알려 주세요.`,
   },
@@ -127,6 +137,14 @@ const WORDS = {
     todosTitle: "To-dos",
     paneTitle: "Branch notes",
     pr: "PR",
+    suggest: "Suggested",
+    suggestLegend: "＋ add to the project · ⬇ install the extension",
+    picking: "picking…",
+    adding: (name: string) =>
+      `The app is adding ${name} to the project. You'll get a notification.`,
+    installing: (name: string) =>
+      `The app is installing ${name}. You'll get a notification; restart Claude Code to use it.`,
+    noAppForSuggest: "The Encela app must be running to add or install it.",
     context: (branch: string) =>
       `The user's note and to-dos for the '${branch}' branch of this repository (from the Encela app). Use them to steer the work, and tell the user to tick finished items with /todo done <number>.`,
   },
@@ -211,7 +229,9 @@ export type Request =
   | { op: "addTodo"; repoKey: string; branch: string; text: string }
   | { op: "setDone"; id: string; done: boolean }
   | { op: "deleteTodo"; id: string }
-  | { op: "appendNote"; repoKey: string; branch: string; text: string };
+  | { op: "appendNote"; repoKey: string; branch: string; text: string }
+  | { op: "applyLibrary"; project: string; kind: "skill" | "agent"; id: string }
+  | { op: "installExtension"; id: string };
 
 /** A file name that sorts in arrival order and doesn't collide. */
 export function requestName(now: number, random: number): string {

@@ -33,6 +33,10 @@ const FILES: &[(&str, &str)] = &[
         include_str!("../../claude-mod/branch-notes/hooks/core.ts"),
     ),
     (
+        "branch-notes/hooks/suggest.ts",
+        include_str!("../../claude-mod/branch-notes/hooks/suggest.ts"),
+    ),
+    (
         "branch-notes/types/index.d.ts",
         include_str!("../../claude-mod/branch-notes/types/index.d.ts"),
     ),
@@ -122,13 +126,34 @@ pub struct ModStatus {
     pub supported: bool,
     /// `plugin@marketplace` ids installed for the user.
     pub installed: Vec<String>,
+    /// The app's own mod is installed at another version than the app carries.
+    pub own_outdated: bool,
+}
+
+/// The version of the mod the app carries (its `plugin.json`).
+fn own_version() -> Option<String> {
+    let manifest = FILES
+        .iter()
+        .find(|(rel, _)| *rel == "branch-notes/.claude-plugin/plugin.json")?
+        .1;
+    let value: serde_json::Value = serde_json::from_str(manifest).ok()?;
+    value["version"].as_str().map(str::to_string)
 }
 
 pub(crate) fn installed() -> Vec<String> {
+    installed_with_versions().into_iter().map(|p| p.0).collect()
+}
+
+/// `(plugin@marketplace, version)` of each installed plugin.
+fn installed_with_versions() -> Vec<(String, Option<String>)> {
     let Ok(json) = claude(&["plugin", "list", "--json"]) else {
         return Vec::new();
     };
-    let value: serde_json::Value = serde_json::from_str(&json).unwrap_or_default();
+    parse_installed(&json)
+}
+
+fn parse_installed(json: &str) -> Vec<(String, Option<String>)> {
+    let value: serde_json::Value = serde_json::from_str(json).unwrap_or_default();
     // A list of plugins, or an object holding one; each names its id.
     let list = value
         .as_array()
@@ -138,11 +163,12 @@ pub(crate) fn installed() -> Vec<String> {
         .unwrap_or_default();
     list.iter()
         .filter_map(|p| {
-            p["id"].as_str().map(str::to_string).or_else(|| {
+            let id = p["id"].as_str().map(str::to_string).or_else(|| {
                 let name = p["name"].as_str()?;
                 let market = p["marketplace"].as_str()?;
                 Some(format!("{name}@{market}"))
-            })
+            })?;
+            Some((id, p["version"].as_str().map(str::to_string)))
         })
         .collect()
 }
@@ -153,12 +179,18 @@ pub fn status() -> ModStatus {
         .as_deref()
         .and_then(parse_version)
         .is_some_and(|v| v >= MIN_VERSION);
+    let plugins = if version.is_some() {
+        installed_with_versions()
+    } else {
+        Vec::new()
+    };
+    let own = format!("{PLUGIN}@{MARKETPLACE}");
+    let own_outdated = plugins
+        .iter()
+        .any(|(id, v)| *id == own && v.is_some() && *v != own_version());
     ModStatus {
-        installed: if version.is_some() {
-            installed()
-        } else {
-            Vec::new()
-        },
+        installed: plugins.into_iter().map(|p| p.0).collect(),
+        own_outdated,
         claude_version: version,
         supported,
     }
@@ -217,7 +249,11 @@ pub fn install_own(dir: &Path) -> Result<()> {
     write_files(dir)?;
     // `./` or an absolute path: claude reads it as a local folder.
     add_marketplace(&dir.to_string_lossy(), MARKETPLACE)?;
-    install_plugin(&format!("{PLUGIN}@{MARKETPLACE}"))
+    let id = format!("{PLUGIN}@{MARKETPLACE}");
+    install_plugin(&id)?;
+    // Already installed at an older version: bring it up to the one written.
+    let _ = claude(&["plugin", "update", &id, "--scope", "user"]);
+    Ok(())
 }
 
 /// Installs a recommended mod. A marketplace inside a subfolder of its
@@ -273,6 +309,7 @@ pub async fn claude_mod_status() -> ModStatus {
             claude_version: None,
             supported: false,
             installed: Vec::new(),
+            own_outdated: false,
         })
 }
 
@@ -448,6 +485,24 @@ mod tests {
     }
 
     use super::*;
+
+    #[test]
+    fn installed_plugins_carry_their_versions() {
+        let got = parse_installed(
+            r#"[{"id":"branch-notes@ai-management","version":"0.1.1"},{"name":"x","marketplace":"m"}]"#,
+        );
+        assert_eq!(
+            got,
+            [
+                (
+                    "branch-notes@ai-management".to_string(),
+                    Some("0.1.1".to_string())
+                ),
+                ("x@m".to_string(), None)
+            ]
+        );
+        assert!(own_version().is_some());
+    }
 
     #[test]
     fn versions_parse_and_compare() {

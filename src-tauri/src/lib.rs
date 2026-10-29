@@ -182,6 +182,7 @@ pub fn run() {
             github::GitHub::manage(handle);
             sync::Sync::manage(handle);
             bridge::manage(handle);
+            extensions::check_later();
             automation::start_scheduler(handle);
             tray::create(handle)?;
             Dock::start(handle)?;

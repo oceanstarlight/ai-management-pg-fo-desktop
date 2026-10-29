@@ -3,6 +3,9 @@
 //! with the user's own `claude` command. Nothing is bundled; each entry was
 //! checked for license and content at a pinned commit (docs/research.md §16).
 
+use std::collections::BTreeMap;
+use std::sync::Mutex;
+
 use serde::Serialize;
 
 use crate::claude_mod::{add_marketplace, claude, find_claude, install_plugin, installed};
@@ -36,6 +39,10 @@ pub struct Extension {
     pub plugin: Option<&'static str>,
     /// Server name and config, for [`Kind::Mcp`].
     pub mcp: Option<McpServer>,
+    /// One line on what it is for, read by the mod's prompt suggestions.
+    pub summary: &'static str,
+    /// Words (Korean and English) a prompt that needs it would use.
+    pub keywords: &'static [&'static str],
 }
 
 /// An MCP server's name and how to start it.
@@ -57,6 +64,27 @@ pub const EXTENSIONS: &[Extension] = &[
         marketplace: None,
         plugin: None,
         mcp: Some(("rea", rea)),
+        summary: "A reverse-engineering MCP server for native binaries, Electron and JS apps, .NET, Android APKs and browser behavior.",
+        keywords: &[
+            "reverse",
+            "reversing",
+            "decompile",
+            "disassemble",
+            "binary",
+            "apk",
+            "android",
+            "electron",
+            ".net",
+            "malware",
+            "ghidra",
+            "ida",
+            "리버스",
+            "역공학",
+            "리버싱",
+            "디컴파일",
+            "바이너리",
+            "분석",
+        ],
     },
     Extension {
         id: "superpowers",
@@ -68,6 +96,21 @@ pub const EXTENSIONS: &[Extension] = &[
         marketplace: Some(("obra/superpowers-marketplace", "superpowers-marketplace")),
         plugin: Some("superpowers@superpowers-marketplace"),
         mcp: None,
+        summary: "Skills for a brainstorm, plan, TDD, debug and review way of working.",
+        keywords: &[
+            "brainstorm",
+            "plan",
+            "tdd",
+            "test",
+            "debug",
+            "review",
+            "workflow",
+            "브레인스토밍",
+            "계획",
+            "테스트",
+            "디버그",
+            "리뷰",
+        ],
     },
     Extension {
         id: "compound-engineering",
@@ -82,6 +125,10 @@ pub const EXTENSIONS: &[Extension] = &[
         )),
         plugin: Some("compound-engineering@compound-engineering-plugin"),
         mcp: None,
+        summary: "A plan, work and review loop that keeps what you learn (/ce-plan, /ce-review).",
+        keywords: &[
+            "plan", "review", "learn", "workflow", "retro", "계획", "리뷰", "회고", "작업",
+        ],
     },
     Extension {
         id: "agent-skills",
@@ -93,6 +140,11 @@ pub const EXTENSIONS: &[Extension] = &[
         marketplace: Some(("addyosmani/agent-skills", "addy-agent-skills")),
         plugin: Some("agent-skills@addy-agent-skills"),
         mcp: None,
+        summary: "Engineering skills for every step: spec, plan, build, verify, review and ship.",
+        keywords: &[
+            "spec", "plan", "build", "verify", "review", "ship", "release", "스펙", "명세", "계획",
+            "검증", "리뷰", "배포",
+        ],
     },
     Extension {
         id: "claude-code-workflows",
@@ -104,6 +156,22 @@ pub const EXTENSIONS: &[Extension] = &[
         marketplace: Some(("wshobson/agents", "claude-code-workflows")),
         plugin: None,
         mcp: None,
+        summary: "A marketplace of 94 plugins for backend, frontend, security, DevOps and more.",
+        keywords: &[
+            "backend",
+            "frontend",
+            "security",
+            "devops",
+            "kubernetes",
+            "database",
+            "api",
+            "백엔드",
+            "프론트엔드",
+            "보안",
+            "데브옵스",
+            "인프라",
+            "데이터베이스",
+        ],
     },
     Extension {
         id: "voltagent-subagents",
@@ -118,6 +186,20 @@ pub const EXTENSIONS: &[Extension] = &[
         )),
         plugin: None,
         mcp: None,
+        summary: "A marketplace of subagents in 10 packs: languages, infrastructure, QA, data and more.",
+        keywords: &[
+            "subagent",
+            "agent",
+            "language",
+            "infrastructure",
+            "qa",
+            "data",
+            "서브에이전트",
+            "에이전트",
+            "인프라",
+            "데이터",
+            "품질",
+        ],
     },
 ];
 
@@ -189,6 +271,7 @@ pub fn list() -> Listing {
                     Kind::Marketplace => markets.contains(&target),
                     Kind::Mcp => claude(&["mcp", "get", &target]).is_ok(),
                 };
+            remember(e.id, installed);
             ExtensionInfo {
                 id: e.id,
                 name: e.name,
@@ -202,10 +285,59 @@ pub fn list() -> Listing {
             }
         })
         .collect();
+    crate::bridge::changed();
     Listing {
         claude_found,
         extensions,
     }
+}
+
+/// Installed state as last checked (checking runs `claude`), for the mod's
+/// prompt suggestions in `<app data>/bridge/state.json`.
+static INSTALLED: Mutex<BTreeMap<&'static str, bool>> = Mutex::new(BTreeMap::new());
+
+fn remember(id: &'static str, installed: bool) {
+    INSTALLED
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .insert(id, installed);
+}
+
+/// Checks what is installed in the background (at start and after changes).
+pub fn check_later() {
+    std::thread::spawn(|| {
+        list();
+    });
+}
+
+/// An extension as the mod's prompt suggestions see it.
+#[derive(Clone, Debug, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct SuggestEntry {
+    pub id: &'static str,
+    pub name: &'static str,
+    pub kind: Kind,
+    pub repo: &'static str,
+    pub summary: &'static str,
+    pub keywords: &'static [&'static str],
+    /// `None` until checked.
+    pub installed: Option<bool>,
+}
+
+pub fn suggest_entries() -> Vec<SuggestEntry> {
+    let installed = INSTALLED.lock().unwrap_or_else(|e| e.into_inner()).clone();
+    EXTENSIONS
+        .iter()
+        .map(|e| SuggestEntry {
+            id: e.id,
+            name: e.name,
+            kind: e.kind,
+            repo: e.repo,
+            summary: e.summary,
+            keywords: e.keywords,
+            installed: installed.get(e.id).copied(),
+        })
+        .collect()
 }
 
 fn need_claude() -> Result<()> {
@@ -283,12 +415,16 @@ pub async fn extensions_list() -> Result<Listing> {
 
 #[tauri::command]
 pub async fn extension_install(id: String) -> Result<()> {
-    blocking(move || install(&id)).await
+    let result = blocking(move || install(&id)).await;
+    check_later();
+    result
 }
 
 #[tauri::command]
 pub async fn extension_uninstall(id: String) -> Result<()> {
-    blocking(move || uninstall(&id)).await
+    let result = blocking(move || uninstall(&id)).await;
+    check_later();
+    result
 }
 
 #[cfg(test)]
@@ -302,6 +438,7 @@ mod tests {
             assert!(ids.insert(e.id), "duplicate id {}", e.id);
             assert!(!target(e).is_empty(), "{}", e.id);
             assert!(e.repo.contains('/') && e.commit.len() >= 7, "{}", e.id);
+            assert!(!e.summary.is_empty() && !e.keywords.is_empty(), "{}", e.id);
             match e.kind {
                 Kind::Plugin => {
                     let (_, market) = e.marketplace.unwrap();

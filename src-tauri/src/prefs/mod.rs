@@ -31,6 +31,7 @@ pub const SYNCED_KEYS: &[&str] = &[
     "fontSize",
     "notifyEnabled",
     "defaultTool",
+    crate::bridge::SUGGEST_PREF,
 ];
 
 pub fn is_synced(key: &str) -> bool {
@@ -98,6 +99,9 @@ pub async fn prefs_set(app: AppHandle, key: String, value: Option<String>) -> Re
     let changed = blocking(app.clone(), move |store| store.set(&k, v.as_deref())).await?;
     if changed {
         announce(&app, &key, value.as_deref());
+        if key == crate::bridge::SUGGEST_PREF {
+            crate::bridge::changed();
+        }
         if is_synced(&key) {
             crate::sync::changed(&app);
         }

@@ -9,6 +9,13 @@ export const ko = {
   "mods.noClaude": "claude 명령을 찾지 못했어요. Claude Code를 설치한 뒤 다시 확인하세요.",
   "mods.tooOld": "{version} · mods는 2.1.287 이상에서 동작해요. `claude update`로 업데이트하세요.",
   "mods.recheck": "다시 확인",
+  "mods.update": "업데이트",
+  "mods.suggest.title": "프롬프트 추천",
+  "mods.suggest.description":
+    "Claude Code 입력창에 글을 쓰면 맞는 skill·서브에이전트·확장을 입력창 위에 추천해요. AI는 내 Claude Code로 Haiku에 물어봐요(입력을 멈추면 한 번, 사용량에 포함). 키워드는 이름·설명만 맞춰 봐요.",
+  "mods.suggest.ai": "AI (Haiku)",
+  "mods.suggest.keyword": "키워드",
+  "mods.suggest.off": "끄기",
   "mods.own.title": "브랜치 메모 mod",
   "mods.own.description":
     "Claude Code 입력창 위에 이 브랜치의 할 일·PR·CI를 한 줄로 보여주고, 메모와 할 일 패널(/notes), /todo · /memo 명령을 더해요. Claude도 메모와 할 일을 알고 작업해요. 앱이 켜져 있어야 반영돼요.",
@@ -126,6 +133,13 @@ export const en: Messages<typeof ko> = {
   "mods.noClaude": "Couldn't find the claude command. Install Claude Code, then check again.",
   "mods.tooOld": "{version} · mods need 2.1.287 or newer. Update with `claude update`.",
   "mods.recheck": "Check again",
+  "mods.update": "Update",
+  "mods.suggest.title": "Prompt suggestions",
+  "mods.suggest.description":
+    "As you type in Claude Code, suggests matching skills, subagents and extensions above the prompt. AI asks Haiku through your Claude Code (once you stop typing; counts toward your usage). Keyword matches names and descriptions only.",
+  "mods.suggest.ai": "AI (Haiku)",
+  "mods.suggest.keyword": "Keyword",
+  "mods.suggest.off": "Off",
   "mods.own.title": "Branch notes mod",
   "mods.own.description":
     "Shows this branch's to-dos, PR and CI in one line above Claude Code's prompt, and adds a notes pane (/notes) and /todo · /memo commands. Claude reads the note and to-dos too. Changes apply while the app is running.",

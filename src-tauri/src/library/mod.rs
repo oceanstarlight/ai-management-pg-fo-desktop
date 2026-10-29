@@ -249,6 +249,24 @@ impl Library {
     }
 }
 
+/// Adds a library item to a project for Claude Code, kept out of git: the
+/// mod's prompt suggestions ask for it through the bridge.
+pub(crate) fn apply_for_claude(
+    lib: &Library,
+    project: &Path,
+    kind: ItemKind,
+    id: &str,
+) -> ops::Result<()> {
+    if !project.is_dir() {
+        return Err(crate::tr!(
+            "프로젝트 폴더가 없어요: {}",
+            "The project folder doesn't exist: {}",
+            project.display()
+        ));
+    }
+    apply(lib, project, ToolId::Claude, kind, id, Mode::Personal)
+}
+
 /// The library's items read straight from `data_dir`, for the MCP server,
 /// which runs without the app. Reads only: a broken config means the default
 /// folder.

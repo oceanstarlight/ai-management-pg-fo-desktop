@@ -434,3 +434,11 @@ AGPL 프로젝트는 아이디어만 참고하고 코드는 가져오지 않는�
 - Claude Code의 예약 방식: 클라우드 routines(`/schedule`, claude.ai 로그인, 최소 1시간), Claude 데스크톱 앱의 로컬 예약 작업(`~/.claude/scheduled-tasks/<이름>/SKILL.md`, 일정·모델은 파일에 없음), `/loop`(세션 안에서만). 앱이 직접 만들고 고칠 수 있는 것은 없어서, 앱이 자체 스케줄러로 사용자의 `claude -p`를 실행한다(사용자 결정).
 - 실행 인자: `-p --output-format json --no-session-persistence --permission-mode dontAsk --allowedTools … --model … --append-system-prompt … --agents <file>`. 프롬프트는 stdin. `dontAsk`는 허용하지 않은 도구를 묻지 않고 거절해서 무인 실행이 멈추지 않는다.
 - 메일: Claude Code에 연결한 Gmail MCP(claude.ai 커넥터 등)를 허용 도구에 넣어 claude가 보낸다. claude.ai Gmail 커넥터는 초안 만들기만 있어서, 보내기 도구가 없으면 받는 사람을 채운 초안을 만든다.
+
+## 17. 프롬프트 추천 (2026-10-29, Claude Code 2.1.312 mod API 타입으로 확인)
+
+- 입력 감지: `prompt.edit`(타이핑·붙여넣기, `next(e)`가 편집 후 상자를 돌려줌), `prompt.change`(기록 불러오기·지우기·plugin fill), `prompt.submit`. 프롬프트 넣기: `$.prompt.read()` / `$.prompt.fill({ text, mode })`.
+- AI 고르기: `$.model.complete({ model: "haiku", system, prompt: [{ text, cache: true }, ...], maxTokens, effort: "low", timeoutMs })` — 세션 자체 클라이언트·인증을 씀(앱은 자격 증명에 손대지 않음). 사용량에 포함. 후보 목록 블록은 캐시 표시.
+- 디바운스: `$.clock.after(ms, fn)`(`cancel()`), 이전 호출은 `AbortController`로 취소.
+- 설치된 항목: `<프로젝트>/.claude`, `$CLAUDE_CONFIG_DIR` 또는 `~/.claude`의 `skills/*/SKILL.md`, `agents/*.md`, `commands/*.md`, 플러그인은 `claude plugin list --json`의 `installPath` 아래 같은 구조(이름은 `plugin:item`).
+- mod 업데이트: `claude plugin install`은 이미 설치돼 있으면 그대로라서, 앱이 `claude plugin update <id> --scope user`를 이어서 실행(목록의 `version`으로 낡은 mod를 알아냄).

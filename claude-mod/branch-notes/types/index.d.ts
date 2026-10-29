@@ -22,8 +22,33 @@ export type View = {
   data: BranchData | null;
 };
 
+/** Something the prompt suggestions can offer. */
+export type Candidate = {
+  /** Unique: `i:skill:review`, `l:agent:debugger`, `e:rea`. */
+  key: string;
+  kind: "skill" | "agent" | "command" | "extension";
+  /** Usable now, in the app's library, or an extension to install. */
+  source: "installed" | "library" | "extension";
+  /** How Claude Code calls it (`review`, `superpowers:brainstorm`). */
+  name: string;
+  description: string;
+  keywords?: string[];
+  libraryKind?: "skill" | "agent";
+  libraryId?: string;
+  extensionId?: string;
+};
+
+/** What the band above the prompt suggests for the draft being typed. */
+export type Suggestion = {
+  draft: string;
+  items: Candidate[];
+  by: "keyword" | "ai";
+  /** Haiku is still picking. */
+  pending: boolean;
+};
+
 declare module "claude-code" {
   interface PluginState {
-    "branch-notes": { view: View | null; isHidden: boolean };
+    "branch-notes": { view: View | null; isHidden: boolean; suggestion: Suggestion | null };
   }
 }
