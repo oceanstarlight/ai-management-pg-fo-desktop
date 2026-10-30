@@ -6,9 +6,11 @@
 
 mod hints;
 
+use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
@@ -580,6 +582,63 @@ fn session_started(app: &AppHandle, project: String) {
 }
 
 // ---------------------------------------------------------------------------
+// Cloud sessions (`sync::relay`): the prompt arrives after it was sent, the
+// app picks the suggestions, and what is allowed goes into the next prompt.
+
+/// Session → (id of its latest prompt, whether a window took it to pick for).
+static CLOUD: Mutex<Option<HashMap<String, (u64, bool)>>> = Mutex::new(None);
+static CLOUD_ID: AtomicU64 = AtomicU64::new(0);
+
+const CLOUD_SURFACE: &str = "cloud";
+
+pub fn is_cloud(session: &str) -> bool {
+    session.starts_with("cloud-")
+}
+
+/// A prompt sent in a cloud session: shown at once, suggestions to follow.
+/// What was allowed for the last one has gone into it, so it starts over.
+pub fn cloud_prompt(app: &AppHandle, session: &str, project: String, prompt: &str) {
+    let first = !LIVE
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .iter()
+        .any(|l| l.session == session);
+    let id = CLOUD_ID.fetch_add(1, Ordering::Relaxed) + 1;
+    CLOUD
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .get_or_insert_default()
+        .insert(session.to_string(), (id, false));
+    with_live(app, session, |l| {
+        l.project = project.clone();
+        l.surface = CLOUD_SURFACE.into();
+        l.draft = crate::activity::redact::prompt_text(prompt);
+        l.by = String::new();
+        l.pending = true;
+        l.items.clear();
+        l.picked.clear();
+    });
+    if first && Path::new(&project).is_dir() {
+        session_started(app, project);
+    }
+}
+
+/// The labels allowed in the project's cloud sessions.
+pub fn cloud_picks(project: &str) -> Vec<String> {
+    LIVE.lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .iter()
+        .filter(|l| l.surface == CLOUD_SURFACE && l.project == project)
+        .flat_map(|l| {
+            l.items
+                .iter()
+                .filter(|i| l.picked.contains(&i.key))
+                .map(|i| i.label.clone())
+        })
+        .collect()
+}
+
+// ---------------------------------------------------------------------------
 // Requests from the mod
 
 fn notify(app: &AppHandle, title: String, result: Result<()>) {
@@ -827,11 +886,88 @@ pub async fn suggest_send(
     session: String,
     command: serde_json::Value,
 ) -> Result<()> {
+    if is_cloud(&session) {
+        // Only picking applies; it goes into the next prompt.
+        if let Some(key) = command["op"]
+            .as_str()
+            .filter(|op| *op == "pick")
+            .and(command["key"].as_str())
+        {
+            with_live(&app, &session, |l| {
+                if !l.picked.iter().any(|k| k == key) {
+                    l.picked.push(key.to_string());
+                }
+            });
+        }
+        return Ok(());
+    }
     blocking(move || {
         let data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
         send_to_session(&data_dir, &session, &command)
     })
     .await
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CloudClaim {
+    id: u64,
+    project: String,
+    draft: String,
+}
+
+/// A window takes a cloud prompt to pick suggestions for; only the first
+/// asking gets it, so two windows don't both ask Haiku.
+#[tauri::command]
+pub fn suggest_cloud_claim(session: String) -> Option<CloudClaim> {
+    let id = {
+        let mut cloud = CLOUD.lock().unwrap_or_else(|e| e.into_inner());
+        let entry = cloud.as_mut()?.get_mut(&session)?;
+        if entry.1 {
+            return None;
+        }
+        entry.1 = true;
+        entry.0
+    };
+    let live = LIVE.lock().unwrap_or_else(|e| e.into_inner());
+    let l = live.iter().find(|l| l.session == session)?;
+    Some(CloudClaim {
+        id,
+        project: l.project.clone(),
+        draft: l.draft.clone(),
+    })
+}
+
+/// The suggestions picked for a cloud prompt (dropped if a newer one came).
+/// With automatic use on, they are all allowed at once.
+#[tauri::command]
+pub fn suggest_cloud_items(
+    app: AppHandle,
+    session: String,
+    id: u64,
+    items: Vec<LiveItem>,
+    by: String,
+) {
+    let current = CLOUD
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .as_ref()
+        .and_then(|c| c.get(&session))
+        .is_some_and(|e| e.0 == id);
+    if !current {
+        return;
+    }
+    let all = auto(&app);
+    with_live(&app, &session, |l| {
+        l.picked = if all {
+            items.iter().map(|i| i.key.clone()).collect()
+        } else {
+            Vec::new()
+        };
+        l.items = items;
+        l.by = by;
+        l.pending = false;
+    });
 }
 
 #[tauri::command]

@@ -90,6 +90,8 @@ The home screen is a prompt box. As you type, it finds what fits the task: skill
 
 Only Claude Code can be detected; the regular chat of the Claude desktop app cannot.
 
+**Claude Code in the cloud (claude.ai/code):** turn on **Settings → Cloud sessions**, add the hook to the project (commit and push the two files it writes), and paste the `ENCELA_RELAY=…` key into the cloud environment's variables. Prompts and answers then reach the app through your account (Firebase; deleted once received). A cloud prompt is seen after it is sent, so what you allow and the decisions are added to the next prompt.
+
 ### 🧩 Document composer
 
 <!-- Screenshot: composer canvas with the "Expected effect" panel — e.g. docs/images/composer-ratings.png -->

@@ -3,6 +3,7 @@ import { isTauri } from "@tauri-apps/api/core";
 import { Magnet } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button, Card, PageHeader, Row, Segmented, Switch } from "../../components/ui";
+import { CloudRelayCard } from "../../features/mods/CloudRelayCard";
 import { ModsCard } from "../../features/mods/ModsCard";
 import { type LocalePref, timeAgo, useLocaleStore, useT } from "../../i18n";
 import { useAccountStore } from "../../store/account";
@@ -116,6 +117,8 @@ export function SettingsPage() {
       <SyncCard />
 
       <ModsCard />
+
+      <CloudRelayCard />
 
       <Card title={t("settings.library")}>
         <Row title={t("tools.default")} description={t("tools.defaultHint")}>

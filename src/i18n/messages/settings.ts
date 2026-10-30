@@ -1,6 +1,34 @@
 import type { Messages } from "./types";
 
 export const ko = {
+  "relay.title": "클라우드 세션 연결 (claude.ai/code)",
+  "relay.enable": "클라우드 Claude Code 감지",
+  "relay.state.off":
+    "켜면 클라우드에서 실행한 Claude Code의 프롬프트와 답변을 계정을 거쳐 받아 추천하고 결정을 기록해요.",
+  "relay.state.needsSignIn": "설정 › 계정에서 로그인해야 써요.",
+  "relay.state.notAllowed": "이 계정은 아직 동기화를 쓸 수 없어요.",
+  "relay.state.ok": "연결됐어요. 클라우드 세션에서 프롬프트를 보내면 여기에 와요.",
+  "relay.state.error": "연결 오류",
+  "relay.lastEvent": "연결됨 · 마지막 수신 {time}",
+  "relay.key": "연결 키",
+  "relay.keyDescription":
+    "클라우드 환경의 환경 변수에 넣어요. 비밀번호처럼 다뤄 주세요(저장소에 커밋하지 않기). 끄면 키가 폐기돼요.",
+  "relay.copy": "ENCELA_RELAY=… 복사",
+  "relay.copied": "복사했어요. 클라우드 환경 설정의 환경 변수에 붙여 넣으세요.",
+  "relay.hook": "프로젝트에 훅 설치",
+  "relay.hookDescription":
+    "{project}에 .claude/hooks/encela-relay.mjs와 .claude/settings.json 훅을 써요. 커밋하고 푸시하면 클라우드 세션에서 동작해요.",
+  "relay.noProject": "먼저 프로젝트를 골라 주세요.",
+  "relay.hookInstall": "훅 설치",
+  "relay.hookDone": "훅을 썼어요. 두 파일을 커밋하고 푸시해 주세요.",
+  "relay.stepsTitle": "설정 순서",
+  "relay.step1": "위 스위치를 켜요(앱 계정 로그인 필요).",
+  "relay.step2": "프로젝트를 고르고 '훅 설치' → 두 파일을 커밋·푸시해요.",
+  "relay.step3":
+    "claude.ai/code의 클라우드 환경 설정(Edit)에서 환경 변수에 ENCELA_RELAY=… 를 붙여 넣어요. 네트워크가 제한이면 firestore.googleapis.com을 허용해요.",
+  "relay.step4": "새 클라우드 세션을 열고 프롬프트를 보내요. 엔셀라가 켜져 있어야 받아요.",
+  "relay.limits":
+    "클라우드는 보낸 뒤에 감지돼서, 허용한 항목과 결정은 다음 프롬프트에 붙어요. 다듬기·설치는 로컬에서만 돼요. 프롬프트와 답변은 Firebase를 잠깐 거쳐 앱이 받으면 지워져요.",
   "mods.title": "Claude Code 연동 (Claude Code 전용)",
   "mods.claude": "Claude Code",
   "mods.scope":
@@ -131,6 +159,35 @@ export const ko = {
 } as const;
 
 export const en: Messages<typeof ko> = {
+  "relay.title": "Cloud sessions (claude.ai/code)",
+  "relay.enable": "Detect Claude Code in the cloud",
+  "relay.state.off":
+    "When on, prompts and answers from Claude Code in the cloud come here through your account, for suggestions and decisions.",
+  "relay.state.needsSignIn": "Sign in under Settings › Account to use it.",
+  "relay.state.notAllowed": "This account can't use sync yet.",
+  "relay.state.ok": "Connected. Prompts sent in a cloud session show up here.",
+  "relay.state.error": "Connection error",
+  "relay.lastEvent": "Connected · last received {time}",
+  "relay.key": "Relay key",
+  "relay.keyDescription":
+    "Goes into the cloud environment's variables. Treat it like a password (don't commit it). Turning this off revokes it.",
+  "relay.copy": "Copy ENCELA_RELAY=…",
+  "relay.copied": "Copied. Paste it into the cloud environment's variables.",
+  "relay.hook": "Add the hook to the project",
+  "relay.hookDescription":
+    "Writes .claude/hooks/encela-relay.mjs and hooks in .claude/settings.json in {project}. Commit and push them for cloud sessions to use.",
+  "relay.noProject": "Choose a project first.",
+  "relay.hookInstall": "Add hook",
+  "relay.hookDone": "Hook written. Commit and push the two files.",
+  "relay.stepsTitle": "Setup",
+  "relay.step1": "Turn on the switch above (needs the app account).",
+  "relay.step2": "Choose the project, Add hook, then commit and push the two files.",
+  "relay.step3":
+    "In claude.ai/code, edit the cloud environment and paste ENCELA_RELAY=… into its environment variables. With limited network access, allow firestore.googleapis.com.",
+  "relay.step4":
+    "Open a new cloud session and send a prompt. Encela has to be running to receive it.",
+  "relay.limits":
+    "Cloud prompts are seen after they are sent, so what you allow and the decisions go with the next prompt. Refining and installing work locally only. Prompts and answers pass through Firebase and are deleted once the app has them.",
   "mods.title": "Claude Code integration (Claude Code only)",
   "mods.claude": "Claude Code",
   "mods.scope":

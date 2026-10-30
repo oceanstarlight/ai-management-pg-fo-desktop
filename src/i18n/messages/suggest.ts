@@ -59,6 +59,8 @@ export const ko = {
   "suggest.live.autoHint":
     "켜면 프롬프트를 보낼 때 추천을 모두 바로 적용해요 (라이브러리 추가, 확장 설치, MCP 추가 포함).",
   "suggest.live.sent": "Claude Code에 보냈어요.",
+  "suggest.live.cloud": "클라우드",
+  "suggest.live.cloudHint": "보낸 프롬프트예요. 허용한 항목과 결정 내용은 다음 프롬프트에 붙어요.",
   "suggest.setup.title": "엔셀라 연결 mod를 설치해 주세요",
   "suggest.setup.description":
     "Claude Code에서 쓰는 프롬프트를 감지하려면 이 mod가 필요해요. 설치한 뒤 Claude Code를 새로 열거나 /reload-plugins 하면 여기에 실시간으로 보여요.",
@@ -145,6 +147,9 @@ export const en: Messages<typeof ko> = {
   "suggest.live.autoHint":
     "When on, every suggestion is used as the prompt is sent (library items added, extensions installed, MCP servers added).",
   "suggest.live.sent": "Sent to Claude Code.",
+  "suggest.live.cloud": "cloud",
+  "suggest.live.cloudHint":
+    "This prompt was already sent. What you allow and the decisions go with the next one.",
   "suggest.setup.title": "Install the Encela link mod",
   "suggest.setup.description":
     "This mod lets Encela see the prompts you write in Claude Code. After installing, open a new Claude Code session or run /reload-plugins and they show up here live.",

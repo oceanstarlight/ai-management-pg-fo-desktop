@@ -152,5 +152,44 @@ service cloud.firestore {
         && valid(request.resource.data) && newer(request.resource.data);
       allow delete: if false;
     }
+
+    // Cloud relay (sync/relay.rs): a hook in a cloud Claude Code session
+    // sends prompts and answers, and reads what to add to the next prompt.
+    // The 64-character token in the path is the key: whoever holds it may
+    // write events and read the context; only the owner reads events, and
+    // only the owner makes, changes or deletes the relay and its context.
+    match /relays/{token} {
+      function owner() {
+        return allowed()
+          && get(/databases/$(database)/documents/relays/$(token)).data.uid == request.auth.uid;
+      }
+
+      allow get, delete: if allowed() && resource.data.uid == request.auth.uid;
+      allow create, update: if allowed() && token.matches('^[0-9a-f]{64}$')
+        && (resource == null || resource.data.uid == request.auth.uid)
+        && request.resource.data.keys().hasOnly(['uid', 'updatedAt'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.updatedAt is int;
+
+      match /events/{eventId} {
+        allow create: if exists(/databases/$(database)/documents/relays/$(token))
+          && request.resource.data.keys().hasOnly(['kind', 'session', 'repo', 'text', 'at'])
+          && request.resource.data.kind in ['prompt', 'answer']
+          && request.resource.data.session is string && request.resource.data.session.size() <= 200
+          && request.resource.data.repo is string && request.resource.data.repo.size() <= 200
+          && request.resource.data.text is string && request.resource.data.text.size() <= 20000
+          && request.resource.data.at is int;
+        allow list, get, delete: if owner();
+      }
+
+      match /context/{repoKey} {
+        allow get: if true;
+        allow create, update: if owner()
+          && request.resource.data.keys().hasOnly(['text', 'updatedAt'])
+          && request.resource.data.text is string && request.resource.data.text.size() <= 8000
+          && request.resource.data.updatedAt is int;
+        allow delete: if owner();
+      }
+    }
   }
 }

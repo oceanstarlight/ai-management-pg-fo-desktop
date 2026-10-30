@@ -91,6 +91,8 @@ Encela 把这些都放进一个窗口：
 
 只能检测 Claude Code；Claude 桌面应用的普通聊天无法检测。
 
+**云端 Claude Code（claude.ai/code）：** 打开 **设置 → 云端会话**，为项目添加 hook（提交并推送生成的两个文件），并把 `ENCELA_RELAY=…` 密钥粘贴到云环境的环境变量中。之后提示词和回答会通过你的账号（Firebase，收到后即删除）到达应用。云端提示词在发送后才被检测，因此你允许的条目和决定会加入下一条提示词。
+
 ### 🧩 文档编排器
 
 <!-- 截图：画布与"预期效果"面板 — 例如 docs/images/composer-ratings.png -->

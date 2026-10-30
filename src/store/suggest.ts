@@ -72,6 +72,17 @@ export function itemName(item: LogItem, locale: "ko" | "en"): string {
     : item.name;
 }
 
+/** What can be suggested for a project (`null`: none open). */
+export async function candidatesFor(
+  project: string | null,
+): Promise<{ catalog: SuggestExport; candidates: Candidate[] }> {
+  const c = await invoke<Candidates>("suggest_candidates", { project });
+  const installed = c.files
+    .map((f) => installedCandidate(f.kind, f.name, f.text, f.plugin ?? undefined))
+    .filter((x): x is Candidate => x !== null);
+  return { catalog: c.catalog, candidates: buildCandidates(installed, c.catalog) };
+}
+
 const EMPTY: Overview = { mode: "ai", log: [], top: [], prompts: 0, picked: 0 };
 
 interface SuggestState {
@@ -137,11 +148,8 @@ export const useSuggestStore = create<SuggestState>((set, get) => {
 
     loadCandidates: async (project) => {
       if (!isTauri()) return;
-      const c = await invoke<Candidates>("suggest_candidates", { project });
-      const installed = c.files
-        .map((f) => installedCandidate(f.kind, f.name, f.text, f.plugin ?? undefined))
-        .filter((x): x is Candidate => x !== null);
-      set({ project, catalog: c.catalog, candidates: buildCandidates(installed, c.catalog) });
+      const { catalog, candidates } = await candidatesFor(project);
+      set({ project, catalog, candidates });
       const { draft } = get();
       if (draft) get().setDraft(draft);
     },
