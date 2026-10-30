@@ -8,14 +8,14 @@ import { AUTO_DOCK_PREF, AUTO_PREF, useSwitchPref } from "../../store/live";
 import { getPref, onPrefChanged, setPref } from "../../store/prefs";
 
 // Mirrors src-tauri/src/claude_mod.rs.
-interface ModStatus {
+export interface ModStatus {
   claudeVersion: string | null;
   supported: boolean;
   installed: string[];
   ownOutdated: boolean;
 }
 
-const OWN = "branch-notes@ai-management";
+export const OWN = "branch-notes@ai-management";
 
 // Mirrors `McpStatus` in src-tauri/src/claude_mod.rs.
 interface McpStatus {

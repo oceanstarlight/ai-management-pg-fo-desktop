@@ -78,7 +78,7 @@ Each project uses one tool. The app detects it from the files in the project (yo
 
 ### ✨ Suggestions
 
-The home screen is a prompt box. As you type, it finds what fits the task: skills, subagents and commands Claude Code already has, items from your library, recommended MCP servers, extensions, and your automations (or "make this an automation" for anything recurring). Keyword matches show at once, then Haiku picks through your own `claude` once you stop typing. Each suggestion is one click: put it in the prompt, add it to the project, install it, add the server, or open a new automation. With the branch-notes mod installed, the same suggestions show above the Claude Code prompt, and every prompt you send there shows up in the feed with what was suggested and what you picked. The other screens are under **Tools**.
+The home screen is a prompt box. As you type, it finds what fits the task: skills, subagents and commands Claude Code already has, items from your library, recommended MCP servers, extensions, and your automations (or "make this an automation" for anything recurring). Keyword matches show at once, then Haiku picks through your own `claude` once you stop typing. Each suggestion is one click: put it in the prompt, add it to the project, install it, add the server, or open a new automation. With the Encela link mod installed, the same suggestions show above the Claude Code prompt, and every prompt you send there shows up in the feed with what was suggested and what you picked. The other screens are under **Tools**.
 
 **Working with Claude Code (with the mod installed):**
 
@@ -149,9 +149,9 @@ One screen for project (`.mcp.json`), local and personal servers: check if they 
 - Notes and to-dos per repository and branch. When you switch branches in the terminal, the notes follow.
 - Optional sync across devices (notes, composer documents, library) with an app account: email, Google or GitHub. Sync is currently open to approved accounts only. If two devices edit the same thing, the newer one wins and the other is kept as a copy.
 
-### 🔗 Inside Claude Code: branch-notes mod
+### 🔗 Inside Claude Code: Encela link mod
 
-Install the **branch-notes mod** from Settings (Claude Code 2.1.287 or later). Claude Code then shows this branch's to-dos, PR and CI in one line above the prompt, adds `/todo`, `/memo` and `/notes`, and lets Claude read your notes while it works. As you type a prompt, it suggests matching skills, subagents and commands you have, items from your library (one press adds them to the project), extensions to install, MCP servers and automations. By default Haiku picks them through your own Claude Code once you stop typing; Settings can switch to keyword matching or turn it off. Recommended community mods (token-weather, blast-radius, replay-theater, claude-hud) can be installed from Settings too.
+Install the **Encela link mod** from Settings, or from the card on the Suggestions screen (Claude Code 2.1.287 or later; in Claude Code it is the `branch-notes` plugin). It is what lets the app see your Claude Code prompts. Claude Code then shows this branch's to-dos, PR and CI in one line above the prompt, adds `/todo`, `/memo` and `/notes`, and lets Claude read your notes while it works. As you type a prompt, it suggests matching skills, subagents and commands you have, items from your library (one press adds them to the project), extensions to install, MCP servers and automations. By default Haiku picks them through your own Claude Code once you stop typing; Settings can switch to keyword matching or turn it off. Recommended community mods (token-weather, blast-radius, replay-theater, claude-hud) can be installed from Settings too.
 
 ### 📌 Sidebar
 

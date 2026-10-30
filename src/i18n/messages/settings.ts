@@ -22,9 +22,9 @@ export const ko = {
   "mods.autoDock": "Claude가 켜지면 사이드바로",
   "mods.autoDockDescription":
     "Claude 데스크톱 앱이나 Claude Code가 실행 중이면 엔셀라가 사이드바로 열려 그 옆에 붙고, 그 프로젝트를 열어요.",
-  "mods.own.title": "브랜치 메모 mod",
+  "mods.own.title": "엔셀라 연결 mod",
   "mods.own.description":
-    "Claude Code 입력창 위에 이 브랜치의 할 일·PR·CI를 한 줄로 보여주고, 메모와 할 일 패널(/notes), /todo · /memo 명령을 더해요. Claude도 메모와 할 일을 알고 작업해요. 앱이 켜져 있어야 반영돼요.",
+    "Claude Code에서 쓰는 프롬프트를 엔셀라가 감지해 추천하고, Claude가 정한 플랫폼·언어·스택을 기록해요. 입력창 위에 추천과 이 브랜치의 할 일·PR·CI를 보여주고, /notes · /todo · /memo 를 더해요. 앱이 켜져 있어야 동작해요. (Claude Code 플러그인 이름: branch-notes)",
   "mods.mcp.title": "Encela MCP 서버",
   "mods.mcp.description":
     "Claude Code가 이 앱의 브랜치 메모·할 일·PR/CI 상태를 직접 읽고 고치고, 블록 카탈로그로 작성기 문서를 만들 수 있게 해요. 모든 프로젝트에 적용돼요. 바뀐 내용은 앱이 켜져 있을 때 반영돼요.",
@@ -152,9 +152,9 @@ export const en: Messages<typeof ko> = {
   "mods.autoDock": "Turn into the sidebar when Claude starts",
   "mods.autoDockDescription":
     "When the Claude desktop app or Claude Code is running, Encela opens as the sidebar beside it, on that project.",
-  "mods.own.title": "Branch notes mod",
+  "mods.own.title": "Encela link mod",
   "mods.own.description":
-    "Shows this branch's to-dos, PR and CI in one line above Claude Code's prompt, and adds a notes pane (/notes) and /todo · /memo commands. Claude reads the note and to-dos too. Changes apply while the app is running.",
+    "Lets Encela see the prompts you write in Claude Code and suggest what fits, and records the platform, language and stack Claude settles on. Shows suggestions and this branch's to-dos, PR and CI above the prompt, and adds /notes, /todo and /memo. Works while the app is running. (Claude Code plugin name: branch-notes)",
   "mods.mcp.title": "Encela MCP server",
   "mods.mcp.description":
     "Lets Claude Code read and update this app's branch notes, to-dos and PR/CI status, and build composer documents from the block catalog. Applies to all projects. Changes land while the app is running.",
