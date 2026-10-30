@@ -135,7 +135,7 @@ flowchart LR
 
 ### 🔗 Claude Code 안에서: 브랜치 메모 mod
 
-설정에서 **브랜치 메모 mod**를 설치하면(Claude Code 2.1.287 이상) Claude Code 입력창 위에 이 브랜치의 할 일·PR·CI가 한 줄로 보이고, `/todo` · `/memo` · `/notes`를 쓸 수 있고, Claude가 내 메모를 알고 작업해요. 추천 커뮤니티 mods(token-weather, blast-radius, replay-theater, claude-hud)도 설정에서 설치할 수 있어요.
+설정에서 **브랜치 메모 mod**를 설치하면(Claude Code 2.1.287 이상) Claude Code 입력창 위에 이 브랜치의 할 일·PR·CI가 한 줄로 보이고, `/todo` · `/memo` · `/notes`를 쓸 수 있고, Claude가 내 메모를 알고 작업해요. 프롬프트를 쓰면 맞는 skill·서브에이전트·명령(이미 있는 것), 라이브러리 항목(누르면 프로젝트에 추가), 설치할 확장을 입력창 위에 추천해요. 기본은 입력을 멈추면 내 Claude Code로 Haiku가 골라 주고, 설정에서 키워드 방식으로 바꾸거나 끌 수 있어요. 추천 커뮤니티 mods(token-weather, blast-radius, replay-theater, claude-hud)도 설정에서 설치할 수 있어요.
 
 ### 📌 사이드바
 

@@ -137,7 +137,7 @@ flowchart LR
 
 ### 🔗 在 Claude Code 内：分支笔记 mod
 
-在设置中安装 **分支笔记 mod**（需要 Claude Code 2.1.287 或更高版本）后，Claude Code 会在输入框上方用一行显示当前分支的待办、PR 和 CI，新增 `/todo`、`/memo` 和 `/notes` 命令，并让 Claude 在工作时读取你的笔记。也可以在设置中安装推荐的社区 mod（token-weather、blast-radius、replay-theater、claude-hud）。
+在设置中安装 **分支笔记 mod**（需要 Claude Code 2.1.287 或更高版本）后，Claude Code 会在输入框上方用一行显示当前分支的待办、PR 和 CI，新增 `/todo`、`/memo` 和 `/notes` 命令，并让 Claude 在工作时读取你的笔记。输入提示词时，它会在输入框上方推荐合适的 skill、子代理和命令（已有的）、资源库条目（点一下即可加入项目）以及可安装的扩展。默认在你停止输入后通过你自己的 Claude Code 让 Haiku 挑选；也可以在设置中改为关键词匹配或关闭。也可以在设置中安装推荐的社区 mod（token-weather、blast-radius、replay-theater、claude-hud）。
 
 ### 📌 边栏
 

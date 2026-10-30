@@ -78,6 +78,68 @@ struct Export {
     /// key (`path:<main worktree>`), as the app last saw it.
     paths: BTreeMap<String, String>,
     repos: BTreeMap<String, BTreeMap<String, ExportBranch>>,
+    /// What the mod may suggest while the user types a prompt.
+    suggest: Suggest,
+}
+
+/// The pref that turns prompt suggestions on: `ai` (Haiku picks, the
+/// default), `keyword` (matched in the mod only) or `off`.
+pub const SUGGEST_PREF: &str = "promptSuggest";
+
+#[derive(Serialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct Suggest {
+    mode: String,
+    library: Vec<SuggestItem>,
+    extensions: Vec<crate::extensions::SuggestEntry>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct SuggestItem {
+    kind: crate::library::ItemKind,
+    id: String,
+    name: String,
+    description: String,
+}
+
+fn suggest_mode(value: Option<String>) -> String {
+    match value.as_deref() {
+        Some(mode @ ("ai" | "keyword" | "off")) => mode.to_string(),
+        _ => "ai".to_string(),
+    }
+}
+
+fn suggest(app: &AppHandle) -> Suggest {
+    let pref = app
+        .state::<crate::prefs::Prefs>()
+        .store()
+        .ok()
+        .and_then(|s| s.all().ok())
+        .and_then(|mut all| all.remove(SUGGEST_PREF));
+    let mode = suggest_mode(pref);
+    if mode == "off" {
+        return Suggest {
+            mode,
+            ..Suggest::default()
+        };
+    }
+    let library = app
+        .state::<crate::library::Library>()
+        .items()
+        .into_iter()
+        .map(|item| SuggestItem {
+            kind: item.kind,
+            id: item.id,
+            name: item.name,
+            description: item.description.unwrap_or_default(),
+        })
+        .collect();
+    Suggest {
+        mode,
+        library,
+        extensions: crate::extensions::suggest_entries(),
+    }
 }
 
 /// A request from the mod or the MCP server (`mcp_server`).
@@ -116,6 +178,16 @@ pub enum Request {
     RunAutomation {
         id: String,
     },
+    /// Add a library item to a project (the mod's prompt suggestions).
+    ApplyLibrary {
+        project: String,
+        kind: crate::library::ItemKind,
+        id: String,
+    },
+    /// Install one of the extension library's entries (the mod's suggestions).
+    InstallExtension {
+        id: String,
+    },
 }
 
 /// The bridge folder under the app's data folder.
@@ -151,7 +223,7 @@ fn now_ms() -> i64 {
         .unwrap_or(0)
 }
 
-fn export(store: &Store) -> Result<Export, String> {
+fn export(store: &Store, suggest: Suggest) -> Result<Export, String> {
     let github = GITHUB.lock().unwrap_or_else(|e| e.into_inner()).clone();
     let mut repos: BTreeMap<String, BTreeMap<String, ExportBranch>> = BTreeMap::new();
     for (repo, branch) in store.live_branches()? {
@@ -189,6 +261,7 @@ fn export(store: &Store) -> Result<Export, String> {
         locale: if crate::i18n::english() { "en" } else { "ko" },
         paths: store.repo_paths()?.into_iter().collect(),
         repos,
+        suggest,
     })
 }
 
@@ -215,7 +288,9 @@ pub fn apply(store: &Store, request: Request) -> Result<(String, String), String
         Request::SaveDoc { .. }
         | Request::SaveAutomation { .. }
         | Request::SetAutomationEnabled { .. }
-        | Request::RunAutomation { .. } => Err("not a memo request".into()),
+        | Request::RunAutomation { .. }
+        | Request::ApplyLibrary { .. }
+        | Request::InstallExtension { .. } => Err("not a memo request".into()),
         Request::AppendNote {
             repo_key,
             branch,
@@ -297,12 +372,19 @@ pub fn manage(app: &AppHandle) {
                         crate::automation::apply_request(&app, request);
                         continue;
                     }
+                    if matches!(
+                        request,
+                        Request::ApplyLibrary { .. } | Request::InstallExtension { .. }
+                    ) {
+                        apply_suggestion(&app, request);
+                        continue;
+                    }
                     if let Ok((repo, branch)) = apply(store, request) {
                         crate::memo::notify(&app, repo, branch);
                     }
                 }
                 if DIRTY.swap(false, Ordering::Relaxed) || last_write.elapsed() >= HEARTBEAT {
-                    if let Ok(data) = export(store)
+                    if let Ok(data) = export(store, suggest(&app))
                         && let Ok(text) = serde_json::to_string(&data)
                     {
                         let _ = write_atomic(&dir.join("state.json"), &text);
@@ -312,6 +394,42 @@ pub fn manage(app: &AppHandle) {
             }
             std::thread::sleep(POLL);
         }
+    });
+}
+
+/// Carries out a prompt suggestion the user picked in Claude Code, and says
+/// how it went with a desktop notification.
+fn apply_suggestion(app: &AppHandle, request: Request) {
+    use tauri_plugin_notification::NotificationExt;
+    let app = app.clone();
+    std::thread::spawn(move || {
+        let (title, result) = match request {
+            Request::ApplyLibrary { project, kind, id } => {
+                let lib = app.state::<crate::library::Library>();
+                let result = crate::library::apply_for_claude(&lib, Path::new(&project), kind, &id);
+                (
+                    crate::tr!("프로젝트에 추가: {id}", "Added to the project: {id}"),
+                    result,
+                )
+            }
+            Request::InstallExtension { id } => {
+                let result = crate::extensions::install(&id);
+                crate::extensions::check_later();
+                (
+                    crate::tr!("확장 설치: {id}", "Extension installed: {id}"),
+                    result,
+                )
+            }
+            _ => return,
+        };
+        let body = match result {
+            Ok(()) => crate::tr!(
+                "Claude Code에서 바로 쓰거나, 안 보이면 다시 시작해 주세요.",
+                "Use it in Claude Code now, or restart it if it doesn't show up."
+            ),
+            Err(e) => crate::tr!("실패했어요: {e}", "It failed: {e}"),
+        };
+        let _ = app.notification().builder().title(title).body(body).show();
     });
 }
 
@@ -365,6 +483,35 @@ mod tests {
             }
         );
         assert!(serde_json::from_str::<Request>(r#"{"op":"dropTable"}"#).is_err());
+        let r: Request = serde_json::from_str(
+            r#"{"op":"applyLibrary","project":"/p","kind":"skill","id":"review"}"#,
+        )
+        .unwrap();
+        assert_eq!(
+            r,
+            Request::ApplyLibrary {
+                project: "/p".into(),
+                kind: crate::library::ItemKind::Skill,
+                id: "review".into()
+            }
+        );
+        let r: Request = serde_json::from_str(r#"{"op":"installExtension","id":"rea"}"#).unwrap();
+        assert_eq!(r, Request::InstallExtension { id: "rea".into() });
+    }
+
+    #[test]
+    fn suggestions_are_on_with_haiku_unless_set_otherwise() {
+        assert_eq!(suggest_mode(None), "ai");
+        assert_eq!(suggest_mode(Some("keyword".into())), "keyword");
+        assert_eq!(suggest_mode(Some("off".into())), "off");
+        assert_eq!(suggest_mode(Some("weird".into())), "ai");
+        let json = serde_json::to_string(&Suggest {
+            mode: "ai".into(),
+            library: vec![],
+            extensions: crate::extensions::suggest_entries(),
+        })
+        .unwrap();
+        assert!(json.contains(r#""mode":"ai""#) && json.contains(r#""keywords":["#));
     }
 
     #[test]
@@ -393,7 +540,7 @@ mod tests {
         let id = store.branch("r", "main").unwrap().todos[0].id.clone();
         apply(&store, Request::SetDone { id, done: true }).unwrap();
 
-        let data = export(&store).unwrap();
+        let data = export(&store, Suggest::default()).unwrap();
         let main = &data.repos["r"]["main"];
         assert_eq!(main.note, "first\nsecond");
         assert_eq!(main.todos.len(), 1);

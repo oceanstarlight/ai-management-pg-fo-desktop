@@ -2,14 +2,16 @@ import { invoke, isTauri } from "@tauri-apps/api/core";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { ExternalLink } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { Button, Card, Row } from "../../components/ui";
+import { Button, Card, Row, Segmented } from "../../components/ui";
 import { type MessageKey, useT } from "../../i18n";
+import { getPref, onPrefChanged, setPref } from "../../store/prefs";
 
 // Mirrors src-tauri/src/claude_mod.rs.
 interface ModStatus {
   claudeVersion: string | null;
   supported: boolean;
   installed: string[];
+  ownOutdated: boolean;
 }
 
 const OWN = "branch-notes@ai-management";
@@ -70,6 +72,38 @@ const open = (url: string) => {
 };
 
 /** Settings card: the app's own Claude Code mod and recommended ones. */
+const SUGGEST_PREF = "promptSuggest";
+type SuggestMode = "ai" | "keyword" | "off";
+
+function readSuggestMode(): SuggestMode {
+  const v = getPref(SUGGEST_PREF);
+  return v === "keyword" || v === "off" ? v : "ai";
+}
+
+/** How the mod suggests skills and extensions while the user types a prompt. */
+function SuggestRow() {
+  const t = useT();
+  const [mode, setMode] = useState<SuggestMode>(readSuggestMode);
+  useEffect(() => onPrefChanged(SUGGEST_PREF, () => setMode(readSuggestMode())), []);
+  return (
+    <Row title={t("mods.suggest.title")} description={t("mods.suggest.description")}>
+      <Segmented
+        label={t("mods.suggest.title")}
+        value={mode}
+        options={[
+          { value: "ai", label: t("mods.suggest.ai") },
+          { value: "keyword", label: t("mods.suggest.keyword") },
+          { value: "off", label: t("mods.suggest.off") },
+        ]}
+        onChange={(v) => {
+          setMode(v);
+          setPref(SUGGEST_PREF, v);
+        }}
+      />
+    </Row>
+  );
+}
+
 export function ModsCard() {
   const t = useT();
   const [status, setStatus] = useState<ModStatus | null>(null);
@@ -154,8 +188,21 @@ export function ModsCard() {
         </Button>
       </Row>
       <Row title={t("mods.own.title")} description={t("mods.own.description")}>
-        {toggle(OWN)}
+        <div className="flex gap-1.5">
+          {status?.ownOutdated && (
+            <Button
+              size="sm"
+              variant="primary"
+              disabled={!ready || busy !== null}
+              onClick={() => void run(OWN, true)}
+            >
+              {busy === OWN ? t("mods.working") : t("mods.update")}
+            </Button>
+          )}
+          {toggle(OWN)}
+        </div>
       </Row>
+      <SuggestRow />
       <Row
         title={
           <span className="flex items-center gap-1.5">
