@@ -22,20 +22,20 @@ export type View = {
   data: BranchData | null;
 };
 
-/** Something the prompt suggestions can offer. */
+/** Something the prompt suggestions can offer. The same as `Candidate` in
+ * `hooks/suggest.ts` (the contract can import nothing); change both. */
 export type Candidate = {
-  /** Unique: `i:skill:review`, `l:agent:debugger`, `e:rea`. */
   key: string;
-  kind: "skill" | "agent" | "command" | "extension";
-  /** Usable now, in the app's library, or an extension to install. */
-  source: "installed" | "library" | "extension";
-  /** How Claude Code calls it (`review`, `superpowers:brainstorm`). */
+  kind: "skill" | "agent" | "command" | "extension" | "mcp" | "automation";
+  source: "installed" | "library" | "extension" | "recommended" | "automation";
   name: string;
   description: string;
   keywords?: string[];
   libraryKind?: "skill" | "agent";
   libraryId?: string;
   extensionId?: string;
+  mcpId?: string;
+  automationId?: string;
 };
 
 /** What the band above the prompt suggests for the draft being typed. */
@@ -43,7 +43,6 @@ export type Suggestion = {
   draft: string;
   items: Candidate[];
   by: "keyword" | "ai";
-  /** Haiku is still picking. */
   pending: boolean;
 };
 

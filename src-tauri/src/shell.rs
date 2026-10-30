@@ -82,6 +82,10 @@ impl Shell {
 
 /// Opens the window for the saved mode. Call once the dock has started.
 pub fn restore(app: &AppHandle) {
+    if crate::suggest::auto_dock(app) && crate::claude_detect::claude_running() {
+        show_sidebar(app);
+        return;
+    }
     match app.state::<Shell>().mode() {
         ViewMode::Main => show_main(app),
         ViewMode::Sidebar => show_sidebar(app),

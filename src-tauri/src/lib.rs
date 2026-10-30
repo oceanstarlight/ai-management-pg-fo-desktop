@@ -1,8 +1,10 @@
 mod activity;
 mod automation;
 mod bridge;
+mod claude_detect;
 mod claude_mod;
 mod composer;
+mod decisions;
 mod dock;
 mod extensions;
 mod git;
@@ -15,6 +17,7 @@ mod memo;
 mod prefs;
 mod project_docs;
 mod shell;
+mod suggest;
 mod sync;
 mod tools;
 mod tray;
@@ -132,6 +135,16 @@ pub fn run() {
             extensions::extensions_list,
             extensions::extension_install,
             extensions::extension_uninstall,
+            suggest::suggest_overview,
+            suggest::suggest_candidates,
+            suggest::suggest_ai,
+            suggest::suggest_add_mcp,
+            suggest::suggest_log_clear,
+            suggest::suggest_live,
+            suggest::suggest_send,
+            decisions::decisions_list,
+            decisions::decisions_save,
+            decisions::decisions_apply,
             prefs::prefs_all,
             prefs::prefs_set,
             sync::sync_status,
@@ -183,6 +196,7 @@ pub fn run() {
             sync::Sync::manage(handle);
             bridge::manage(handle);
             extensions::check_later();
+            suggest::check_mcp_later(handle);
             automation::start_scheduler(handle);
             tray::create(handle)?;
             Dock::start(handle)?;

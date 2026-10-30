@@ -31,7 +31,9 @@ pub const SYNCED_KEYS: &[&str] = &[
     "fontSize",
     "notifyEnabled",
     "defaultTool",
-    crate::bridge::SUGGEST_PREF,
+    crate::suggest::PREF,
+    crate::suggest::AUTO_PREF,
+    crate::suggest::AUTO_DOCK_PREF,
 ];
 
 pub fn is_synced(key: &str) -> bool {
@@ -71,6 +73,15 @@ impl Prefs {
     }
 }
 
+/// One preference's value, `None` when unset or unreadable.
+pub fn get(app: &AppHandle, key: &str) -> Option<String> {
+    app.state::<Prefs>()
+        .store()
+        .ok()
+        .and_then(|s| s.all().ok())
+        .and_then(|mut all| all.remove(key))
+}
+
 /// Tells every window that a preference changed.
 pub fn announce(app: &AppHandle, key: &str, value: Option<&str>) {
     let _ = app.emit(PREFS_EVENT, json!({ "key": key, "value": value }));
@@ -99,7 +110,7 @@ pub async fn prefs_set(app: AppHandle, key: String, value: Option<String>) -> Re
     let changed = blocking(app.clone(), move |store| store.set(&k, v.as_deref())).await?;
     if changed {
         announce(&app, &key, value.as_deref());
-        if key == crate::bridge::SUGGEST_PREF {
+        if key == crate::suggest::PREF || key == crate::suggest::AUTO_PREF {
             crate::bridge::changed();
         }
         if is_synced(&key) {

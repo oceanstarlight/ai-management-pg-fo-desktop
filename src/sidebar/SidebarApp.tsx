@@ -6,12 +6,16 @@ import { WorkTrees } from "../features/activity/WorkTrees";
 import { CommandsPanel } from "../features/commands/CommandsPanel";
 import { DocsTab } from "../features/docs/DocsTab";
 import { MemoPanel } from "../features/memo/MemoPanel";
+import { DecisionsPanel } from "../features/suggest/DecisionsPanel";
+import { LivePanel } from "../features/suggest/LivePanel";
+import { SuggestFeed } from "../features/suggest/SuggestFeed";
 import { SyncNotice } from "../features/sync/SyncNotice";
 import { UpdateNotice } from "../features/update/UpdateNotice";
 import { useGitHubSync } from "../features/work/GitHubSection";
 import { WorkPanel } from "../features/work/WorkPanel";
 import { subscribeDockStatus } from "../store/dock";
 import { useLibraryStore } from "../store/library";
+import { useLiveStore } from "../store/live";
 import { restoreProject, useProjectStore } from "../store/project";
 import { useSyncStore } from "../store/sync";
 import { useUiStore } from "../store/ui";
@@ -39,6 +43,7 @@ export default function SidebarApp() {
     restoreProject();
     void useSyncStore.getState().init();
     startUpdateChecks();
+    useLiveStore.getState().init();
     if (!isTauri()) return;
     const unlisten = listen<ViewMode>("view-mode", (event) => {
       if (event.payload !== "sidebar") return;
@@ -58,7 +63,13 @@ export default function SidebarApp() {
       <TabNav />
       <main className="flex-1 overflow-y-auto p-4">
         <ErrorBoundary resetKey={activeTab}>
-          {activeTab === "docs" ? (
+          {activeTab === "suggest" ? (
+            <div className="space-y-5">
+              <LivePanel />
+              <DecisionsPanel compact />
+              <SuggestFeed compact />
+            </div>
+          ) : activeTab === "docs" ? (
             <DocsTab />
           ) : activeTab === "memo" ? (
             <MemoPanel compact />

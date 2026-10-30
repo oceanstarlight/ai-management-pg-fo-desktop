@@ -1,4 +1,5 @@
 import { isTauri } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { lazy, Suspense, useEffect } from "react";
 import { ErrorBoundary } from "../components/ErrorBoundary";
@@ -7,8 +8,10 @@ import { SyncNotice } from "../features/sync/SyncNotice";
 import { UpdateNotice } from "../features/update/UpdateNotice";
 import { useGitHubSync } from "../features/work/GitHubSection";
 import { useAccountStore } from "../store/account";
+import { useAutomationStore } from "../store/automation";
 import { useComposerStore } from "../store/composer";
 import { subscribeDockStatus } from "../store/dock";
+import { useLiveStore } from "../store/live";
 import { restoreProject } from "../store/project";
 import { useSyncStore } from "../store/sync";
 import { startUpdateChecks } from "../store/updater";
@@ -18,12 +21,12 @@ import { NavSidebar } from "./NavSidebar";
 import { AutomationsPage } from "./pages/AutomationsPage";
 import { CommandsPage } from "./pages/CommandsPage";
 import { ConfigPage } from "./pages/ConfigPage";
-import { HomePage } from "./pages/HomePage";
 import { LibraryPage } from "./pages/LibraryPage";
 import { McpPage } from "./pages/McpPage";
 import { MemoPage } from "./pages/MemoPage";
 import { ProjectDocsPage } from "./pages/ProjectDocsPage";
 import { SettingsPage } from "./pages/SettingsPage";
+import { SuggestPage } from "./pages/SuggestPage";
 import { TreesPage } from "./pages/TreesPage";
 import { WorkPage } from "./pages/WorkPage";
 
@@ -31,7 +34,7 @@ import { WorkPage } from "./pages/WorkPage";
 const ComposerPage = lazy(() => import("./composer/ComposerPage"));
 
 const PAGES: Record<Page, () => React.ReactNode> = {
-  home: () => <HomePage />,
+  home: () => <SuggestPage />,
   composer: () => (
     <Suspense fallback={null}>
       <ComposerPage />
@@ -61,6 +64,7 @@ export default function MainApp() {
     void useSyncStore.getState().init();
     void useAccountStore.getState().init();
     startUpdateChecks();
+    useLiveStore.getState().init();
   }, []);
 
   // The window is destroyed on close (also when switching to the sidebar from
@@ -68,6 +72,18 @@ export default function MainApp() {
   useEffect(() => {
     if (!isTauri()) return;
     const unlisten = getCurrentWindow().onCloseRequested(() => saveBeforeLeaving());
+    return () => {
+      void unlisten.then((stop) => stop());
+    };
+  }, []);
+
+  // "Make this an automation", picked in Claude Code.
+  useEffect(() => {
+    if (!isTauri()) return;
+    const unlisten = listen<{ prompt: string; project: string }>("automation-draft", (e) => {
+      useAutomationStore.getState().startDraft(e.payload.prompt, e.payload.project);
+      useWorkspaceStore.getState().go("automations");
+    });
     return () => {
       void unlisten.then((stop) => stop());
     };

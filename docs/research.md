@@ -442,3 +442,10 @@ AGPL 프로젝트는 아이디어만 참고하고 코드는 가져오지 않는�
 - 디바운스: `$.clock.after(ms, fn)`(`cancel()`), 이전 호출은 `AbortController`로 취소.
 - 설치된 항목: `<프로젝트>/.claude`, `$CLAUDE_CONFIG_DIR` 또는 `~/.claude`의 `skills/*/SKILL.md`, `agents/*.md`, `commands/*.md`, 플러그인은 `claude plugin list --json`의 `installPath` 아래 같은 구조(이름은 `plugin:item`).
 - mod 업데이트: `claude plugin install`은 이미 설치돼 있으면 그대로라서, 앱이 `claude plugin update <id> --scope user`를 이어서 실행(목록의 `version`으로 낡은 mod를 알아냄).
+- 앱 안에서 Haiku 호출(2026-10-30 확인, claude 2.1.314): `claude -p --model haiku --output-format json --no-session-persistence --strict-mcp-config --tools "" --system-prompt <S>`에 프롬프트를 stdin으로. 약 9초, 약 $0.0005/회, 결과는 JSON의 `result`. 사용자의 `claude` 그대로 실행(자격 증명 미접근).
+- MCP 후보: 설치된 서버는 `claude mcp list`(서버마다 연결해서 느림 → 앱 시작·추가·삭제 뒤 백그라운드로 갱신), 추천 서버는 MCP 페이지의 추천 목록 + 영어 요약·키워드(`src-tauri/src/suggest/hints.rs`).
+- 추천 기록: mod가 `prompt.submit` 때 `suggestLog` 요청(추천 목록, 고른 것)을 보내고 앱이 `<app data>/suggest-log.json`에 최근 300개 저장(프롬프트는 `activity::redact`로 비밀값 가림).
+- 앱→mod 명령(2026-10-30, claude 2.1.314로 확인): mod의 fs API는 read/write/list/exists만 있고 삭제가 없어서, 앱이 `bridge/outbox/<session>.json`에 `{commands:[{seq, op, ...}]}`(최근 20개, seq는 단조 증가 ms)를 쓰고 mod가 800ms마다 읽어 `seq > lastSeq`만 실행(`lastSeq`는 세션 시작 시각). op: `pick`, `fill`, `refine`, `undo`. 세션 시작·끝은 `session.start`(`cwd`, `surface`)·`session.end`.
+- 결정 감지: `turn.complete`(메인 루프, `reason: "answer"`)의 `answer`를 앱이 받아 Haiku로 `[{topic, value}]` JSON 추출(약 $0.0007/회). 사용자가 쓴 항목은 덮어쓰지 않음. `prompt.submit`의 `context: string[]`로 결정·자동 적용 항목을 사용자에게 안 보이게 붙임(`e.command`가 있으면 글 고치기는 적용 안 됨).
+- Claude 실행 감지: Windows는 `CreateToolhelp32Snapshot`/`Process32NextW`로 `claude.exe`, Linux는 `/proc/*/comm`. npm으로 설치한 claude는 `node`로 보여서 못 찾음 → mod의 `sessionStart`가 사이드바를 띄우는 것으로 보완.
+

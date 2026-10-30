@@ -1,7 +1,7 @@
 import type { On, PromptEditInput } from "claude-code";
 import { type Engine, expect, mock, test } from "claude-code/testing";
 
-const state = (mode: string) =>
+const state = (mode: string, extra: Record<string, unknown> = {}) =>
   JSON.stringify({
     version: 1,
     heartbeat: 1000,
@@ -20,6 +20,7 @@ const state = (mode: string) =>
         { kind: "skill", id: "pdf", name: "pdf", description: "Read and fill PDF files" },
       ],
       extensions: [],
+      ...extra,
     },
   });
 
@@ -39,10 +40,19 @@ const ABOVE = {
 const DRAFT = "why does the login crash with this bug";
 
 /** The engine beneath the mod: an app export, no git, no claude, Haiku's reply. */
-function engine(on: On, mode: string, reply: string, asked: string[], written: string[] = []) {
+function engine(
+  on: On,
+  mode: string,
+  reply: string,
+  asked: string[],
+  written: string[] = [],
+  files: Record<string, string> = {},
+) {
   const clock = mock.clock(on, { now: 1000 });
   mock.env(on, { AIM_BRIDGE_DIR: "/bridge", HOME: "/home/me" });
-  on("fs.read", (_, e) => ({ value: e.path === "/bridge/state.json" ? state(mode) : "" }));
+  on("fs.read", (_, e) => ({
+    value: e.path === "/bridge/state.json" ? (files.state ?? state(mode)) : (files[e.path] ?? ""),
+  }));
   on("fs.list", () => ({ value: [] }));
   on("fs.exists", () => ({ value: false }));
   on("process.run", (_, e) =>
@@ -140,6 +150,35 @@ test("picking a library item asks the app to add it to the project", async ($, o
   });
 });
 
+test("sending the prompt tells the app what was suggested and picked", async ($, on) => {
+  const asked: string[] = [];
+  const written: string[] = [];
+  const clock = engine(on, "ai", "[1]", asked, written);
+  on("prompt.read", () => ({ value: { text: DRAFT, cursor: DRAFT.length } }));
+  on("prompt.fill", (_, e) => ({ isFilled: true, text: e.text, cursor: e.text.length }));
+  on("prompt.submit", (_, e) => ({ text: e.text }));
+  await $.session.start({ cwd: "/", surface: "terminal", isInteractive: true });
+  await type($, DRAFT);
+  await clock.advance(1500);
+  const ui = await $.ui.mount({ ...ABOVE, surface: "terminal" });
+  await ui.press({ key: "l:agent:debugger" });
+  await ui.unmount();
+  await $.prompt.submit({ text: DRAFT, wait: false, origin: { kind: "composer" } });
+  const log = written.map((t) => JSON.parse(t)).find((r) => r.op === "suggestLog");
+  expect(log).toMatchObject({
+    draft: DRAFT,
+    by: "ai",
+    picked: ["l:agent:debugger"],
+    project: "/repo",
+  });
+  expect(log.items[0]).toEqual({
+    key: "l:agent:debugger",
+    name: "debugger",
+    kind: "agent",
+    source: "library",
+  });
+});
+
 test("keyword mode never asks Haiku", async ($, on) => {
   const asked: string[] = [];
   const clock = engine(on, "keyword", "[1]", asked);
@@ -174,4 +213,108 @@ test("short drafts show nothing", async ($, on) => {
   const ui = await $.ui.mount({ ...ABOVE, surface: "terminal" });
   expect((await ui.find({ type: "Text" }))?.text).toBe("engine");
   await ui.unmount();
+});
+
+const sent = (written: string[]) => written.map((t) => JSON.parse(t));
+
+test("a session tells the app it started, and what is suggested as it is typed", async ($, on) => {
+  const written: string[] = [];
+  const clock = engine(on, "keyword", "[]", [], written);
+  await $.session.start({ cwd: "/", surface: "terminal", isInteractive: true });
+  const start = sent(written).find((r) => r.op === "sessionStart");
+  expect(start).toMatchObject({ project: "/repo", surface: "terminal" });
+  await type($, "please debug this login failure");
+  await clock.advance(1000);
+  const live = sent(written)
+    .filter((r) => r.op === "suggestLive")
+    .pop();
+  expect(live).toMatchObject({ session: start.session, draft: "please debug this login failure" });
+  expect(live.items[0]).toMatchObject({ key: "l:agent:debugger", label: "＋debugger" });
+});
+
+test("the app's sidebar picks a suggestion through the outbox", async ($, on) => {
+  const written: string[] = [];
+  const files: Record<string, string> = {};
+  const clock = engine(on, "keyword", "[]", [], written, files);
+  await $.session.start({ cwd: "/", surface: "terminal", isInteractive: true });
+  const { session } = sent(written).find((r) => r.op === "sessionStart");
+  await type($, "fill in this pdf form for me");
+  files[`/bridge/outbox/${session}.json`] = JSON.stringify({
+    commands: [
+      { seq: 5, op: "pick", key: "l:skill:pdf" },
+      { seq: 2000, op: "pick", key: "l:skill:pdf" },
+    ],
+  });
+  await clock.advance(1000);
+  expect(sent(written).filter((r) => r.op === "applyLibrary")).toHaveLength(1);
+});
+
+test("auto mode uses the suggestions when the prompt is sent", async ($, on) => {
+  const written: string[] = [];
+  const files = { state: state("keyword", { auto: true }) };
+  const clock = engine(on, "keyword", "[]", [], written, files);
+  let context: readonly string[] | undefined;
+  on("prompt.submit", (_, e) => {
+    context = e.context;
+    return { text: e.text };
+  });
+  await $.session.start({ cwd: "/", surface: "terminal", isInteractive: true });
+  await type($, "fill in this pdf form for me");
+  await clock.advance(1000);
+  await $.prompt.submit({
+    text: "fill in this pdf form for me",
+    wait: false,
+    origin: { kind: "composer" },
+  });
+  expect(sent(written).find((r) => r.op === "applyLibrary")).toMatchObject({ id: "pdf" });
+  expect(context).toBeUndefined();
+  const log = sent(written).find((r) => r.op === "suggestLog");
+  expect(log.picked).toContain("l:skill:pdf");
+});
+
+test("Claude's answer goes to the app to find decisions", async ($, on) => {
+  const written: string[] = [];
+  engine(on, "ai", "[]", [], written);
+  on("prompt.submit", (_, e) => ({ text: e.text }));
+  on("turn.complete", (_, e) => ({ text: e.answer }));
+  await $.session.start({ cwd: "/", surface: "terminal", isInteractive: true });
+  await $.prompt.submit({ text: "make a memo website", wait: false, origin: { kind: "composer" } });
+  await $.turn.complete({
+    answer: "We'll use Next.js with TypeScript and deploy on Vercel.",
+    durationMs: 10,
+    isAborted: false,
+    turnId: "t1",
+    reason: "answer",
+  });
+  expect(sent(written).find((r) => r.op === "turnAnswer")).toMatchObject({
+    project: "/repo",
+    prompt: "make a memo website",
+    answer: "We'll use Next.js with TypeScript and deploy on Vercel.",
+  });
+});
+
+test("refine rewrites the prompt with Haiku and undo brings it back", async ($, on) => {
+  const written: string[] = [];
+  const files: Record<string, string> = {};
+  const asked: string[] = [];
+  const clock = engine(on, "keyword", "Build a memo website.\n- Next.js", asked, written, files);
+  let box = "make a memo site with next";
+  on("prompt.read", () => ({ value: { text: box, cursor: box.length } }));
+  on("prompt.fill", (_, e) => {
+    box = e.text;
+    return { isFilled: true, text: e.text, cursor: e.text.length };
+  });
+  await $.session.start({ cwd: "/", surface: "terminal", isInteractive: true });
+  const { session } = sent(written).find((r) => r.op === "sessionStart");
+  files[`/bridge/outbox/${session}.json`] = JSON.stringify({
+    commands: [{ seq: 2000, op: "refine" }],
+  });
+  await clock.advance(1000);
+  expect(box).toBe("Build a memo website.\n- Next.js");
+  expect(asked[0]).toContain("make a memo site with next");
+  files[`/bridge/outbox/${session}.json`] = JSON.stringify({
+    commands: [{ seq: 3000, op: "undo" }],
+  });
+  await clock.advance(1000);
+  expect(box).toBe("make a memo site with next");
 });

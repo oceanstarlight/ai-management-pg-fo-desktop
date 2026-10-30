@@ -294,19 +294,24 @@ function CommitPanel() {
   const t = useT();
   const { data, drafts, busy, discard, openFile, commitFiles } = useRemoteStore();
   const [message, setMessage] = useState("");
-  const [toNew, setToNew] = useState(false);
+  /** `same`: this branch; `new`: a new branch; `merge`: a new branch merged into the default. */
+  const [target, setTarget] = useState<"same" | "new" | "merge">("same");
   const [branch, setBranch] = useState("");
   if (!data) return null;
+  const toNew = target !== "same";
+  const base = data.view.defaultBranch;
   const entries = Object.entries(drafts);
 
   return (
     <form
       onSubmit={async (e) => {
         e.preventDefault();
-        if (await commitFiles(message, toNew ? branch.trim() : null)) {
+        if (
+          await commitFiles(message, toNew ? branch.trim() : null, target === "merge" ? base : null)
+        ) {
           setMessage("");
           setBranch("");
-          setToNew(false);
+          setTarget("same");
         }
       }}
       className="space-y-1.5 rounded-lg border border-border bg-surface-raised p-3"
@@ -348,13 +353,19 @@ function CommitPanel() {
       />
       <div className="space-y-1 text-xs text-text-muted">
         <label className="flex items-center gap-1.5">
-          <input type="radio" checked={!toNew} onChange={() => setToNew(false)} />
+          <input type="radio" checked={target === "same"} onChange={() => setTarget("same")} />
           {t("work.files.toBranch", { branch: data.branch })}
         </label>
         <label className="flex items-center gap-1.5">
-          <input type="radio" checked={toNew} onChange={() => setToNew(true)} />
+          <input type="radio" checked={target === "new"} onChange={() => setTarget("new")} />
           {t("work.files.toNewBranch")}
         </label>
+        {data.branch === base && (
+          <label className="flex items-center gap-1.5">
+            <input type="radio" checked={target === "merge"} onChange={() => setTarget("merge")} />
+            {t("work.files.toNewBranchMerge", { branch: base })}
+          </label>
+        )}
         {toNew && (
           <input
             value={branch}

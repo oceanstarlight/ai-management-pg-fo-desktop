@@ -6,7 +6,6 @@ import {
   FileText,
   GitBranch,
   GitGraph,
-  House,
   Library,
   type LucideIcon,
   Map as MapIcon,
@@ -16,6 +15,7 @@ import {
   Plug,
   Plus,
   Settings,
+  Sparkles,
   SquareSlash,
   Trash2,
 } from "lucide-react";
@@ -30,18 +30,24 @@ import { useComposerStore } from "../store/composer";
 import { type Page, useWorkspaceStore } from "../store/workspace";
 import { switchToSidebar } from "./leave";
 
-const NAV: { page: Page; label: MessageKey; icon: LucideIcon; soon?: boolean }[] = [
-  { page: "home", label: "shell.nav.home", icon: House },
-  { page: "composer", label: "shell.nav.composer", icon: Blocks },
+type NavItem = { page: Page; label: MessageKey; icon: LucideIcon };
+
+/** The app is about suggestions; everything else is a tool. */
+const NAV: NavItem[] = [
+  { page: "home", label: "shell.nav.suggest", icon: Sparkles },
   { page: "library", label: "shell.nav.library", icon: Library },
-  { page: "config", label: "shell.nav.config", icon: MapIcon },
-  { page: "files", label: "shell.nav.files", icon: FileText },
   { page: "mcp", label: "shell.nav.mcp", icon: Plug },
-  { page: "commands", label: "shell.nav.commands", icon: SquareSlash },
+  { page: "automations", label: "shell.nav.automations", icon: AlarmClock },
+];
+
+const TOOLS_NAV: NavItem[] = [
+  { page: "composer", label: "shell.nav.composer", icon: Blocks },
   { page: "work", label: "shell.nav.work", icon: GitBranch },
   { page: "trees", label: "shell.nav.trees", icon: GitGraph },
   { page: "memo", label: "shell.nav.memo", icon: NotebookPen },
-  { page: "automations", label: "shell.nav.automations", icon: AlarmClock },
+  { page: "commands", label: "shell.nav.commands", icon: SquareSlash },
+  { page: "files", label: "shell.nav.files", icon: FileText },
+  { page: "config", label: "shell.nav.config", icon: MapIcon },
 ];
 
 export function NavSidebar() {
@@ -86,20 +92,7 @@ export function NavSidebar() {
         </IconButton>
       </div>
 
-      <div className="px-2">
-        <NavButton
-          icon={Plus}
-          label={t("shell.nav.newDoc")}
-          collapsed={collapsed}
-          accent
-          onClick={() => {
-            newDoc();
-            go("composer");
-          }}
-        />
-      </div>
-
-      <nav className="mt-2 space-y-0.5 px-2">
+      <nav className="space-y-0.5 px-2">
         {NAV.map((item) => (
           <NavButton
             key={item.page}
@@ -107,7 +100,24 @@ export function NavSidebar() {
             label={t(item.label)}
             collapsed={collapsed}
             active={page === item.page}
-            badge={item.soon ? t("shell.nav.soon") : undefined}
+            onClick={() => go(item.page)}
+          />
+        ))}
+      </nav>
+
+      <nav className="mt-4 space-y-0.5 px-2">
+        {collapsed ? (
+          <div className="mx-2 mb-1 border-t border-border" />
+        ) : (
+          <h3 className="px-2 pb-1 text-xs font-medium text-text-subtle">{t("shell.nav.tools")}</h3>
+        )}
+        {TOOLS_NAV.map((item) => (
+          <NavButton
+            key={item.page}
+            icon={item.icon}
+            label={t(item.label)}
+            collapsed={collapsed}
+            active={page === item.page}
             onClick={() => go(item.page)}
           />
         ))}
@@ -268,20 +278,10 @@ interface NavButtonProps {
   label: string;
   collapsed: boolean;
   active?: boolean;
-  accent?: boolean;
-  badge?: string;
   onClick: () => void;
 }
 
-function NavButton({
-  icon: Icon,
-  label,
-  collapsed,
-  active,
-  accent,
-  badge,
-  onClick,
-}: NavButtonProps) {
+function NavButton({ icon: Icon, label, collapsed, active, onClick }: NavButtonProps) {
   return (
     <button
       type="button"
@@ -295,23 +295,10 @@ function NavButton({
           : "text-text-muted hover:bg-hover hover:text-text"
       }`}
     >
-      <span
-        className={`flex shrink-0 items-center justify-center ${
-          accent
-            ? "size-6 -ml-0.5 rounded-full bg-linear-to-br from-brand-from via-brand-via to-brand-to text-white"
-            : "size-5"
-        }`}
-      >
-        <Icon size={accent ? 15 : 17} strokeWidth={accent ? 2.5 : 2} />
+      <span className="flex size-5 shrink-0 items-center justify-center">
+        <Icon size={17} />
       </span>
-      {!collapsed && (
-        <span className={`truncate ${accent ? "font-medium text-text" : ""}`}>{label}</span>
-      )}
-      {!collapsed && badge && (
-        <span className="ml-auto shrink-0 rounded-full bg-sunken px-1.5 py-px text-fs-10 text-text-subtle">
-          {badge}
-        </span>
-      )}
+      {!collapsed && <span className="truncate">{label}</span>}
     </button>
   );
 }

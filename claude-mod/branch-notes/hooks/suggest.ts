@@ -1,17 +1,57 @@
 // Prompt suggestions without the engine: the candidates (what is installed,
-// the app's library, the extension library), keyword matching, and the
-// Haiku request and its reply. Kept in sync with src-tauri/src/bridge.rs
-// (`Suggest` in the export, the `applyLibrary` and `installExtension` requests).
+// the app's library, extensions, MCP servers, automations), keyword
+// matching, and the Haiku request and its reply. The app's own prompt box
+// (src/features/suggest) imports this file too, so it has no engine imports.
+// Kept in sync with src-tauri/src/suggest (the export's `suggest` section
+// and the requests the mod sends).
 
-import type { Candidate } from "../types";
+export type CandidateKind = "skill" | "agent" | "command" | "extension" | "mcp" | "automation";
 
-export type { Candidate, Suggestion } from "../types";
+/**
+ * `installed`: usable now. `library`: in the app's library, added to the
+ * project on pick. `extension`: a GitHub extension to install. `recommended`:
+ * an MCP server to add. `automation`: one of the app's automations, or a new one.
+ */
+export type CandidateSource = "installed" | "library" | "extension" | "recommended" | "automation";
+
+/** Something the prompt suggestions can offer. */
+export type Candidate = {
+  /** Unique: `i:skill:review`, `l:agent:debugger`, `e:rea`, `m:github`, `a:new`. */
+  key: string;
+  kind: CandidateKind;
+  source: CandidateSource;
+  /** How Claude Code calls it (`review`, `superpowers:brainstorm`). */
+  name: string;
+  description: string;
+  keywords?: string[];
+  libraryKind?: "skill" | "agent";
+  libraryId?: string;
+  extensionId?: string;
+  mcpId?: string;
+  automationId?: string;
+};
+
+/** What is suggested for the draft being typed. */
+export type Suggestion = {
+  draft: string;
+  items: Candidate[];
+  by: "keyword" | "ai";
+  /** Haiku is still picking. */
+  pending: boolean;
+};
 
 export type SuggestMode = "ai" | "keyword" | "off";
+
+/** The key of the "make this an automation" suggestion. */
+export const NEW_AUTOMATION = "a:new";
 
 /** The export's `suggest` section. */
 export type SuggestExport = {
   mode: SuggestMode;
+  /** Suggestions are used without asking, when the prompt is sent. */
+  auto?: boolean;
+  /** Each project's settled decisions (`topic: value`), by project folder. */
+  decisions?: Record<string, string[]>;
   library: { kind: "skill" | "agent"; id: string; name: string; description: string }[];
   extensions: {
     id: string;
@@ -22,7 +62,41 @@ export type SuggestExport = {
     keywords: string[];
     installed: boolean | null;
   }[];
+  /** MCP servers: the ones Claude Code has, and recommended ones to add. */
+  mcp?: {
+    id: string | null;
+    name: string;
+    summary: string;
+    keywords: string[];
+    installed: boolean;
+  }[];
+  automations?: { id: string; name: string; prompt: string; enabled: boolean }[];
 };
+
+/** Words that ask for something on a schedule. */
+const RECURRING = [
+  "매일",
+  "매주",
+  "매달",
+  "매시간",
+  "아침마다",
+  "저녁마다",
+  "밤마다",
+  "정기",
+  "주기적",
+  "스케줄",
+  "예약",
+  "자동화",
+  "daily",
+  "weekly",
+  "hourly",
+  "every",
+  "schedule",
+  "recurring",
+  "cron",
+  "automate",
+  "automation",
+];
 
 /** Drafts shorter than this get no suggestions. */
 export const MIN_CHARS = 8;
@@ -135,6 +209,41 @@ export function buildCandidates(installed: Candidate[], exp?: SuggestExport | nu
       description: clip(ext.summary),
       keywords: ext.keywords,
       extensionId: ext.id,
+    });
+  }
+  const servers = new Set(installed.filter((c) => c.kind === "mcp").map((c) => c.name));
+  for (const server of exp?.mcp ?? []) {
+    if (servers.has(server.name)) continue;
+    servers.add(server.name);
+    out.push({
+      key: server.installed ? `i:mcp:${server.name}` : `m:${server.id ?? server.name}`,
+      kind: "mcp",
+      source: server.installed ? "installed" : "recommended",
+      name: server.name,
+      description: clip(server.summary),
+      keywords: server.keywords,
+      mcpId: server.id ?? undefined,
+    });
+  }
+  for (const a of exp?.automations ?? []) {
+    out.push({
+      key: `a:${a.id}`,
+      kind: "automation",
+      source: "automation",
+      name: a.name,
+      description: clip(a.prompt),
+      automationId: a.id,
+    });
+  }
+  if (exp) {
+    out.push({
+      key: NEW_AUTOMATION,
+      kind: "automation",
+      source: "automation",
+      name: "new automation",
+      description:
+        "Run this prompt on a schedule (daily, weekly, every few hours) from the Encela app",
+      keywords: RECURRING,
     });
   }
   return out;
@@ -264,7 +373,7 @@ export function keywordRank(
 ): Candidate[] {
   const words = tokens(draft);
   if (!words.length) return [];
-  const order = { installed: 0, library: 1, extension: 2 } as const;
+  const order = { installed: 0, library: 1, recommended: 2, extension: 3, automation: 4 } as const;
   return candidates
     .map((c) => ({ c, s: score(words, c) }))
     .filter((x) => x.s >= 2)
@@ -274,11 +383,17 @@ export function keywordRank(
 }
 
 export const AI_SYSTEM =
-  "You pick which Claude Code skills, subagents, commands or extensions would clearly help with the task the user is typing. Be strict: suggest nothing rather than something loosely related. Reply with a JSON array of entry numbers only, best first, for example [3,12] or [].";
+  "You pick which Claude Code skills, subagents, commands, MCP servers, extensions or automations would clearly help with the task the user is typing. Suggest the new automation only when the user asks for something to happen repeatedly or on a schedule. Be strict: suggest nothing rather than something loosely related. Reply with a JSON array of entry numbers only, best first, for example [3,12] or [].";
 
 /** The numbered list Haiku picks from; the same for every draft, so it caches. */
 export function aiCatalog(candidates: Candidate[]): string {
-  const where = { installed: "ready", library: "in the user's library", extension: "to install" };
+  const where = {
+    installed: "ready",
+    library: "in the user's library",
+    extension: "to install",
+    recommended: "to add",
+    automation: "the app's scheduler",
+  };
   const lines = candidates.map(
     (c, i) =>
       `${i + 1}. [${c.kind}, ${where[c.source]}] ${c.name}${c.description ? ` - ${c.description}` : ""}`,
@@ -286,8 +401,70 @@ export function aiCatalog(candidates: Candidate[]): string {
   return `Entries:\n${lines.join("\n")}`;
 }
 
-export function aiAsk(draft: string): string {
-  return `The user is typing this prompt (any language):\n<<<\n${draft.slice(0, 2000)}\n>>>\nWhich entries would clearly help? At most ${MAX_ITEMS}. JSON array of numbers only.`;
+export function aiAsk(draft: string, decisions: string[] = []): string {
+  const settled = decisions.length
+    ? `Already settled for this project:\n${decisions.map((d) => `- ${d}`).join("\n")}\n`
+    : "";
+  return `${settled}The user is typing this prompt (any language):\n<<<\n${draft.slice(0, 2000)}\n>>>\nWhich entries would clearly help? At most ${MAX_ITEMS}. JSON array of numbers only.`;
+}
+
+/** The project's decisions, found by its folder (case and slashes aside). */
+export function decisionsFor(exp: SuggestExport | null | undefined, project: string): string[] {
+  const norm = (p: string) => p.replace(/\\/g, "/").replace(/\/+$/, "").toLowerCase();
+  const want = norm(project);
+  if (!want || !exp?.decisions) return [];
+  for (const [key, lines] of Object.entries(exp.decisions)) {
+    if (norm(key) === want) return lines;
+  }
+  return [];
+}
+
+export const REFINE_SYSTEM =
+  "You rewrite a developer's prompt for Claude Code so it gets better results. Keep the user's language, intent and every requirement; do not invent features. Make it clear and specific: the goal first, then requirements as a short list, then constraints (the project's settled decisions, when they matter), then what done looks like. Start with the given slash command when there is one. Reply with the rewritten prompt only, no preamble.";
+
+/** What Haiku rewrites: the draft, what to use, and what is settled. */
+export function refineAsk(draft: string, use: Candidate[], decisions: string[]): string {
+  const command = use.find(
+    (c) => c.source === "installed" && c.kind !== "agent" && c.kind !== "mcp",
+  );
+  const helpers = use.filter((c) => c !== command && c.source === "installed");
+  const lines = [
+    command ? `Slash command to start with: /${command.name}` : "",
+    helpers.length
+      ? `Ask Claude to use: ${helpers.map((c) => `${c.name} (${c.kind})`).join(", ")}`
+      : "",
+    decisions.length
+      ? `Settled for this project:\n${decisions.map((d) => `- ${d}`).join("\n")}`
+      : "",
+    `Prompt:\n<<<\n${draft.slice(0, 4000)}\n>>>`,
+  ];
+  return lines.filter(Boolean).join("\n\n");
+}
+
+/** The rewritten prompt: quotes and fences Haiku sometimes adds, removed. */
+export function cleanRefined(text: string): string {
+  return text
+    .trim()
+    .replace(/^```[a-z]*\n?/i, "")
+    .replace(/\n?```$/, "")
+    .replace(/^<<<\n?/, "")
+    .replace(/\n?>>>$/, "")
+    .trim();
+}
+
+/** What the model reads beside a prompt sent in auto mode: the suggestions to use. */
+export function autoContext(items: Candidate[]): string | null {
+  const lines = items
+    .filter((c) => c.source === "installed")
+    .map((c) =>
+      c.kind === "agent"
+        ? `- the ${c.name} subagent`
+        : c.kind === "mcp"
+          ? `- the ${c.name} MCP server`
+          : `- the ${c.name} ${c.kind === "command" ? "command" : "skill"}`,
+    );
+  if (!lines.length) return null;
+  return `The user's tools suggest these for this request; use them where they help:\n${lines.join("\n")}`;
 }
 
 /** The candidates Haiku's reply names, in its order. */
@@ -311,17 +488,30 @@ export function parseAiReply(text: string, candidates: Candidate[]): Candidate[]
 }
 
 /** The button's label: how it is used. */
-export function label(c: Candidate): string {
+export function label(c: Candidate, locale: "ko" | "en" = "en"): string {
+  if (c.key === NEW_AUTOMATION) return locale === "ko" ? "⏰자동화로 만들기" : "⏰Automate it";
+  if (c.source === "automation") return `⏰${c.name}`;
   if (c.source === "library") return `＋${c.name}`;
-  if (c.source === "extension") return `⬇${c.name}`;
+  if (c.source === "extension" || c.source === "recommended") return `⬇${c.name}`;
+  if (c.kind === "mcp") return `🔌${c.name}`;
   return c.kind === "agent" ? `@${c.name}` : `/${c.name}`;
 }
 
-/** The draft after picking an installed item: a command first, a subagent asked for. */
+/** Whether picking it changes the prompt (rather than asking the app for something). */
+export const editsPrompt = (c: Candidate) => c.source === "installed";
+
+/** The draft after picking an installed item: a command first, a subagent or server asked for. */
 export function draftWith(draft: string, c: Candidate, locale: "ko" | "en"): string {
-  if (c.kind === "agent") {
-    const ask =
-      locale === "ko" ? `(${c.name} 서브에이전트를 써 줘)` : `(use the ${c.name} subagent)`;
+  if (c.kind === "agent" || c.kind === "mcp") {
+    const what =
+      c.kind === "agent"
+        ? locale === "ko"
+          ? "서브에이전트"
+          : "subagent"
+        : locale === "ko"
+          ? "MCP 서버"
+          : "MCP server";
+    const ask = locale === "ko" ? `(${c.name} ${what}를 써 줘)` : `(use the ${c.name} ${what})`;
     return `${draft.trimEnd()} ${ask}`;
   }
   const rest = draft.replace(/^\/\S+\s*/, "");

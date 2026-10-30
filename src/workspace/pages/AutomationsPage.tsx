@@ -211,11 +211,19 @@ function AutomationCard({ item, runs, onEdit }: { item: Item; runs: Run[]; onEdi
 export function AutomationsPage() {
   const t = useT();
   const { loaded, claudeFound, items, runs, load, save } = useAutomationStore();
+  const draft = useAutomationStore((s) => s.draft);
   const [editing, setEditing] = useState<Automation | null>(null);
 
   useEffect(() => {
     void load();
   }, [load]);
+
+  // A prompt suggestion asked for a new automation.
+  useEffect(() => {
+    if (!draft) return;
+    const next = useAutomationStore.getState().takeDraft();
+    if (next) setEditing(next);
+  }, [draft]);
 
   return (
     <div className="mx-auto max-w-3xl px-8 py-10">

@@ -1,6 +1,6 @@
 {
   "name": "branch-notes",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Branch notes, to-dos and prompt suggestions from the Encela app, inside Claude Code",
   "author": { "name": "Encela" },
   "types": "./types/index.d.ts"

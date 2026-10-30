@@ -109,7 +109,17 @@ const WORDS = {
     paneTitle: "브랜치 메모",
     pr: "PR",
     suggest: "추천",
-    suggestLegend: "＋ 프로젝트에 추가 · ⬇ 확장 설치",
+    legendAdd: "＋ 프로젝트에 추가",
+    legendInstall: "⬇ 설치",
+    legendAutomation: "⏰ 앱 자동화",
+    refine: "✎다듬기",
+    refining: "프롬프트 다듬는 중…",
+    undo: "↩원문",
+    refineFailed: "프롬프트를 다듬지 못했어요.",
+    autoApplied: (names: string) => `자동 적용: ${names}`,
+    addingMcp: (name: string) => `앱이 ${name} MCP 서버를 추가해요. 끝나면 알림이 와요.`,
+    draftingAutomation: "앱에서 이 프롬프트로 자동화를 만들어요. 시간을 정하고 저장하세요.",
+    runningAutomation: (name: string) => `앱이 '${name}' 자동화를 지금 실행해요.`,
     picking: "고르는 중…",
     adding: (name: string) => `앱이 ${name}을(를) 프로젝트에 추가해요. 끝나면 알림이 와요.`,
     installing: (name: string) =>
@@ -138,7 +148,18 @@ const WORDS = {
     paneTitle: "Branch notes",
     pr: "PR",
     suggest: "Suggested",
-    suggestLegend: "＋ add to the project · ⬇ install the extension",
+    legendAdd: "＋ adds to the project",
+    legendInstall: "⬇ installs",
+    legendAutomation: "⏰ app automation",
+    refine: "✎Refine",
+    refining: "Refining the prompt…",
+    undo: "↩Original",
+    refineFailed: "Couldn't refine the prompt.",
+    autoApplied: (names: string) => `Applied: ${names}`,
+    addingMcp: (name: string) =>
+      `The app is adding the ${name} MCP server. You'll get a notification.`,
+    draftingAutomation: "The app opens a new automation with this prompt. Pick a time and save it.",
+    runningAutomation: (name: string) => `The app is running '${name}' now.`,
     picking: "picking…",
     adding: (name: string) =>
       `The app is adding ${name} to the project. You'll get a notification.`,
@@ -231,7 +252,39 @@ export type Request =
   | { op: "deleteTodo"; id: string }
   | { op: "appendNote"; repoKey: string; branch: string; text: string }
   | { op: "applyLibrary"; project: string; kind: "skill" | "agent"; id: string }
-  | { op: "installExtension"; id: string };
+  | { op: "installExtension"; id: string }
+  | { op: "addMcp"; id: string; project: string }
+  | { op: "runAutomation"; id: string }
+  | { op: "draftAutomation"; prompt: string; project: string }
+  | { op: "sessionStart"; session: string; project: string; surface: string }
+  | { op: "sessionEnd"; session: string }
+  | {
+      op: "suggestLive";
+      session: string;
+      project: string;
+      draft: string;
+      by: "keyword" | "ai";
+      pending: boolean;
+      items: {
+        key: string;
+        name: string;
+        kind: string;
+        source: string;
+        label: string;
+        description: string;
+      }[];
+      picked: string[];
+    }
+  | { op: "turnAnswer"; session: string; project: string; prompt: string; answer: string }
+  | {
+      op: "suggestLog";
+      at: number;
+      project: string;
+      draft: string;
+      by: "keyword" | "ai";
+      items: { key: string; name: string; kind: string; source: string }[];
+      picked: string[];
+    };
 
 /** A file name that sorts in arrival order and doesn't collide. */
 export function requestName(now: number, random: number): string {
@@ -261,6 +314,8 @@ export function applyLocally(view: View, request: Request): View {
     case "appendNote":
       next = { ...d, note: d.note.trim() ? `${d.note.trimEnd()}\n${request.text}` : request.text };
       break;
+    default:
+      return view;
   }
   return { ...view, data: next };
 }

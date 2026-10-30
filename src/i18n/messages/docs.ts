@@ -49,6 +49,14 @@ export const ko = {
   // Views and pages
   "docs.view.map": "설정 지도",
   "docs.view.library": "라이브러리",
+  "docs.view.edit": "편집",
+  "docs.edit.empty": "편집할 Claude 문서가 없어요.",
+  "docs.edit.noProject":
+    "로컬 프로젝트가 없으면 작업 탭에서 GitHub 저장소를 열어 바로 고칠 수 있어요.",
+  "docs.edit.back": "목록",
+  "docs.edit.save": "저장",
+  "docs.edit.saved": "저장됨",
+  "docs.edit.changedOutside": "다른 곳에서 파일이 바뀌었어요. 덮어쓸까요?",
   "docs.mapPage.description":
     "{tool}가 프로젝트에서 읽는 지침 · skill · subagent · 설정을 범위별로 보여줘요.",
   "docs.libraryPage.description":
@@ -191,6 +199,14 @@ export const en: Messages<typeof ko> = {
   "files.edit": "Edit",
   "docs.view.map": "Settings map",
   "docs.view.library": "Library",
+  "docs.view.edit": "Edit",
+  "docs.edit.empty": "No Claude documents to edit.",
+  "docs.edit.noProject":
+    "Without a local project, open the GitHub repository in Work and edit it there.",
+  "docs.edit.back": "List",
+  "docs.edit.save": "Save",
+  "docs.edit.saved": "Saved",
+  "docs.edit.changedOutside": "The file changed elsewhere. Overwrite it?",
   "docs.mapPage.description":
     "Shows the instructions, skills, subagents and settings {tool} reads in a project, by scope.",
   "docs.libraryPage.description":

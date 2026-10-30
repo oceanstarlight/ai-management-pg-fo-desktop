@@ -2,6 +2,7 @@ import { type MessageKey, useT } from "../i18n";
 import { type TabId, useUiStore } from "../store/ui";
 
 const TABS: { id: TabId; label: MessageKey }[] = [
+  { id: "suggest", label: "shell.tab.suggest" },
   { id: "docs", label: "shell.tab.docs" },
   { id: "work", label: "shell.tab.work" },
   { id: "trees", label: "shell.tab.trees" },

@@ -90,6 +90,10 @@ interface AutomationState {
   remove: (id: string) => Promise<void>;
   setEnabled: (id: string, enabled: boolean) => Promise<void>;
   run: (id: string) => Promise<void>;
+  /** A new automation to open in the form (from a prompt suggestion). */
+  draft: Automation | null;
+  startDraft: (prompt: string, project: string) => void;
+  takeDraft: () => Automation | null;
 }
 
 let listening = false;
@@ -99,6 +103,7 @@ export const useAutomationStore = create<AutomationState>((set, get) => ({
   claudeFound: true,
   items: [],
   runs: [],
+  draft: null,
 
   load: async () => {
     if (!isTauri()) {
@@ -132,5 +137,17 @@ export const useAutomationStore = create<AutomationState>((set, get) => ({
   run: async (id) => {
     await invoke("automation_run", { id });
     await get().load();
+  },
+
+  startDraft: (prompt, project) => {
+    const firstLine = prompt.trim().split(/\r?\n/)[0] ?? "";
+    const name = firstLine.length > 40 ? `${firstLine.slice(0, 39)}…` : firstLine;
+    set({ draft: { ...blankAutomation(), name, prompt: prompt.trim(), project } });
+  },
+
+  takeDraft: () => {
+    const { draft } = get();
+    if (draft) set({ draft: null });
+    return draft;
   },
 }));
