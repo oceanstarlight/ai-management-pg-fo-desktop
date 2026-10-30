@@ -13,7 +13,7 @@ export const ko = {
   "suggest.byKeyword": "💡 키워드로 찾았어요",
   "suggest.byAi": "✨ Haiku가 골랐어요",
   "suggest.picking": "Haiku가 고르는 중…",
-  "suggest.off": "추천이 꺼져 있어요. 설정 → Claude Code 모드에서 켤 수 있어요.",
+  "suggest.off": "추천이 꺼져 있어요. 설정 → Claude Code 연동에서 켤 수 있어요.",
   "suggest.aiFailed": "Haiku 호출 실패: {error}",
   "suggest.openSettings": "설정 열기",
 
@@ -35,7 +35,7 @@ export const ko = {
 
   "suggest.feed.title": "Claude Code에서 감지한 추천",
   "suggest.feed.empty":
-    "아직 기록이 없어요. Claude Code 모드를 설치하고 터미널에서 프롬프트를 보내면 여기에 쌓여요.",
+    "아직 기록이 없어요. 엔셀라 연결 mod를 설치하고 터미널에서 프롬프트를 보내면 여기에 쌓여요.",
   "suggest.feed.picked": "고름",
   "suggest.feed.clear": "기록 지우기",
   "suggest.feed.clearConfirm": "추천 기록을 모두 지울까요?",
@@ -49,8 +49,7 @@ export const ko = {
   "suggest.catalog.extensions": "확장",
   "suggest.catalog.automations": "자동화",
   "suggest.live.title": "Claude Code 실시간",
-  "suggest.live.empty":
-    "Claude Code를 실행하고 프롬프트를 쓰면 여기에 실시간으로 보여요. 설정에서 Claude Code 모드를 설치해 주세요.",
+  "suggest.live.empty": "Claude Code를 실행하고 프롬프트를 쓰면 여기에 실시간으로 보여요.",
   "suggest.live.idle": "입력 중인 프롬프트가 없어요.",
   "suggest.live.allow": "허용",
   "suggest.live.allowed": "적용됨",
@@ -60,6 +59,15 @@ export const ko = {
   "suggest.live.autoHint":
     "켜면 프롬프트를 보낼 때 추천을 모두 바로 적용해요 (라이브러리 추가, 확장 설치, MCP 추가 포함).",
   "suggest.live.sent": "Claude Code에 보냈어요.",
+  "suggest.live.cloud": "클라우드",
+  "suggest.live.cloudHint": "보낸 프롬프트예요. 허용한 항목과 결정 내용은 다음 프롬프트에 붙어요.",
+  "suggest.setup.title": "엔셀라 연결 mod를 설치해 주세요",
+  "suggest.setup.description":
+    "Claude Code에서 쓰는 프롬프트를 감지하려면 이 mod가 필요해요. 설치한 뒤 Claude Code를 새로 열거나 /reload-plugins 하면 여기에 실시간으로 보여요.",
+  "suggest.setup.outdated":
+    "엔셀라 연결 mod가 예전 버전이에요. 업데이트해야 실시간 감지·허용·다듬기를 쓸 수 있어요.",
+  "suggest.setup.install": "설치",
+  "suggest.setup.update": "업데이트",
 
   "suggest.decisions.title": "결정된 내용",
   "suggest.decisions.empty":
@@ -93,7 +101,7 @@ export const en: Messages<typeof ko> = {
   "suggest.byKeyword": "💡 Found by keyword",
   "suggest.byAi": "✨ Picked by Haiku",
   "suggest.picking": "Haiku is picking…",
-  "suggest.off": "Suggestions are off. Turn them on in Settings → Claude Code mod.",
+  "suggest.off": "Suggestions are off. Turn them on in Settings → Claude Code integration.",
   "suggest.aiFailed": "Haiku failed: {error}",
   "suggest.openSettings": "Open settings",
 
@@ -115,7 +123,7 @@ export const en: Messages<typeof ko> = {
 
   "suggest.feed.title": "Detected in Claude Code",
   "suggest.feed.empty":
-    "Nothing yet. Install the Claude Code mod and send prompts in the terminal; they show up here.",
+    "Nothing yet. Install the Encela link mod and send prompts in the terminal; they show up here.",
   "suggest.feed.picked": "picked",
   "suggest.feed.clear": "Clear history",
   "suggest.feed.clearConfirm": "Clear all suggestion history?",
@@ -129,8 +137,7 @@ export const en: Messages<typeof ko> = {
   "suggest.catalog.extensions": "Extensions",
   "suggest.catalog.automations": "Automations",
   "suggest.live.title": "Claude Code, live",
-  "suggest.live.empty":
-    "Start Claude Code and write a prompt; it shows up here as you type. Install the Claude Code mod in Settings.",
+  "suggest.live.empty": "Start Claude Code and write a prompt; it shows up here as you type.",
   "suggest.live.idle": "No prompt being written.",
   "suggest.live.allow": "Allow",
   "suggest.live.allowed": "Applied",
@@ -140,6 +147,16 @@ export const en: Messages<typeof ko> = {
   "suggest.live.autoHint":
     "When on, every suggestion is used as the prompt is sent (library items added, extensions installed, MCP servers added).",
   "suggest.live.sent": "Sent to Claude Code.",
+  "suggest.live.cloud": "cloud",
+  "suggest.live.cloudHint":
+    "This prompt was already sent. What you allow and the decisions go with the next one.",
+  "suggest.setup.title": "Install the Encela link mod",
+  "suggest.setup.description":
+    "This mod lets Encela see the prompts you write in Claude Code. After installing, open a new Claude Code session or run /reload-plugins and they show up here live.",
+  "suggest.setup.outdated":
+    "The Encela link mod is out of date. Update it for live detection, Allow and Refine.",
+  "suggest.setup.install": "Install",
+  "suggest.setup.update": "Update",
 
   "suggest.decisions.title": "Decisions",
   "suggest.decisions.empty":

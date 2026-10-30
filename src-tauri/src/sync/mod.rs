@@ -12,6 +12,7 @@ mod auth;
 mod files;
 mod firebase;
 pub(crate) mod prefs;
+pub mod relay;
 
 use std::sync::atomic::AtomicU64;
 use std::sync::{Condvar, Mutex};

@@ -142,6 +142,11 @@ pub fn run() {
             suggest::suggest_log_clear,
             suggest::suggest_live,
             suggest::suggest_send,
+            suggest::suggest_cloud_claim,
+            suggest::suggest_cloud_items,
+            sync::relay::relay_status,
+            sync::relay::relay_set_enabled,
+            sync::relay::relay_install_hook,
             decisions::decisions_list,
             decisions::decisions_save,
             decisions::decisions_apply,
@@ -194,6 +199,7 @@ pub fn run() {
             automation::Automations::manage(handle)?;
             github::GitHub::manage(handle);
             sync::Sync::manage(handle);
+            sync::relay::start(handle);
             bridge::manage(handle);
             extensions::check_later();
             suggest::check_mcp_later(handle);

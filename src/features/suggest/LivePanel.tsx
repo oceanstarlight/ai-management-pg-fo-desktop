@@ -1,9 +1,10 @@
-import { Check, LoaderCircle, TerminalSquare } from "lucide-react";
+import { Check, Cloud, LoaderCircle, TerminalSquare } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button, Switch } from "../../components/ui";
 import { timeAgo, useT } from "../../i18n";
 import { AUTO_PREF, type Live, useLiveStore, useSwitchPref } from "../../store/live";
 import { useProjectStore } from "../../store/project";
+import { ModSetupCard } from "../mods/ModSetupCard";
 
 const base = (path: string) => path.split(/[\\/]/).filter(Boolean).pop() ?? path;
 const same = (a: string, b: string | null) =>
@@ -33,9 +34,13 @@ export function LivePanel() {
       {live ? (
         <SessionCard live={live} auto={auto} />
       ) : (
-        <p className="rounded-xl border border-dashed border-border px-4 py-5 text-center text-fs-13 text-text-muted">
-          {t("suggest.live.empty")}
-        </p>
+        <ModSetupCard
+          fallback={
+            <p className="rounded-xl border border-dashed border-border px-4 py-5 text-center text-fs-13 text-text-muted">
+              {t("suggest.live.empty")}
+            </p>
+          }
+        />
       )}
     </section>
   );
@@ -44,6 +49,8 @@ export function LivePanel() {
 function SessionCard({ live, auto }: { live: Live; auto: boolean }) {
   const t = useT();
   const send = useLiveStore((s) => s.send);
+  // A cloud session's prompt was already sent: what is allowed goes into the next one.
+  const cloud = live.surface === "cloud";
   const [refined, setRefined] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const run = (command: Parameters<typeof send>[1]) =>
@@ -58,8 +65,9 @@ function SessionCard({ live, auto }: { live: Live; auto: boolean }) {
   return (
     <div className="rounded-xl border border-border bg-surface-raised px-3 py-2.5">
       <div className="mb-1 flex items-center gap-1.5 text-fs-11 text-text-subtle">
-        <TerminalSquare size={12} />
+        {cloud ? <Cloud size={12} /> : <TerminalSquare size={12} />}
         <span className="truncate">{base(live.project) || live.surface}</span>
+        {cloud && <span className="shrink-0">· {t("suggest.live.cloud")}</span>}
         <span className="ml-auto shrink-0">{timeAgo(live.at / 1000)}</span>
       </div>
       {live.draft ? (
@@ -115,7 +123,11 @@ function SessionCard({ live, auto }: { live: Live; auto: boolean }) {
         </ul>
       )}
 
-      {live.draft && (
+      {cloud && live.items.length > 0 && (
+        <p className="mt-1.5 text-fs-11 text-text-subtle">{t("suggest.live.cloudHint")}</p>
+      )}
+
+      {live.draft && !cloud && (
         <div className="mt-2 flex gap-1.5">
           <Button
             size="sm"

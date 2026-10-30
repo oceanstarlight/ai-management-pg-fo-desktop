@@ -131,14 +131,14 @@ pub struct Client<'a> {
 }
 
 impl Client<'_> {
-    fn documents(&self) -> String {
+    pub(super) fn documents(&self) -> String {
         format!(
             "{}/v1/projects/{}/databases/(default)/documents",
             self.ends.firestore, self.config.project_id
         )
     }
 
-    fn bearer(session: &Session) -> String {
+    pub(super) fn bearer(session: &Session) -> String {
         format!("Bearer {}", session.id_token)
     }
 
