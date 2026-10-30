@@ -15,6 +15,7 @@ mod memo;
 mod prefs;
 mod project_docs;
 mod shell;
+mod suggest;
 mod sync;
 mod tools;
 mod tray;
@@ -132,6 +133,11 @@ pub fn run() {
             extensions::extensions_list,
             extensions::extension_install,
             extensions::extension_uninstall,
+            suggest::suggest_overview,
+            suggest::suggest_candidates,
+            suggest::suggest_ai,
+            suggest::suggest_add_mcp,
+            suggest::suggest_log_clear,
             prefs::prefs_all,
             prefs::prefs_set,
             sync::sync_status,
@@ -183,6 +189,7 @@ pub fn run() {
             sync::Sync::manage(handle);
             bridge::manage(handle);
             extensions::check_later();
+            suggest::check_mcp_later(handle);
             automation::start_scheduler(handle);
             tray::create(handle)?;
             Dock::start(handle)?;

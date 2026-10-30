@@ -12,6 +12,7 @@ import * as mcp from "./messages/mcp";
 import * as memo from "./messages/memo";
 import * as settings from "./messages/settings";
 import * as shell from "./messages/shell";
+import * as suggest from "./messages/suggest";
 import * as tools from "./messages/tools";
 import * as work from "./messages/work";
 
@@ -37,6 +38,7 @@ const KO = {
   ...tools.ko,
   ...activity.ko,
   ...automation.ko,
+  ...suggest.ko,
 };
 export type MessageKey = keyof typeof KO;
 const EN: Record<MessageKey, string> = {
@@ -53,6 +55,7 @@ const EN: Record<MessageKey, string> = {
   ...tools.en,
   ...activity.en,
   ...automation.en,
+  ...suggest.en,
 };
 const MESSAGES: Record<Locale, Record<MessageKey, string>> = { ko: KO, en: EN };
 

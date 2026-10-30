@@ -816,6 +816,39 @@ fn remove(project: &Path, scope: Scope, name: &str) -> Result<()> {
 }
 
 // ---------------------------------------------------------------------------
+// For prompt suggestions (`crate::suggest`)
+
+/// Names of the servers Claude Code has (`claude mcp list`, run in `dir`).
+/// Slow: the list connects to every server.
+pub(crate) fn installed_names(dir: &Path) -> Result<Vec<String>> {
+    let text = run(dir, &["mcp".into(), "list".into()], LIST_TIMEOUT)?;
+    Ok(parse_list(&text).into_iter().map(|l| l.name).collect())
+}
+
+/// Adds a recommended server for `project` (just me), or for every project
+/// when there is none. Returns the server's name.
+pub(crate) fn add_recommended(config_dir: &Path, project: &str, id: &str) -> Result<String> {
+    let rec = recommended()
+        .into_iter()
+        .find(|r| r.id == id)
+        .ok_or_else(|| "unknown server".to_string())?;
+    let (dir, scope) = match project_dir(project) {
+        Ok(dir) => (dir, Scope::Local),
+        Err(_) if !rec.config.args.iter().any(|a| a.contains("{project}")) => {
+            (std::env::temp_dir(), Scope::User)
+        }
+        Err(e) => return Err(e),
+    };
+    let mut config = rec.config.clone();
+    let folder = dir.to_string_lossy().into_owned();
+    for arg in &mut config.args {
+        *arg = arg.replace("{project}", &folder);
+    }
+    save(&dir, config_dir, None, scope, rec.name, &config)?;
+    Ok(rec.name.to_string())
+}
+
+// ---------------------------------------------------------------------------
 // Pasted configuration
 
 #[derive(Clone, Debug, PartialEq, Serialize)]
@@ -1309,7 +1342,7 @@ pub fn recommended() -> Vec<Recommended> {
 // ---------------------------------------------------------------------------
 // Commands
 
-fn config_dir(app: &AppHandle) -> Result<PathBuf> {
+pub(crate) fn config_dir(app: &AppHandle) -> Result<PathBuf> {
     let home = app.path().home_dir().map_err(|e| e.to_string())?;
     Ok(crate::tools::claude::Env::detect(home).config_dir)
 }
@@ -1386,7 +1419,11 @@ pub async fn mcp_save(
             }
         }
     })
-    .await
+    .await?;
+    if tool == ToolId::Claude {
+        crate::suggest::check_mcp_later(&app);
+    }
+    Ok(())
 }
 
 #[tauri::command]
@@ -1398,7 +1435,12 @@ pub async fn mcp_remove(
     name: String,
 ) -> Result<()> {
     match tool {
-        ToolId::Claude => blocking(move || remove(&project_dir(&project)?, scope, &name)).await,
+        ToolId::Claude => {
+            let dir = project_dir(&project)?;
+            blocking(move || remove(&dir, scope, &name)).await?;
+            crate::suggest::check_mcp_later(&app);
+            Ok(())
+        }
         ToolId::Codex => {
             let home = codex_home(&app)?;
             blocking(move || codex::remove(&project_dir(&project)?, &home, scope, &name)).await

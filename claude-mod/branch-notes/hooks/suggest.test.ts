@@ -7,6 +7,7 @@ import {
   installedCandidate,
   keywordRank,
   label,
+  NEW_AUTOMATION,
   parseAiReply,
   parseFrontmatter,
   type SuggestExport,
@@ -153,5 +154,58 @@ describe("using a suggestion", () => {
     expect(draftWith("왜 실패해? ", agent, "ko")).toBe(
       "왜 실패해? (debugger 서브에이전트를 써 줘)",
     );
+  });
+});
+
+describe("MCP servers and automations", () => {
+  const withMore: SuggestExport = {
+    ...exp,
+    mcp: [
+      {
+        id: null,
+        name: "postgres-local",
+        summary: "Query the local Postgres database",
+        keywords: [],
+        installed: true,
+      },
+      {
+        id: "github",
+        name: "github",
+        summary: "GitHub issues, pull requests and code search",
+        keywords: ["github", "issue", "pr", "이슈", "풀리퀘스트"],
+        installed: false,
+      },
+    ],
+    automations: [
+      { id: "auto-1", name: "Morning news", prompt: "Summarize today's AI news", enabled: true },
+    ],
+  };
+  const all = buildCandidates(installed, withMore);
+  const byKey = (key: string) => all.find((c) => c.key === key) as Candidate;
+
+  test("installed servers are ready, others are added; automations and a new one", () => {
+    expect(byKey("i:mcp:postgres-local").source).toBe("installed");
+    expect(byKey("m:github").source).toBe("recommended");
+    expect(byKey("a:auto-1").automationId).toBe("auto-1");
+    expect(byKey(NEW_AUTOMATION).kind).toBe("automation");
+    expect(buildCandidates(installed, null).some((c) => c.key === NEW_AUTOMATION)).toBe(false);
+  });
+
+  test("recurring asks suggest an automation; GitHub asks the server", () => {
+    expect(keywordRank("매일 아침 9시에 뉴스 요약해서 보내줘", all).map((c) => c.key)).toContain(
+      NEW_AUTOMATION,
+    );
+    expect(keywordRank("열린 github 이슈 목록 정리해줘", all)[0]?.key).toBe("m:github");
+  });
+
+  test("labels and prompt edits for the new kinds", () => {
+    expect(label(byKey(NEW_AUTOMATION), "ko")).toBe("⏰자동화로 만들기");
+    expect(label(byKey("a:auto-1"))).toBe("⏰Morning news");
+    expect(label(byKey("m:github"))).toBe("⬇github");
+    expect(label(byKey("i:mcp:postgres-local"))).toBe("🔌postgres-local");
+    expect(draftWith("count users", byKey("i:mcp:postgres-local"), "en")).toBe(
+      "count users (use the postgres-local MCP server)",
+    );
+    expect(aiCatalog(all)).toContain("[automation, the app's scheduler] new automation");
   });
 });

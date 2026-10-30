@@ -25,6 +25,7 @@ import {
   installedCandidate,
   keywordRank,
   label,
+  NEW_AUTOMATION,
   parseAiReply,
   type SuggestExport,
   suggestMode,
@@ -151,6 +152,9 @@ let timer: { cancel: () => void } | null = null;
 let asking: AbortController | null = null;
 /** Haiku's picks by draft and catalog. */
 const picks = new Map<string, string[]>();
+/** What was suggested and picked for the prompt being written, for the app's log. */
+let shown: { draft: string; items: Candidate[]; by: "keyword" | "ai" } | null = null;
+let picked: string[] = [];
 
 async function claudeDir($: EngineInterface): Promise<string | null> {
   const own = await $.env.get("CLAUDE_CONFIG_DIR");
@@ -276,6 +280,7 @@ async function askHaiku($: EngineInterface, draft: string, list: Candidate[]) {
     `${draft}\n${catalog.length}`,
     items.map((c) => c.key),
   );
+  shown = { draft, items, by: "ai" };
   await update($, suggestion, () => ({ draft, items, by: "ai" as const, pending: false }));
 }
 
@@ -287,6 +292,7 @@ async function onDraft($: EngineInterface, text: string) {
   if (!draft) muted = false;
   const mode = suggestMode({ suggest: lastSuggest });
   if (mode === "off" || muted || !wantsSuggestions(draft)) {
+    shown = null;
     await clearSuggestion($);
     return;
   }
@@ -295,6 +301,7 @@ async function onDraft($: EngineInterface, text: string) {
   const quick = keywordRank(draft, list);
   timer?.cancel();
   timer = null;
+  shown = { draft, items: quick, by: "keyword" };
   if (mode === "keyword") {
     await update($, suggestion, () => ({
       draft,
@@ -309,6 +316,7 @@ async function onDraft($: EngineInterface, text: string) {
     const items = known
       .map((key) => list.find((c) => c.key === key))
       .filter((c): c is Candidate => !!c);
+    shown = { draft, items, by: "ai" };
     await update($, suggestion, () => ({ draft, items, by: "ai" as const, pending: false }));
     return;
   }
@@ -327,18 +335,20 @@ async function onDraft($: EngineInterface, text: string) {
 /** Uses a suggestion: into the prompt, or a request for the app. */
 async function pick($: EngineInterface, c: Candidate) {
   const v = await read($, view);
-  const w = words(v?.locale ?? "en");
+  const locale = v?.locale ?? "en";
+  const w = words(locale);
+  if (!picked.includes(c.key)) picked.push(c.key);
   if (c.source === "installed") {
     const box = await $.prompt.read();
-    await $.prompt.fill({ text: draftWith(box.text, c, v?.locale ?? "en"), mode: "replace" });
+    await $.prompt.fill({ text: draftWith(box.text, c, locale), mode: "replace" });
     return;
   }
   if (!v?.appRunning) {
     $.ui.toast(w.noAppForSuggest);
     return;
   }
+  const project = (await git($, ["rev-parse", "--show-toplevel"])) ?? "";
   if (c.source === "library" && c.libraryKind && c.libraryId) {
-    const project = await git($, ["rev-parse", "--show-toplevel"]);
     if (!project) {
       $.ui.toast(w.noRepo);
       return;
@@ -348,9 +358,38 @@ async function pick($: EngineInterface, c: Candidate) {
   } else if (c.extensionId) {
     await send($, { op: "installExtension", id: c.extensionId });
     $.ui.toast(w.installing(c.name));
+  } else if (c.source === "recommended" && c.mcpId) {
+    await send($, { op: "addMcp", id: c.mcpId, project });
+    $.ui.toast(w.addingMcp(c.name));
+  } else if (c.key === NEW_AUTOMATION) {
+    const box = await $.prompt.read();
+    await send($, { op: "draftAutomation", prompt: box.text.trim(), project });
+    $.ui.toast(w.draftingAutomation);
+  } else if (c.automationId) {
+    await send($, { op: "runAutomation", id: c.automationId });
+    $.ui.toast(w.runningAutomation(c.name));
   }
   scannedAt = 0;
   await clearSuggestion($);
+}
+
+/** Tells the app what was suggested for the prompt just sent, and what was picked. */
+async function logSent($: EngineInterface) {
+  const last = shown;
+  const chosen = picked;
+  shown = null;
+  picked = [];
+  if (!last?.items.length) return;
+  const project = (await git($, ["rev-parse", "--show-toplevel"])) ?? "";
+  await send($, {
+    op: "suggestLog",
+    at: await $.clock.now(),
+    project,
+    draft: last.draft,
+    by: last.by,
+    items: last.items.map((c) => ({ key: c.key, name: c.name, kind: c.kind, source: c.source })),
+    picked: chosen,
+  });
 }
 
 export const register: Register = (on) => {
@@ -442,17 +481,29 @@ export const register: Register = (on) => {
     const suggest = !!s && (s.items.length > 0 || s.pending);
     if (!band && !suggest) return next(e);
     const { Box, Button, Text } = $.ui.resolve(e);
-    const offers = s?.items.some((c) => c.source !== "installed") ?? false;
+    const legend = [
+      s?.items.some((c) => c.source === "library") ? w.legendAdd : null,
+      s?.items.some((c) => c.source === "extension" || c.source === "recommended")
+        ? w.legendInstall
+        : null,
+      s?.items.some((c) => c.source === "automation") ? w.legendAutomation : null,
+    ]
+      .filter(Boolean)
+      .join(" · ");
     return (
       <Box flexDirection="column">
         {suggest && s ? (
           <Box key="suggest">
             <Text dimColor>{`${s.by === "ai" ? "✨" : "💡"} ${w.suggest} `}</Text>
             {s.items.map((c) => (
-              <Button key={c.key} label={label(c)} onPress={() => void pick($, c)} />
+              <Button
+                key={c.key}
+                label={label(c, v?.locale ?? "en")}
+                onPress={() => void pick($, c)}
+              />
             ))}
             {s.pending ? <Text dimColor> {w.picking}</Text> : null}
-            {offers ? <Text dimColor> {w.suggestLegend}</Text> : null}
+            {legend ? <Text dimColor>{` ${legend} `}</Text> : <Text> </Text>}
             <Button
               key="mute"
               label="×"
@@ -500,6 +551,7 @@ export const register: Register = (on) => {
     muted = false;
     current = "";
     await clearSuggestion($).catch(() => {});
+    await logSent($).catch(() => {});
     return next(e);
   });
 

@@ -3,6 +3,8 @@ import type { Messages } from "./types";
 export const ko = {
   // Main window navigation
   "shell.nav.home": "홈",
+  "shell.nav.suggest": "추천",
+  "shell.nav.tools": "도구",
   "shell.nav.composer": "문서 작성기",
   "shell.nav.library": "라이브러리",
   "shell.nav.config": "설정 지도",
@@ -15,7 +17,6 @@ export const ko = {
   "shell.nav.expand": "메뉴 펼치기",
   "shell.nav.collapse": "메뉴 접기",
   "shell.nav.newDoc": "새 문서",
-  "shell.nav.soon": "준비 중",
   "shell.nav.recentDocs": "최근 문서",
   "shell.nav.noDocs": "아직 만든 문서가 없어요.",
   "shell.nav.delete": "삭제",
@@ -26,20 +27,8 @@ export const ko = {
   "shell.nav.deleteDocConfirm": "'{name}' 문서를 삭제할까요? 프로젝트에 쓴 파일은 그대로 남아요.",
   "shell.switchToSidebar": "사이드바로 전환",
 
-  // Home page
-  "shell.home.morning": "좋은 아침이에요",
-  "shell.home.afternoon": "좋은 오후예요",
-  "shell.home.evening": "좋은 저녁이에요",
-  "shell.home.prompt": "오늘은 어떤 문서를 만들어 볼까요?",
-  "shell.home.newClaudeMd": "새 {file} 만들기",
-  "shell.home.newClaudeMdDesc": "추천 블록을 연결해서 지침 · 규칙 · skill · agent 문서를 만들어요.",
-  "shell.home.config": "프로젝트 설정 보기",
-  "shell.home.configDesc": "{tool}가 이 프로젝트에서 읽는 설정을 범위별로 확인해요.",
-  "shell.home.libraryDesc": "내 skill · subagent를 프로젝트에 적용하거나 빼요.",
-  "shell.home.sidebarDesc": "터미널 옆에 붙여서 작업하면서 봐요.",
-  "shell.home.recentProjects": "최근 프로젝트",
-
   // Sidebar window: tabs
+  "shell.tab.suggest": "추천",
   "shell.tab.docs": "문서",
   "shell.tab.work": "작업",
   "shell.tab.memo": "메모",
@@ -71,6 +60,8 @@ export const ko = {
 
 export const en: Messages<typeof ko> = {
   "shell.nav.home": "Home",
+  "shell.nav.suggest": "Suggestions",
+  "shell.nav.tools": "Tools",
   "shell.nav.composer": "Document composer",
   "shell.nav.library": "Library",
   "shell.nav.config": "Settings map",
@@ -83,7 +74,6 @@ export const en: Messages<typeof ko> = {
   "shell.nav.expand": "Expand menu",
   "shell.nav.collapse": "Collapse menu",
   "shell.nav.newDoc": "New document",
-  "shell.nav.soon": "Coming soon",
   "shell.nav.recentDocs": "Recent documents",
   "shell.nav.noDocs": "No documents yet.",
   "shell.nav.delete": "Delete",
@@ -95,19 +85,7 @@ export const en: Messages<typeof ko> = {
     "Delete the document '{name}'? Files already written to your project stay as they are.",
   "shell.switchToSidebar": "Switch to sidebar",
 
-  "shell.home.morning": "Good morning",
-  "shell.home.afternoon": "Good afternoon",
-  "shell.home.evening": "Good evening",
-  "shell.home.prompt": "What would you like to make today?",
-  "shell.home.newClaudeMd": "Create a new {file}",
-  "shell.home.newClaudeMdDesc":
-    "Connect suggested blocks to build instructions, rules, skills and agents.",
-  "shell.home.config": "View project settings",
-  "shell.home.configDesc": "See the settings {tool} reads in this project, by scope.",
-  "shell.home.libraryDesc": "Add your skills and subagents to a project, or take them out.",
-  "shell.home.sidebarDesc": "Dock it next to your terminal and keep it in view while you work.",
-  "shell.home.recentProjects": "Recent projects",
-
+  "shell.tab.suggest": "Suggest",
   "shell.tab.docs": "Docs",
   "shell.tab.work": "Work",
   "shell.tab.memo": "Notes",

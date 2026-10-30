@@ -140,6 +140,35 @@ test("picking a library item asks the app to add it to the project", async ($, o
   });
 });
 
+test("sending the prompt tells the app what was suggested and picked", async ($, on) => {
+  const asked: string[] = [];
+  const written: string[] = [];
+  const clock = engine(on, "ai", "[1]", asked, written);
+  on("prompt.read", () => ({ value: { text: DRAFT, cursor: DRAFT.length } }));
+  on("prompt.fill", (_, e) => ({ isFilled: true, text: e.text, cursor: e.text.length }));
+  on("prompt.submit", (_, e) => ({ text: e.text }));
+  await $.session.start({ cwd: "/", surface: "terminal", isInteractive: true });
+  await type($, DRAFT);
+  await clock.advance(1500);
+  const ui = await $.ui.mount({ ...ABOVE, surface: "terminal" });
+  await ui.press({ key: "l:agent:debugger" });
+  await ui.unmount();
+  await $.prompt.submit({ text: DRAFT, wait: false, origin: { kind: "composer" } });
+  const log = written.map((t) => JSON.parse(t)).find((r) => r.op === "suggestLog");
+  expect(log).toMatchObject({
+    draft: DRAFT,
+    by: "ai",
+    picked: ["l:agent:debugger"],
+    project: "/repo",
+  });
+  expect(log.items[0]).toEqual({
+    key: "l:agent:debugger",
+    name: "debugger",
+    kind: "agent",
+    source: "library",
+  });
+});
+
 test("keyword mode never asks Haiku", async ($, on) => {
   const asked: string[] = [];
   const clock = engine(on, "keyword", "[1]", asked);

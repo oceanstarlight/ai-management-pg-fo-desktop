@@ -6,6 +6,7 @@ import { WorkTrees } from "../features/activity/WorkTrees";
 import { CommandsPanel } from "../features/commands/CommandsPanel";
 import { DocsTab } from "../features/docs/DocsTab";
 import { MemoPanel } from "../features/memo/MemoPanel";
+import { SuggestFeed } from "../features/suggest/SuggestFeed";
 import { SyncNotice } from "../features/sync/SyncNotice";
 import { UpdateNotice } from "../features/update/UpdateNotice";
 import { useGitHubSync } from "../features/work/GitHubSection";
@@ -58,7 +59,9 @@ export default function SidebarApp() {
       <TabNav />
       <main className="flex-1 overflow-y-auto p-4">
         <ErrorBoundary resetKey={activeTab}>
-          {activeTab === "docs" ? (
+          {activeTab === "suggest" ? (
+            <SuggestFeed compact />
+          ) : activeTab === "docs" ? (
             <DocsTab />
           ) : activeTab === "memo" ? (
             <MemoPanel compact />

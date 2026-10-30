@@ -30,7 +30,7 @@ dependencies = [
 
 [[package]]
 name = "ai-management"
-version = "0.1.476"
+version = "0.1.477"
 dependencies = [
  "chrono",
  "globset",

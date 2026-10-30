@@ -23,6 +23,7 @@ AI coding tools are configured through a pile of files: `CLAUDE.md`, `AGENTS.md`
 
 Encela puts all of that in one window:
 
+- **Get suggestions** while you write a prompt: the skills, subagents, MCP servers and automations that fit it, in the app and in the Claude Code terminal.
 - **See** what your AI tool reads in a project, and from where.
 - **Build** instruction files by snapping blocks together instead of writing them from scratch.
 - **Work** with git and GitHub without leaving the app, and keep a to-do list for every branch.
@@ -32,6 +33,7 @@ Encela puts all of that in one window:
 
 | Screen | What you can do |
 |---|---|
+| ✨ **Suggestions** (home) | Write a prompt and get matching skills, subagents, commands, MCP servers and automations, used or installed in one click; a live feed of what was suggested for each prompt you sent in Claude Code |
 | 🧩 **Document composer** | Drag blocks onto a canvas and write `CLAUDE.md` / `AGENTS.md`, rules, skills, subagents, hooks and `PLANS.md` |
 | 🗺️ **Settings map** | See every instruction, rule, skill, subagent, command, MCP server and setting your tool loads, with its scope and status |
 | 📄 **Project docs** | Open a folder and edit its AI config files in the app; get told when they change on disk |
@@ -73,6 +75,10 @@ Each project uses one tool. The app detects it from the files in the project (yo
 4. **Switch to sidebar** when you start coding. Press <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>Space</kbd> to show or hide it, or use the tray icon to get the main window back.
 
 ## A closer look
+
+### ✨ Suggestions
+
+The home screen is a prompt box. As you type, it finds what fits the task: skills, subagents and commands Claude Code already has, items from your library, recommended MCP servers, extensions, and your automations (or "make this an automation" for anything recurring). Keyword matches show at once, then Haiku picks through your own `claude` once you stop typing. Each suggestion is one click: put it in the prompt, add it to the project, install it, add the server, or open a new automation. With the branch-notes mod installed, the same suggestions show above the Claude Code prompt, and every prompt you send there shows up in the feed with what was suggested and what you picked. The other screens are under **Tools**.
 
 ### 🧩 Document composer
 
@@ -135,7 +141,7 @@ One screen for project (`.mcp.json`), local and personal servers: check if they 
 
 ### 🔗 Inside Claude Code: branch-notes mod
 
-Install the **branch-notes mod** from Settings (Claude Code 2.1.287 or later). Claude Code then shows this branch's to-dos, PR and CI in one line above the prompt, adds `/todo`, `/memo` and `/notes`, and lets Claude read your notes while it works. As you type a prompt, it suggests matching skills, subagents and commands you have, items from your library (one press adds them to the project) and extensions to install. By default Haiku picks them through your own Claude Code once you stop typing; Settings can switch to keyword matching or turn it off. Recommended community mods (token-weather, blast-radius, replay-theater, claude-hud) can be installed from Settings too.
+Install the **branch-notes mod** from Settings (Claude Code 2.1.287 or later). Claude Code then shows this branch's to-dos, PR and CI in one line above the prompt, adds `/todo`, `/memo` and `/notes`, and lets Claude read your notes while it works. As you type a prompt, it suggests matching skills, subagents and commands you have, items from your library (one press adds them to the project), extensions to install, MCP servers and automations. By default Haiku picks them through your own Claude Code once you stop typing; Settings can switch to keyword matching or turn it off. Recommended community mods (token-weather, blast-radius, replay-theater, claude-hud) can be installed from Settings too.
 
 ### 📌 Sidebar
 
