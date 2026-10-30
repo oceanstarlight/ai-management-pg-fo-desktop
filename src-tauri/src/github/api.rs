@@ -597,6 +597,22 @@ pub fn create_branch(api: &Api, slug: &str, name: &str, from: &str) -> Result<()
     Ok(())
 }
 
+/// Merges branch `head` into `base` on GitHub (a merge commit; nothing when
+/// `base` already has it). A conflict is an error.
+pub fn merge_branch(api: &Api, slug: &str, base: &str, head: &str, message: &str) -> Result<()> {
+    let merged: Result<serde_json::Value> = api.post(
+        &format!("/repos/{slug}/merges"),
+        &json!({ "base": base, "head": head, "commit_message": message }),
+    );
+    match merged {
+        Err(Error::Other(m)) if m.contains("409") => Err(Error::Other(crate::tr!(
+            "'{head}'를 '{base}'에 합치다 충돌이 났어요. 작업 화면에서 풀 리퀘스트로 합쳐 주세요.",
+            "Merging '{head}' into '{base}' conflicts. Merge it with a pull request in Work."
+        ))),
+        other => other.map(drop),
+    }
+}
+
 /// Deletes branch `name` on GitHub (never the default branch).
 pub fn delete_branch(api: &Api, slug: &str, name: &str) -> Result<()> {
     let repo: RawRepo = api.get(&format!("/repos/{slug}"))?;

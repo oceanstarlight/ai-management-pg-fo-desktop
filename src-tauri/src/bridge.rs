@@ -138,6 +138,32 @@ pub enum Request {
         prompt: String,
         project: String,
     },
+    /// A Claude Code session started (the sidebar comes up beside it).
+    SessionStart {
+        session: String,
+        project: String,
+        surface: String,
+    },
+    SessionEnd {
+        session: String,
+    },
+    /// The prompt being written in a session and what is suggested for it.
+    SuggestLive {
+        session: String,
+        project: String,
+        draft: String,
+        by: String,
+        pending: bool,
+        items: Vec<crate::suggest::LiveItem>,
+        picked: Vec<String>,
+    },
+    /// What Claude answered, to find the decisions in it.
+    TurnAnswer {
+        session: String,
+        project: String,
+        prompt: String,
+        answer: String,
+    },
     /// A prompt sent in Claude Code and what was suggested for it.
     SuggestLog {
         at: i64,
@@ -252,7 +278,11 @@ pub fn apply(store: &Store, request: Request) -> Result<(String, String), String
         | Request::InstallExtension { .. }
         | Request::AddMcp { .. }
         | Request::DraftAutomation { .. }
-        | Request::SuggestLog { .. } => Err("not a memo request".into()),
+        | Request::SuggestLog { .. }
+        | Request::SessionStart { .. }
+        | Request::SessionEnd { .. }
+        | Request::SuggestLive { .. }
+        | Request::TurnAnswer { .. } => Err("not a memo request".into()),
         Request::AppendNote {
             repo_key,
             branch,
@@ -346,8 +376,15 @@ pub fn manage(app: &AppHandle) {
                         Request::AddMcp { .. }
                             | Request::DraftAutomation { .. }
                             | Request::SuggestLog { .. }
+                            | Request::SessionStart { .. }
+                            | Request::SessionEnd { .. }
+                            | Request::SuggestLive { .. }
                     ) {
                         crate::suggest::apply_request(&app, request);
+                        continue;
+                    }
+                    if let Request::TurnAnswer { .. } = request {
+                        crate::decisions::apply_request(&app, request);
                         continue;
                     }
                     if let Ok((repo, branch)) = apply(store, request) {

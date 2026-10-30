@@ -1,36 +1,15 @@
-import { invoke } from "@tauri-apps/api/core";
 import { Check, Copy, LoaderCircle, X } from "lucide-react";
 import { useEffect, useState } from "react";
-import {
-  type Candidate,
-  draftWith,
-  label,
-  NEW_AUTOMATION,
-} from "../../../claude-mod/branch-notes/hooks/suggest";
+import { draftWith } from "../../../claude-mod/branch-notes/hooks/suggest";
 import { Button, IconButton } from "../../components/ui";
-import { type MessageKey, useLocale, useT } from "../../i18n";
+import { useLocale, useT } from "../../i18n";
 import { useAutomationStore } from "../../store/automation";
 import { useProjectStore } from "../../store/project";
 import { useSuggestStore } from "../../store/suggest";
 import { useWorkspaceStore } from "../../store/workspace";
+import { SuggestionCard } from "./SuggestionCard";
 
 const CHOOSE = "\u0000choose";
-
-function actionLabel(c: Candidate): MessageKey {
-  if (c.key === NEW_AUTOMATION) return "suggest.act.automate";
-  switch (c.source) {
-    case "installed":
-      return "suggest.act.insert";
-    case "library":
-      return "suggest.act.apply";
-    case "extension":
-      return "suggest.act.install";
-    case "recommended":
-      return "suggest.act.addMcp";
-    default:
-      return "suggest.act.run";
-  }
-}
 
 /** The app's own prompt box: suggestions as you type, like in the terminal. */
 export function SuggestBox() {
@@ -40,55 +19,11 @@ export function SuggestBox() {
   const recent = useProjectStore((s) => s.recent);
   const { draft, items, by, pending, error, catalog, setDraft, loadCandidates } = useSuggestStore();
   const go = useWorkspaceStore((s) => s.go);
-  const [busy, setBusy] = useState<string | null>(null);
-  const [notice, setNotice] = useState<{ key: string; text: string; bad?: boolean } | null>(null);
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     void loadCandidates(project);
   }, [project, loadCandidates]);
-
-  const act = async (c: Candidate) => {
-    if (c.source === "installed") {
-      setDraft(draftWith(draft, c, locale));
-      return;
-    }
-    if (c.key === NEW_AUTOMATION) {
-      useAutomationStore.getState().startDraft(draft, project ?? "");
-      go("automations");
-      return;
-    }
-    if (c.source === "library" && !project) {
-      setNotice({ key: c.key, text: t("suggest.needProject"), bad: true });
-      return;
-    }
-    setBusy(c.key);
-    setNotice(null);
-    try {
-      if (c.source === "library") {
-        await invoke("library_apply", {
-          project,
-          tool: "claude",
-          kind: c.libraryKind,
-          id: c.libraryId,
-          mode: "personal",
-        });
-      } else if (c.source === "extension") {
-        await invoke("extension_install", { id: c.extensionId });
-      } else if (c.source === "recommended") {
-        await invoke("suggest_add_mcp", { project: project ?? "", id: c.mcpId });
-      } else if (c.automationId) {
-        await useAutomationStore.getState().run(c.automationId);
-      }
-      const started = c.source === "automation";
-      setNotice({ key: c.key, text: t(started ? "suggest.started" : "suggest.done") });
-      if (!started) await loadCandidates(project);
-    } catch (e) {
-      setNotice({ key: c.key, text: String(e), bad: true });
-    } finally {
-      setBusy(null);
-    }
-  };
 
   const off = catalog?.mode === "off";
   const { select, choose } = useProjectStore.getState();
@@ -166,40 +101,16 @@ export function SuggestBox() {
 
       <div className="mt-3 space-y-2">
         {items.map((c) => (
-          <article
+          <SuggestionCard
             key={c.key}
-            className="flex items-start gap-3 rounded-xl border border-border bg-surface-raised px-4 py-3"
-          >
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2">
-                <span className="truncate font-mono text-fs-13 font-medium text-text">
-                  {label(c, locale)}
-                </span>
-                <span className="shrink-0 rounded-full bg-sunken px-1.5 py-px text-fs-10 text-text-subtle">
-                  {t(`suggest.source.${c.source}` as MessageKey)}
-                </span>
-              </div>
-              {c.description && (
-                <p className="mt-0.5 line-clamp-2 text-fs-12 text-text-muted">{c.description}</p>
-              )}
-              {notice?.key === c.key && (
-                <p
-                  className={`selectable mt-1 text-fs-12 ${notice.bad ? "text-danger" : "text-success"}`}
-                >
-                  {notice.text}
-                </p>
-              )}
-            </div>
-            <Button
-              size="sm"
-              variant={c.source === "installed" ? "secondary" : "primary"}
-              disabled={busy !== null}
-              onClick={() => void act(c)}
-            >
-              {busy === c.key && <LoaderCircle size={13} className="animate-spin" />}
-              {t(actionLabel(c))}
-            </Button>
-          </article>
+            c={c}
+            project={project}
+            onInsert={(c) => setDraft(draftWith(draft, c, locale))}
+            onAutomate={() => {
+              useAutomationStore.getState().startDraft(draft, project ?? "");
+              go("automations");
+            }}
+          />
         ))}
         {short && !off && (
           <p className="px-1 text-fs-12 text-text-subtle">

@@ -803,6 +803,7 @@ pub async fn github_remote_commit(
     changes: Vec<FileChange>,
     message: String,
     new_branch: Option<String>,
+    merge_into: Option<String>,
 ) -> Result<String, String> {
     check_slug(&slug)?;
     if changes.iter().any(|c| {
@@ -819,7 +820,7 @@ pub async fn github_remote_commit(
     }
     blocking(app, move |app, gh| {
         gh.call(app, |api| {
-            api::commit_files(
+            let sha = api::commit_files(
                 api,
                 &slug,
                 &branch,
@@ -827,7 +828,11 @@ pub async fn github_remote_commit(
                 &changes,
                 &message,
                 new_branch.as_deref(),
-            )
+            )?;
+            if let (Some(head), Some(base)) = (new_branch.as_deref(), merge_into.as_deref()) {
+                api::merge_branch(api, &slug, base, head, &message)?;
+            }
+            Ok(sha)
         })
         .map_err(String::from)
     })

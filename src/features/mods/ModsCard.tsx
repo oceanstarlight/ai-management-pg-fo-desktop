@@ -2,8 +2,9 @@ import { invoke, isTauri } from "@tauri-apps/api/core";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { ExternalLink } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { Button, Card, Row, Segmented } from "../../components/ui";
+import { Button, Card, Row, Segmented, Switch } from "../../components/ui";
 import { type MessageKey, useT } from "../../i18n";
+import { AUTO_DOCK_PREF, AUTO_PREF, useSwitchPref } from "../../store/live";
 import { getPref, onPrefChanged, setPref } from "../../store/prefs";
 
 // Mirrors src-tauri/src/claude_mod.rs.
@@ -81,6 +82,22 @@ function readSuggestMode(): SuggestMode {
 }
 
 /** How the mod suggests skills and extensions while the user types a prompt. */
+function AutoRows() {
+  const t = useT();
+  const [auto, setAuto] = useSwitchPref(AUTO_PREF, false);
+  const [dock, setDock] = useSwitchPref(AUTO_DOCK_PREF, true);
+  return (
+    <>
+      <Row title={t("mods.suggest.auto")} description={t("mods.suggest.autoDescription")}>
+        <Switch checked={auto} onChange={setAuto} label={t("mods.suggest.auto")} />
+      </Row>
+      <Row title={t("mods.autoDock")} description={t("mods.autoDockDescription")}>
+        <Switch checked={dock} onChange={setDock} label={t("mods.autoDock")} />
+      </Row>
+    </>
+  );
+}
+
 function SuggestRow() {
   const t = useT();
   const [mode, setMode] = useState<SuggestMode>(readSuggestMode);
@@ -203,6 +220,7 @@ export function ModsCard() {
         </div>
       </Row>
       <SuggestRow />
+      <AutoRows />
       <Row
         title={
           <span className="flex items-center gap-1.5">

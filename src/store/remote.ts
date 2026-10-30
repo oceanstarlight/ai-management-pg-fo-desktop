@@ -111,7 +111,12 @@ interface RemoteState {
   deleteFile: (path: string) => void;
   discard: (path: string) => void;
   /** Commits every draft; to `newBranch` when given. */
-  commitFiles: (message: string, newBranch: string | null) => Promise<boolean>;
+  /** With `mergeInto`, the new branch is merged into that branch after the commit. */
+  commitFiles: (
+    message: string,
+    newBranch: string | null,
+    mergeInto?: string | null,
+  ) => Promise<boolean>;
 }
 
 const noFiles = {
@@ -346,7 +351,7 @@ export const useRemoteStore = create<RemoteState>((set, get) => {
         return { drafts, openPath: wasNew && s.openPath === path ? null : s.openPath };
       }),
 
-    commitFiles: async (message, newBranch) => {
+    commitFiles: async (message, newBranch, mergeInto) => {
       const { slug, data, tree, drafts } = get();
       if (!slug || !data || !tree || !isTauri()) return false;
       const changes = Object.entries(drafts).map(([path, d]) => ({
@@ -363,9 +368,10 @@ export const useRemoteStore = create<RemoteState>((set, get) => {
           changes,
           message,
           newBranch,
+          mergeInto: newBranch ? (mergeInto ?? null) : null,
         });
         set({ busy: false, ...noFiles });
-        await get().load(newBranch ?? data.branch);
+        await get().load(mergeInto ?? newBranch ?? data.branch);
         await get().loadTree();
         return true;
       } catch (e) {

@@ -48,6 +48,36 @@ export const ko = {
   "suggest.catalog.mcp": "MCP 서버",
   "suggest.catalog.extensions": "확장",
   "suggest.catalog.automations": "자동화",
+  "suggest.live.title": "Claude Code 실시간",
+  "suggest.live.empty":
+    "Claude Code를 실행하고 프롬프트를 쓰면 여기에 실시간으로 보여요. 설정에서 Claude Code 모드를 설치해 주세요.",
+  "suggest.live.idle": "입력 중인 프롬프트가 없어요.",
+  "suggest.live.allow": "허용",
+  "suggest.live.allowed": "적용됨",
+  "suggest.live.refine": "✎ 프롬프트 다듬기",
+  "suggest.live.undo": "↩ 원문으로",
+  "suggest.live.auto": "자동 적용",
+  "suggest.live.autoHint":
+    "켜면 프롬프트를 보낼 때 추천을 모두 바로 적용해요 (라이브러리 추가, 확장 설치, MCP 추가 포함).",
+  "suggest.live.sent": "Claude Code에 보냈어요.",
+
+  "suggest.decisions.title": "결정된 내용",
+  "suggest.decisions.empty":
+    "Claude가 플랫폼·언어·기술 스택 등을 정하면 여기에 자동으로 쌓여요. 직접 추가해도 돼요.",
+  "suggest.decisions.noProject": "프로젝트를 고르면 결정 기록이 보여요.",
+  "suggest.decisions.topic": "항목 (예: 프레임워크)",
+  "suggest.decisions.value": "결정 (예: Next.js)",
+  "suggest.decisions.add": "추가",
+  "suggest.decisions.save": "저장",
+  "suggest.decisions.auto": "자동",
+  "suggest.decisions.user": "직접",
+  "suggest.decisions.delete": "삭제",
+  "suggest.decisions.apply": "CLAUDE.md에 반영 ({n})",
+  "suggest.decisions.applyConfirm":
+    "결정 {n}개를 CLAUDE.md의 'Project decisions' 섹션에 써요. 나머지 내용은 그대로 둬요. 계속할까요?",
+  "suggest.decisions.applied": "CLAUDE.md에 반영했어요.",
+  "suggest.decisions.inClaudeMd": "CLAUDE.md에 반영됨",
+  "suggest.decisions.suggest": "결정에 맞는 추천",
 };
 
 export const en: Messages<typeof ko> = {
@@ -98,4 +128,34 @@ export const en: Messages<typeof ko> = {
   "suggest.catalog.mcp": "MCP servers",
   "suggest.catalog.extensions": "Extensions",
   "suggest.catalog.automations": "Automations",
+  "suggest.live.title": "Claude Code, live",
+  "suggest.live.empty":
+    "Start Claude Code and write a prompt; it shows up here as you type. Install the Claude Code mod in Settings.",
+  "suggest.live.idle": "No prompt being written.",
+  "suggest.live.allow": "Allow",
+  "suggest.live.allowed": "Applied",
+  "suggest.live.refine": "✎ Refine prompt",
+  "suggest.live.undo": "↩ Original",
+  "suggest.live.auto": "Apply automatically",
+  "suggest.live.autoHint":
+    "When on, every suggestion is used as the prompt is sent (library items added, extensions installed, MCP servers added).",
+  "suggest.live.sent": "Sent to Claude Code.",
+
+  "suggest.decisions.title": "Decisions",
+  "suggest.decisions.empty":
+    "When Claude settles the platform, language, stack and so on, it shows up here. You can add your own too.",
+  "suggest.decisions.noProject": "Choose a project to see its decisions.",
+  "suggest.decisions.topic": "Topic (e.g. framework)",
+  "suggest.decisions.value": "Decision (e.g. Next.js)",
+  "suggest.decisions.add": "Add",
+  "suggest.decisions.save": "Save",
+  "suggest.decisions.auto": "auto",
+  "suggest.decisions.user": "yours",
+  "suggest.decisions.delete": "Delete",
+  "suggest.decisions.apply": "Write to CLAUDE.md ({n})",
+  "suggest.decisions.applyConfirm":
+    "Write {n} decisions into the 'Project decisions' section of CLAUDE.md? The rest of the file stays as it is.",
+  "suggest.decisions.applied": "Written to CLAUDE.md.",
+  "suggest.decisions.inClaudeMd": "In CLAUDE.md",
+  "suggest.decisions.suggest": "Suggested for these decisions",
 };

@@ -19,14 +19,19 @@ import {
   AI_SYSTEM,
   aiAsk,
   aiCatalog,
+  autoContext,
   buildCandidates,
   type Candidate,
+  cleanRefined,
+  decisionsFor,
   draftWith,
   installedCandidate,
   keywordRank,
   label,
   NEW_AUTOMATION,
   parseAiReply,
+  REFINE_SYSTEM,
+  refineAsk,
   type SuggestExport,
   suggestMode,
   wantsSuggestions,
@@ -43,6 +48,21 @@ const suggestion = atom({ plugin: "branch-notes", key: "suggestion" } as const, 
 
 /** The export's suggestion settings and catalog, as last read. */
 let lastSuggest: SuggestExport | undefined;
+/** This session's id for the app (its live view and its commands). */
+let session = "";
+/** The repository's top folder, or where the session started. */
+let projectDir = "";
+/** The app's last command run (`outbox/<session>.json`). */
+let lastSeq = 0;
+/** How often the app's commands are looked for. */
+const OUTBOX_MS = 800;
+/** The live view goes to the app after this pause. */
+const LIVE_MS = 400;
+let liveTimer: { cancel: () => void } | null = null;
+/** The prompt before it was refined, for undo. */
+let original: string | null = null;
+/** The prompt last sent, to pair with Claude's answer. */
+let lastPrompt = "";
 
 /** `<app data>/bridge`, where the app writes `state.json` and reads `inbox/`. */
 async function bridgeDir($: EngineInterface): Promise<string | null> {
@@ -244,12 +264,48 @@ async function candidates($: EngineInterface): Promise<Candidate[]> {
   return buildCandidates(installed, lastSuggest);
 }
 
+type Shown = { draft: string; items: Candidate[]; by: "keyword" | "ai"; pending: boolean } | null;
+
+/** Changes what the band shows, and tells the app a moment later. */
+async function setSuggestion($: EngineInterface, f: (s: Shown) => Shown) {
+  await update($, suggestion, f);
+  liveTimer?.cancel();
+  liveTimer = $.clock.after(LIVE_MS, () => {
+    liveTimer = null;
+    void pushLive($).catch(() => {});
+  });
+}
+
+/** The prompt being written and its suggestions, for the app's sidebar. */
+async function pushLive($: EngineInterface) {
+  if (!session) return;
+  const s = await read($, suggestion);
+  const locale = (await read($, view))?.locale ?? "en";
+  await send($, {
+    op: "suggestLive",
+    session,
+    project: projectDir,
+    draft: s?.draft ?? current,
+    by: s?.by ?? "keyword",
+    pending: s?.pending ?? false,
+    items: (s?.items ?? []).map((c) => ({
+      key: c.key,
+      name: c.name,
+      kind: c.kind,
+      source: c.source,
+      label: label(c, locale),
+      description: c.description,
+    })),
+    picked,
+  });
+}
+
 async function clearSuggestion($: EngineInterface) {
   timer?.cancel();
   timer = null;
   asking?.abort();
   asking = null;
-  if (await read($, suggestion)) await update($, suggestion, () => null);
+  if (await read($, suggestion)) await setSuggestion($, () => null);
 }
 
 async function askHaiku($: EngineInterface, draft: string, list: Candidate[]) {
@@ -261,7 +317,10 @@ async function askHaiku($: EngineInterface, draft: string, list: Candidate[]) {
     {
       model: "haiku",
       system: AI_SYSTEM,
-      prompt: [{ text: catalog, cache: true }, { text: aiAsk(draft) }],
+      prompt: [
+        { text: catalog, cache: true },
+        { text: aiAsk(draft, decisionsFor(lastSuggest, projectDir)) },
+      ],
       maxTokens: 40,
       effort: "low",
       timeoutMs: 15000,
@@ -271,7 +330,7 @@ async function askHaiku($: EngineInterface, draft: string, list: Candidate[]) {
   if (asking === stop) asking = null;
   if (current !== draft || muted) return;
   if (!r.isAnswered) {
-    await update($, suggestion, (s) => (s && s.draft === draft ? { ...s, pending: false } : s));
+    await setSuggestion($, (s) => (s && s.draft === draft ? { ...s, pending: false } : s));
     return;
   }
   const items = parseAiReply(r.text, list);
@@ -281,7 +340,7 @@ async function askHaiku($: EngineInterface, draft: string, list: Candidate[]) {
     items.map((c) => c.key),
   );
   shown = { draft, items, by: "ai" };
-  await update($, suggestion, () => ({ draft, items, by: "ai" as const, pending: false }));
+  await setSuggestion($, () => ({ draft, items, by: "ai" as const, pending: false }));
 }
 
 /** Suggests for the draft: keyword matches at once, Haiku's picks after a pause. */
@@ -303,7 +362,7 @@ async function onDraft($: EngineInterface, text: string) {
   timer = null;
   shown = { draft, items: quick, by: "keyword" };
   if (mode === "keyword") {
-    await update($, suggestion, () => ({
+    await setSuggestion($, () => ({
       draft,
       items: quick,
       by: "keyword" as const,
@@ -317,10 +376,10 @@ async function onDraft($: EngineInterface, text: string) {
       .map((key) => list.find((c) => c.key === key))
       .filter((c): c is Candidate => !!c);
     shown = { draft, items, by: "ai" };
-    await update($, suggestion, () => ({ draft, items, by: "ai" as const, pending: false }));
+    await setSuggestion($, () => ({ draft, items, by: "ai" as const, pending: false }));
     return;
   }
-  await update($, suggestion, () => ({
+  await setSuggestion($, () => ({
     draft,
     items: quick,
     by: "keyword" as const,
@@ -332,45 +391,139 @@ async function onDraft($: EngineInterface, text: string) {
   });
 }
 
-/** Uses a suggestion: into the prompt, or a request for the app. */
-async function pick($: EngineInterface, c: Candidate) {
+/** Asks the app to add, install or start what a suggestion names. */
+/** `prompt` is read only for a new automation. */
+async function act(
+  $: EngineInterface,
+  c: Candidate,
+  prompt: () => Promise<string>,
+): Promise<boolean> {
   const v = await read($, view);
-  const locale = v?.locale ?? "en";
-  const w = words(locale);
-  if (!picked.includes(c.key)) picked.push(c.key);
-  if (c.source === "installed") {
-    const box = await $.prompt.read();
-    await $.prompt.fill({ text: draftWith(box.text, c, locale), mode: "replace" });
-    return;
-  }
+  const w = words(v?.locale ?? "en");
   if (!v?.appRunning) {
     $.ui.toast(w.noAppForSuggest);
-    return;
+    return false;
   }
   const project = (await git($, ["rev-parse", "--show-toplevel"])) ?? "";
   if (c.source === "library" && c.libraryKind && c.libraryId) {
     if (!project) {
       $.ui.toast(w.noRepo);
-      return;
+      return false;
     }
     await send($, { op: "applyLibrary", project, kind: c.libraryKind, id: c.libraryId });
-    $.ui.toast(w.adding(c.name));
   } else if (c.extensionId) {
     await send($, { op: "installExtension", id: c.extensionId });
-    $.ui.toast(w.installing(c.name));
   } else if (c.source === "recommended" && c.mcpId) {
     await send($, { op: "addMcp", id: c.mcpId, project });
-    $.ui.toast(w.addingMcp(c.name));
   } else if (c.key === NEW_AUTOMATION) {
-    const box = await $.prompt.read();
-    await send($, { op: "draftAutomation", prompt: box.text.trim(), project });
-    $.ui.toast(w.draftingAutomation);
+    await send($, { op: "draftAutomation", prompt: (await prompt()).trim(), project });
   } else if (c.automationId) {
     await send($, { op: "runAutomation", id: c.automationId });
-    $.ui.toast(w.runningAutomation(c.name));
+  } else {
+    return false;
   }
   scannedAt = 0;
+  return true;
+}
+
+/** Uses a suggestion: into the prompt, or a request for the app. */
+async function pick($: EngineInterface, c: Candidate) {
+  const locale = (await read($, view))?.locale ?? "en";
+  const w = words(locale);
+  if (!picked.includes(c.key)) picked.push(c.key);
+  const box = async () => (await $.prompt.read()).text;
+  if (c.source === "installed") {
+    await $.prompt.fill({ text: draftWith(await box(), c, locale), mode: "replace" });
+    return;
+  }
+  if (!(await act($, c, box))) return;
+  if (c.source === "library") $.ui.toast(w.adding(c.name));
+  else if (c.extensionId) $.ui.toast(w.installing(c.name));
+  else if (c.source === "recommended") $.ui.toast(w.addingMcp(c.name));
+  else if (c.key === NEW_AUTOMATION) $.ui.toast(w.draftingAutomation);
+  else $.ui.toast(w.runningAutomation(c.name));
   await clearSuggestion($);
+}
+
+/** Haiku rewrites the prompt with the suggestions and the project's decisions. */
+async function refine($: EngineInterface) {
+  const w = words((await read($, view))?.locale ?? "en");
+  const box = await $.prompt.read();
+  const draft = box.text.trim();
+  if (!wantsSuggestions(draft)) return;
+  $.ui.toast(w.refining);
+  const use = ((await read($, suggestion))?.items ?? []).filter((c) => c.source === "installed");
+  const r = await $.model.complete({
+    model: "haiku",
+    system: REFINE_SYSTEM,
+    prompt: [{ text: refineAsk(draft, use, decisionsFor(lastSuggest, projectDir)) }],
+    maxTokens: 1500,
+    effort: "low",
+    timeoutMs: 30000,
+  });
+  const text = r.isAnswered ? cleanRefined(r.text) : "";
+  if (!text) {
+    $.ui.toast(w.refineFailed);
+    return;
+  }
+  original = box.text;
+  for (const c of use) if (!picked.includes(c.key)) picked.push(c.key);
+  await $.prompt.fill({ text, mode: "replace" });
+}
+
+async function undoRefine($: EngineInterface) {
+  if (original === null) return;
+  const text = original;
+  original = null;
+  await $.prompt.fill({ text, mode: "replace" });
+}
+
+/** Auto mode: what wasn't picked is used as the prompt is sent. Returns the
+ * context to send along (the installed items to use), if any. */
+async function autoApply($: EngineInterface, prompt: string): Promise<string | null> {
+  const last = shown;
+  if (!lastSuggest?.auto || !last?.items.length) return null;
+  const left = last.items.filter((c) => !picked.includes(c.key) && !c.automationId);
+  const used: Candidate[] = [];
+  for (const c of left) {
+    if (c.source === "installed" || (await act($, c, async () => prompt))) {
+      used.push(c);
+      picked.push(c.key);
+    }
+  }
+  if (used.length) {
+    const w = words((await read($, view))?.locale ?? "en");
+    $.ui.toast(w.autoApplied(used.map((c) => c.name).join(", ")));
+  }
+  return autoContext(used);
+}
+
+/** Runs what the app asked for in the sidebar (`outbox/<session>.json`). */
+async function readOutbox($: EngineInterface) {
+  const dir = session ? await bridgeDir($) : null;
+  if (!dir) return;
+  const s = sep(dir);
+  let commands: { seq?: unknown; op?: unknown; key?: unknown; text?: unknown }[];
+  try {
+    const text = (await $.fs.read(`${dir}${s}outbox${s}${session}.json`)) as string;
+    commands = JSON.parse(text)?.commands ?? [];
+  } catch {
+    return;
+  }
+  for (const c of commands) {
+    if (typeof c.seq !== "number" || c.seq <= lastSeq) continue;
+    lastSeq = c.seq;
+    if (c.op === "pick") {
+      const item = (await read($, suggestion))?.items.find((i) => i.key === c.key);
+      if (item) await pick($, item);
+    } else if (c.op === "fill" && typeof c.text === "string") {
+      await $.prompt.fill({ text: c.text, mode: "replace" });
+    } else if (c.op === "refine") {
+      await refine($);
+    } else if (c.op === "undo") {
+      await undoRefine($);
+    }
+  }
 }
 
 /** Tells the app what was suggested for the prompt just sent, and what was picked. */
@@ -408,12 +561,33 @@ export const register: Register = (on) => {
     });
     await refresh($);
     $.clock.every(REFRESH_MS, () => void refresh($));
+    const now = await $.clock.now();
+    session = `s${now}${Math.floor(Math.random() * 1e6)}`;
+    lastSeq = now;
+    projectDir = (await git($, ["rev-parse", "--show-toplevel"])) ?? e.cwd;
+    await send($, { op: "sessionStart", session, project: projectDir, surface: e.surface ?? "" });
+    $.clock.every(OUTBOX_MS, () => void readOutbox($).catch(() => {}));
     return next(e);
   });
 
-  // The branch can change between turns (git switch in the session).
+  on("session.end", async ($, e, next) => {
+    if (session) await send($, { op: "sessionEnd", session }).catch(() => false);
+    return next(e);
+  });
+
+  // The branch can change between turns (git switch in the session); the
+  // app looks for decisions settled in the answer.
   on("turn.complete", async ($, e, next) => {
     await refresh($);
+    if (e.agentId === undefined && e.reason === "answer" && lastPrompt && session) {
+      await send($, {
+        op: "turnAnswer",
+        session,
+        project: projectDir,
+        prompt: lastPrompt.slice(0, 4000),
+        answer: e.answer.slice(0, 20000),
+      }).catch(() => false);
+    }
     return next(e);
   });
 
@@ -503,6 +677,10 @@ export const register: Register = (on) => {
               />
             ))}
             {s.pending ? <Text dimColor> {w.picking}</Text> : null}
+            <Button key="refine" label={w.refine} dimColor onPress={() => void refine($)} />
+            {original !== null ? (
+              <Button key="undo" label={w.undo} dimColor onPress={() => void undoRefine($)} />
+            ) : null}
             {legend ? <Text dimColor>{` ${legend} `}</Text> : <Text> </Text>}
             <Button
               key="mute"
@@ -547,12 +725,16 @@ export const register: Register = (on) => {
   });
 
   // Never holds up the prompt: clearing the suggestions may fail on its own.
+  // In auto mode, what was suggested and not picked is used now.
   on("prompt.submit", async ($, e, next) => {
     muted = false;
     current = "";
+    original = null;
+    lastPrompt = e.text;
+    const extra = e.command ? null : await autoApply($, e.text).catch(() => null);
     await clearSuggestion($).catch(() => {});
     await logSent($).catch(() => {});
-    return next(e);
+    return next(extra ? { ...e, context: [...(e.context ?? []), extra] } : e);
   });
 
   // The pane: the note, and the to-dos to tick.
@@ -598,13 +780,16 @@ export const register: Register = (on) => {
     const result = await next(e);
     const v = await read($, view);
     const text = v ? contextText(v) : null;
-    if (!text) return result;
-    return {
-      ...result,
-      sections: [
-        ...result.sections,
-        { id: "branch-notes:context", text, scope: "session" as const },
-      ],
-    };
+    const decisions = decisionsFor(lastSuggest, projectDir);
+    const sections = [...result.sections];
+    if (text) sections.push({ id: "branch-notes:context", text, scope: "session" as const });
+    if (decisions.length) {
+      sections.push({
+        id: "branch-notes:decisions",
+        text: `Settled for this project (keep to these unless the user changes them):\n${decisions.map((d) => `- ${d}`).join("\n")}`,
+        scope: "session" as const,
+      });
+    }
+    return sections.length === result.sections.length ? result : { ...result, sections };
   });
 };

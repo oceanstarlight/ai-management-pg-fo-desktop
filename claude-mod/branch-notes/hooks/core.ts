@@ -112,6 +112,11 @@ const WORDS = {
     legendAdd: "＋ 프로젝트에 추가",
     legendInstall: "⬇ 설치",
     legendAutomation: "⏰ 앱 자동화",
+    refine: "✎다듬기",
+    refining: "프롬프트 다듬는 중…",
+    undo: "↩원문",
+    refineFailed: "프롬프트를 다듬지 못했어요.",
+    autoApplied: (names: string) => `자동 적용: ${names}`,
     addingMcp: (name: string) => `앱이 ${name} MCP 서버를 추가해요. 끝나면 알림이 와요.`,
     draftingAutomation: "앱에서 이 프롬프트로 자동화를 만들어요. 시간을 정하고 저장하세요.",
     runningAutomation: (name: string) => `앱이 '${name}' 자동화를 지금 실행해요.`,
@@ -146,6 +151,11 @@ const WORDS = {
     legendAdd: "＋ adds to the project",
     legendInstall: "⬇ installs",
     legendAutomation: "⏰ app automation",
+    refine: "✎Refine",
+    refining: "Refining the prompt…",
+    undo: "↩Original",
+    refineFailed: "Couldn't refine the prompt.",
+    autoApplied: (names: string) => `Applied: ${names}`,
     addingMcp: (name: string) =>
       `The app is adding the ${name} MCP server. You'll get a notification.`,
     draftingAutomation: "The app opens a new automation with this prompt. Pick a time and save it.",
@@ -246,6 +256,26 @@ export type Request =
   | { op: "addMcp"; id: string; project: string }
   | { op: "runAutomation"; id: string }
   | { op: "draftAutomation"; prompt: string; project: string }
+  | { op: "sessionStart"; session: string; project: string; surface: string }
+  | { op: "sessionEnd"; session: string }
+  | {
+      op: "suggestLive";
+      session: string;
+      project: string;
+      draft: string;
+      by: "keyword" | "ai";
+      pending: boolean;
+      items: {
+        key: string;
+        name: string;
+        kind: string;
+        source: string;
+        label: string;
+        description: string;
+      }[];
+      picked: string[];
+    }
+  | { op: "turnAnswer"; session: string; project: string; prompt: string; answer: string }
   | {
       op: "suggestLog";
       at: number;
@@ -284,6 +314,8 @@ export function applyLocally(view: View, request: Request): View {
     case "appendNote":
       next = { ...d, note: d.note.trim() ? `${d.note.trimEnd()}\n${request.text}` : request.text };
       break;
+    default:
+      return view;
   }
   return { ...view, data: next };
 }

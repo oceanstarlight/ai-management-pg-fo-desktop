@@ -16,6 +16,12 @@ export const ko = {
   "mods.suggest.ai": "AI (Haiku)",
   "mods.suggest.keyword": "키워드",
   "mods.suggest.off": "끄기",
+  "mods.suggest.auto": "추천 자동 적용",
+  "mods.suggest.autoDescription":
+    "켜면 Claude Code에서 프롬프트를 보낼 때 추천을 묻지 않고 모두 적용해요 (라이브러리 추가, 확장 설치, MCP 추가 포함).",
+  "mods.autoDock": "Claude가 켜지면 사이드바로",
+  "mods.autoDockDescription":
+    "Claude 데스크톱 앱이나 Claude Code가 실행 중이면 엔셀라가 사이드바로 열려 그 옆에 붙고, 그 프로젝트를 열어요.",
   "mods.own.title": "브랜치 메모 mod",
   "mods.own.description":
     "Claude Code 입력창 위에 이 브랜치의 할 일·PR·CI를 한 줄로 보여주고, 메모와 할 일 패널(/notes), /todo · /memo 명령을 더해요. Claude도 메모와 할 일을 알고 작업해요. 앱이 켜져 있어야 반영돼요.",
@@ -140,6 +146,12 @@ export const en: Messages<typeof ko> = {
   "mods.suggest.ai": "AI (Haiku)",
   "mods.suggest.keyword": "Keyword",
   "mods.suggest.off": "Off",
+  "mods.suggest.auto": "Apply suggestions automatically",
+  "mods.suggest.autoDescription":
+    "When on, every suggestion is used without asking as you send a prompt in Claude Code (library items added, extensions installed, MCP servers added).",
+  "mods.autoDock": "Turn into the sidebar when Claude starts",
+  "mods.autoDockDescription":
+    "When the Claude desktop app or Claude Code is running, Encela opens as the sidebar beside it, on that project.",
   "mods.own.title": "Branch notes mod",
   "mods.own.description":
     "Shows this branch's to-dos, PR and CI in one line above Claude Code's prompt, and adds a notes pane (/notes) and /todo · /memo commands. Claude reads the note and to-dos too. Changes apply while the app is running.",

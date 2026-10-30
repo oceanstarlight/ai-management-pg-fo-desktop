@@ -80,6 +80,16 @@ Each project uses one tool. The app detects it from the files in the project (yo
 
 The home screen is a prompt box. As you type, it finds what fits the task: skills, subagents and commands Claude Code already has, items from your library, recommended MCP servers, extensions, and your automations (or "make this an automation" for anything recurring). Keyword matches show at once, then Haiku picks through your own `claude` once you stop typing. Each suggestion is one click: put it in the prompt, add it to the project, install it, add the server, or open a new automation. With the branch-notes mod installed, the same suggestions show above the Claude Code prompt, and every prompt you send there shows up in the feed with what was suggested and what you picked. The other screens are under **Tools**.
 
+**Working with Claude Code (with the mod installed):**
+
+1. Start Claude Code (terminal, cmd, or the Code tab of the desktop app), then the app. It finds Claude Code and docks as a sidebar next to it, on the session's project.
+2. As you type a prompt, the sidebar shows it live with suggestions. Press **Allow** on one, or turn on **Apply automatically** to use them all when the prompt is sent (library items added, extensions installed, MCP servers added).
+3. **Refine prompt** has Haiku rewrite your prompt into a clearer one with the picked items and the project's decisions; **Original** puts your text back.
+4. When Claude settles something in its answers (platform, language, framework, database…), it is saved under **Decisions** for the project. You can edit or add them; they go into every prompt as context, bring their own suggestions, and are written to `CLAUDE.md` (a `Project decisions` section) once you confirm.
+5. The **Docs** tab of the sidebar edits `CLAUDE.md`, rules, skills, subagents and commands directly. For a GitHub repository without a local clone, commit to a new branch and merge it into the default branch.
+
+Only Claude Code can be detected; the regular chat of the Claude desktop app cannot.
+
 ### 🧩 Document composer
 
 <!-- Screenshot: composer canvas with the "Expected effect" panel — e.g. docs/images/composer-ratings.png -->

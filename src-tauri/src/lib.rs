@@ -1,8 +1,10 @@
 mod activity;
 mod automation;
 mod bridge;
+mod claude_detect;
 mod claude_mod;
 mod composer;
+mod decisions;
 mod dock;
 mod extensions;
 mod git;
@@ -138,6 +140,11 @@ pub fn run() {
             suggest::suggest_ai,
             suggest::suggest_add_mcp,
             suggest::suggest_log_clear,
+            suggest::suggest_live,
+            suggest::suggest_send,
+            decisions::decisions_list,
+            decisions::decisions_save,
+            decisions::decisions_apply,
             prefs::prefs_all,
             prefs::prefs_set,
             sync::sync_status,

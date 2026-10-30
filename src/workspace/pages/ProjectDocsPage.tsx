@@ -241,7 +241,7 @@ export function ProjectDocsPage() {
             </div>
             <div className="flex min-w-0 flex-1 flex-col">
               {rel ? (
-                <Editor project={project} />
+                <DocEditor project={project} />
               ) : (
                 <p className="text-xs text-text-muted">{t("files.pick")}</p>
               )}
@@ -358,7 +358,7 @@ function NewDocForm({ tool, onDone }: { tool: ToolId; onDone: () => void }) {
   );
 }
 
-function Editor({ project }: { project: string }) {
+export function DocEditor({ project }: { project: string }) {
   const t = useT();
   const { rel, text, saved, changedOutside, saving, edit, save, reload, remove } =
     useProjectDocsStore();

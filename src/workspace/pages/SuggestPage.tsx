@@ -1,4 +1,6 @@
 import { Logo } from "../../components/Logo";
+import { DecisionsPanel } from "../../features/suggest/DecisionsPanel";
+import { LivePanel } from "../../features/suggest/LivePanel";
 import { SuggestBox } from "../../features/suggest/SuggestBox";
 import { SuggestFeed } from "../../features/suggest/SuggestFeed";
 import { type MessageKey, useLocale, useT } from "../../i18n";
@@ -20,9 +22,11 @@ export function SuggestPage() {
       <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className="min-w-0 space-y-8">
           <SuggestBox />
+          <LivePanel />
           <SuggestFeed />
         </div>
         <aside className="space-y-6">
+          <DecisionsPanel />
           <Stats />
           <CatalogCounts />
         </aside>

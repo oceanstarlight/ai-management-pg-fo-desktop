@@ -21,6 +21,15 @@ type Result<T> = std::result::Result<T, String>;
 /// The pref that turns prompt suggestions on: `ai` (Haiku picks, the
 /// default), `keyword` (matched locally only) or `off`.
 pub const PREF: &str = "promptSuggest";
+/// `on`: picked suggestions are used without asking (the mod applies them
+/// when the prompt is sent). Anything else asks first.
+pub const AUTO_PREF: &str = "suggestAuto";
+/// `off` keeps the app from turning into the sidebar when Claude starts.
+pub const AUTO_DOCK_PREF: &str = "autoDockClaude";
+/// Emitted with every live session (`Vec<Live>`) when one changes.
+pub const LIVE_EVENT: &str = "suggest-live";
+/// Emitted with `{ project }` when a Claude Code session starts.
+pub const SESSION_EVENT: &str = "claude-session";
 /// Emitted when the log changes.
 pub const LOG_EVENT: &str = "suggest-log-changed";
 /// Emitted to the main window with `{ prompt, project }` to start a new
@@ -44,10 +53,14 @@ const AI_TIMEOUT: Duration = Duration::from_secs(60);
 #[serde(rename_all = "camelCase")]
 pub struct Catalog {
     mode: String,
+    /// Suggestions are used without asking.
+    auto: bool,
     library: Vec<LibraryEntry>,
     extensions: Vec<crate::extensions::SuggestEntry>,
     mcp: Vec<McpEntry>,
     automations: Vec<AutomationEntry>,
+    /// Each project's decisions as `topic: value` lines, by project folder.
+    decisions: std::collections::BTreeMap<String, Vec<String>>,
 }
 
 #[derive(Serialize)]
@@ -87,13 +100,16 @@ pub fn mode_of(value: Option<String>) -> String {
 }
 
 fn mode(app: &AppHandle) -> String {
-    let pref = app
-        .state::<crate::prefs::Prefs>()
-        .store()
-        .ok()
-        .and_then(|s| s.all().ok())
-        .and_then(|mut all| all.remove(PREF));
-    mode_of(pref)
+    mode_of(crate::prefs::get(app, PREF))
+}
+
+fn auto(app: &AppHandle) -> bool {
+    crate::prefs::get(app, AUTO_PREF).as_deref() == Some("on")
+}
+
+/// Whether the app turns into the sidebar when Claude starts (on unless set off).
+pub fn auto_dock(app: &AppHandle) -> bool {
+    crate::prefs::get(app, AUTO_DOCK_PREF).as_deref() != Some("off")
 }
 
 /// Server names `claude mcp list` gave last (`None` until it ran).
@@ -188,10 +204,12 @@ pub fn catalog(app: &AppHandle) -> Catalog {
         .collect();
     Catalog {
         mode,
+        auto: auto(app),
         library,
         extensions: crate::extensions::suggest_entries(),
         mcp: mcp_entries(installed.as_deref()),
         automations,
+        decisions: crate::decisions::lines_by_project(app),
     }
 }
 
@@ -409,6 +427,159 @@ pub fn top(log: &[LogEntry], limit: usize) -> Vec<Top> {
 }
 
 // ---------------------------------------------------------------------------
+// Live sessions: the prompt being written in each Claude Code session
+
+/// A suggestion as the sidebar shows it.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct LiveItem {
+    pub key: String,
+    pub name: String,
+    pub kind: String,
+    pub source: String,
+    /// The button's text (`/review`, `＋debugger`).
+    pub label: String,
+    #[serde(default)]
+    pub description: String,
+}
+
+#[derive(Clone, Debug, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct Live {
+    pub session: String,
+    pub project: String,
+    pub surface: String,
+    pub draft: String,
+    pub by: String,
+    pub pending: bool,
+    pub items: Vec<LiveItem>,
+    pub picked: Vec<String>,
+    /// Epoch milliseconds of the last change.
+    pub at: i64,
+}
+
+/// Sessions not heard from for this long are dropped.
+const LIVE_TTL_MS: i64 = 12 * 60 * 60 * 1000;
+
+static LIVE: Mutex<Vec<Live>> = Mutex::new(Vec::new());
+
+fn now_ms() -> i64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis() as i64)
+        .unwrap_or_default()
+}
+
+/// Applies `f` to the session's entry (made if new), newest first.
+fn with_live(app: &AppHandle, session: &str, f: impl FnOnce(&mut Live)) {
+    let list = {
+        let mut live = LIVE.lock().unwrap_or_else(|e| e.into_inner());
+        let now = now_ms();
+        live.retain(|l| now - l.at < LIVE_TTL_MS);
+        let index = match live.iter().position(|l| l.session == session) {
+            Some(i) => i,
+            None => {
+                live.push(Live {
+                    session: session.to_string(),
+                    project: String::new(),
+                    surface: String::new(),
+                    draft: String::new(),
+                    by: String::new(),
+                    pending: false,
+                    items: Vec::new(),
+                    picked: Vec::new(),
+                    at: now,
+                });
+                live.len() - 1
+            }
+        };
+        f(&mut live[index]);
+        live[index].at = now;
+        live.sort_by_key(|l| std::cmp::Reverse(l.at));
+        live.clone()
+    };
+    let _ = app.emit(LIVE_EVENT, list);
+}
+
+fn end_live(app: &AppHandle, session: &str) {
+    let list = {
+        let mut live = LIVE.lock().unwrap_or_else(|e| e.into_inner());
+        live.retain(|l| l.session != session);
+        live.clone()
+    };
+    let _ = app.emit(LIVE_EVENT, list);
+}
+
+/// Commands kept per session file; the mod remembers the last `seq` it ran.
+const MAX_COMMANDS: usize = 20;
+
+static OUTBOX_LOCK: Mutex<()> = Mutex::new(());
+
+/// `<bridge>/outbox/<session>.json`, which the mod reads (it cannot delete).
+fn outbox(data_dir: &Path, session: &str) -> Result<PathBuf> {
+    if session.is_empty()
+        || session.len() > 64
+        || !session
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_')
+    {
+        return Err("bad session".into());
+    }
+    Ok(crate::bridge::dir_in(data_dir)
+        .join("outbox")
+        .join(format!("{session}.json")))
+}
+
+/// Leaves a command for one session's mod (`pick`, `fill`, `refine`), with a
+/// `seq` larger than any before it.
+pub fn send_to_session(data_dir: &Path, session: &str, command: &serde_json::Value) -> Result<()> {
+    let file = outbox(data_dir, session)?;
+    let _guard = OUTBOX_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let mut list: Vec<serde_json::Value> = fs::read(&file)
+        .ok()
+        .and_then(|b| serde_json::from_slice::<serde_json::Value>(&b).ok())
+        .and_then(|v| v["commands"].as_array().cloned())
+        .unwrap_or_default();
+    let last = list
+        .iter()
+        .filter_map(|c| c["seq"].as_i64())
+        .max()
+        .unwrap_or(0);
+    let mut command = command.clone();
+    command["seq"] = serde_json::json!(now_ms().max(last + 1));
+    list.push(command);
+    if list.len() > MAX_COMMANDS {
+        list.drain(..list.len() - MAX_COMMANDS);
+    }
+    if let Some(dir) = file.parent() {
+        fs::create_dir_all(dir).map_err(|e| e.to_string())?;
+    }
+    crate::library::ops::write_atomic(&file, serde_json::json!({ "commands": list }).to_string())
+}
+
+fn drop_outbox(app: &AppHandle, session: &str) {
+    if let Ok(data_dir) = app.path().app_data_dir()
+        && let Ok(file) = outbox(&data_dir, session)
+    {
+        let _ = fs::remove_file(file);
+    }
+}
+
+/// A Claude Code session started: the sidebar comes up beside it, on its project.
+fn session_started(app: &AppHandle, project: String) {
+    let _ = app.emit(SESSION_EVENT, serde_json::json!({ "project": project }));
+    if !auto_dock(app) {
+        return;
+    }
+    let app = app.clone();
+    tauri::async_runtime::spawn(async move {
+        if app.state::<crate::shell::Shell>().mode() != crate::shell::ViewMode::Sidebar {
+            crate::shell::show_sidebar(&app);
+        }
+    });
+}
+
+// ---------------------------------------------------------------------------
 // Requests from the mod
 
 fn notify(app: &AppHandle, title: String, result: Result<()>) {
@@ -487,6 +658,37 @@ pub fn apply_request(app: &AppHandle, request: crate::bridge::Request) {
             });
         }
         Request::DraftAutomation { prompt, project } => draft_automation(app, prompt, project),
+        Request::SessionStart {
+            session,
+            project,
+            surface,
+        } => {
+            with_live(app, &session, |l| {
+                l.project = project.clone();
+                l.surface = surface;
+            });
+            session_started(app, project);
+        }
+        Request::SessionEnd { session } => {
+            end_live(app, &session);
+            drop_outbox(app, &session);
+        }
+        Request::SuggestLive {
+            session,
+            project,
+            draft,
+            by,
+            pending,
+            items,
+            picked,
+        } => with_live(app, &session, |l| {
+            l.project = project;
+            l.draft = crate::activity::redact::prompt_text(&draft);
+            l.by = by;
+            l.pending = pending;
+            l.items = items;
+            l.picked = picked;
+        }),
         _ => {}
     }
 }
@@ -551,8 +753,38 @@ pub async fn suggest_candidates(app: AppHandle, project: Option<String>) -> Resu
     .await
 }
 
-/// Asks Haiku through the user's own `claude -p` which entries fit; returns
-/// its reply text (the frontend reads the numbers with the mod's code).
+/// Asks Haiku through the user's own `claude -p` (no tools, no MCP servers,
+/// nothing saved) and returns its reply text.
+pub fn haiku(dir: &Path, system: &str, prompt: String) -> Result<String> {
+    let args = [
+        "-p",
+        "--model",
+        "haiku",
+        "--output-format",
+        "json",
+        "--no-session-persistence",
+        "--strict-mcp-config",
+        "--tools",
+        "",
+        "--system-prompt",
+        system,
+    ];
+    let (ok, stdout, stderr) =
+        crate::tools::cli::run_with_input(ToolId::Claude, dir, &args, Some(prompt), AI_TIMEOUT)?;
+    reply_text(ok, &stdout, &stderr)
+}
+
+/// The project folder to run `claude` in, or the home folder.
+pub fn run_dir(app: &AppHandle, project: Option<&str>) -> Result<PathBuf> {
+    project
+        .map(PathBuf::from)
+        .filter(|p| p.is_dir())
+        .or_else(|| app.path().home_dir().ok())
+        .ok_or_else(|| "no folder to run in".to_string())
+}
+
+/// Which entries fit the prompt, by Haiku; returns its reply text (the
+/// frontend reads the numbers with the mod's code).
 #[tauri::command]
 pub async fn suggest_ai(
     app: AppHandle,
@@ -560,35 +792,7 @@ pub async fn suggest_ai(
     system: String,
     prompt: String,
 ) -> Result<String> {
-    blocking(move || {
-        let dir = project
-            .map(PathBuf::from)
-            .filter(|p| p.is_dir())
-            .or_else(|| app.path().home_dir().ok())
-            .ok_or_else(|| "no folder to run in".to_string())?;
-        let args = [
-            "-p",
-            "--model",
-            "haiku",
-            "--output-format",
-            "json",
-            "--no-session-persistence",
-            "--strict-mcp-config",
-            "--tools",
-            "",
-            "--system-prompt",
-            &system,
-        ];
-        let (ok, stdout, stderr) = crate::tools::cli::run_with_input(
-            ToolId::Claude,
-            &dir,
-            &args,
-            Some(prompt),
-            AI_TIMEOUT,
-        )?;
-        reply_text(ok, &stdout, &stderr)
-    })
-    .await
+    blocking(move || haiku(&run_dir(&app, project.as_deref())?, &system, prompt)).await
 }
 
 fn reply_text(ok: bool, stdout: &str, stderr: &str) -> Result<String> {
@@ -607,6 +811,27 @@ fn reply_text(ok: bool, stdout: &str, stderr: &str) -> Result<String> {
 #[tauri::command]
 pub async fn suggest_add_mcp(app: AppHandle, project: String, id: String) -> Result<String> {
     blocking(move || add_mcp(&app, &project, &id)).await
+}
+
+/// The Claude Code sessions the mod has told about, newest first.
+#[tauri::command]
+pub fn suggest_live() -> Vec<Live> {
+    LIVE.lock().unwrap_or_else(|e| e.into_inner()).clone()
+}
+
+/// Sends a command to one session's mod: `{ "op": "pick", "key" }`,
+/// `{ "op": "fill", "text" }` or `{ "op": "refine" }`.
+#[tauri::command]
+pub async fn suggest_send(
+    app: AppHandle,
+    session: String,
+    command: serde_json::Value,
+) -> Result<()> {
+    blocking(move || {
+        let data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+        send_to_session(&data_dir, &session, &command)
+    })
+    .await
 }
 
 #[tauri::command]
@@ -691,6 +916,27 @@ mod tests {
         for r in crate::mcp::recommended() {
             assert!(!hints::mcp(r.id).0.is_empty(), "no hint for {}", r.id);
         }
+    }
+
+    #[test]
+    fn commands_go_to_the_session_outbox_in_order() {
+        let dir = std::env::temp_dir().join(format!("aim-out-{}", uuid::Uuid::new_v4()));
+        for _ in 0..(MAX_COMMANDS + 3) {
+            send_to_session(&dir, "s-1", &serde_json::json!({ "op": "refine" })).unwrap();
+        }
+        let file = dir.join("bridge/outbox/s-1.json");
+        let v: serde_json::Value = serde_json::from_slice(&fs::read(file).unwrap()).unwrap();
+        let seqs: Vec<i64> = v["commands"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|c| c["seq"].as_i64().unwrap())
+            .collect();
+        assert_eq!(seqs.len(), MAX_COMMANDS);
+        assert!(seqs.windows(2).all(|w| w[0] < w[1]));
+        assert!(send_to_session(&dir, "../x", &serde_json::json!({})).is_err());
+        assert!(send_to_session(&dir, "", &serde_json::json!({})).is_err());
+        fs::remove_dir_all(&dir).unwrap();
     }
 
     #[test]

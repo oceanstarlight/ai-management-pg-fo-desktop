@@ -11,6 +11,7 @@ import { useAccountStore } from "../store/account";
 import { useAutomationStore } from "../store/automation";
 import { useComposerStore } from "../store/composer";
 import { subscribeDockStatus } from "../store/dock";
+import { useLiveStore } from "../store/live";
 import { restoreProject } from "../store/project";
 import { useSyncStore } from "../store/sync";
 import { startUpdateChecks } from "../store/updater";
@@ -63,6 +64,7 @@ export default function MainApp() {
     void useSyncStore.getState().init();
     void useAccountStore.getState().init();
     startUpdateChecks();
+    useLiveStore.getState().init();
   }, []);
 
   // The window is destroyed on close (also when switching to the sidebar from

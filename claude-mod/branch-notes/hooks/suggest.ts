@@ -48,6 +48,10 @@ export const NEW_AUTOMATION = "a:new";
 /** The export's `suggest` section. */
 export type SuggestExport = {
   mode: SuggestMode;
+  /** Suggestions are used without asking, when the prompt is sent. */
+  auto?: boolean;
+  /** Each project's settled decisions (`topic: value`), by project folder. */
+  decisions?: Record<string, string[]>;
   library: { kind: "skill" | "agent"; id: string; name: string; description: string }[];
   extensions: {
     id: string;
@@ -397,8 +401,70 @@ export function aiCatalog(candidates: Candidate[]): string {
   return `Entries:\n${lines.join("\n")}`;
 }
 
-export function aiAsk(draft: string): string {
-  return `The user is typing this prompt (any language):\n<<<\n${draft.slice(0, 2000)}\n>>>\nWhich entries would clearly help? At most ${MAX_ITEMS}. JSON array of numbers only.`;
+export function aiAsk(draft: string, decisions: string[] = []): string {
+  const settled = decisions.length
+    ? `Already settled for this project:\n${decisions.map((d) => `- ${d}`).join("\n")}\n`
+    : "";
+  return `${settled}The user is typing this prompt (any language):\n<<<\n${draft.slice(0, 2000)}\n>>>\nWhich entries would clearly help? At most ${MAX_ITEMS}. JSON array of numbers only.`;
+}
+
+/** The project's decisions, found by its folder (case and slashes aside). */
+export function decisionsFor(exp: SuggestExport | null | undefined, project: string): string[] {
+  const norm = (p: string) => p.replace(/\\/g, "/").replace(/\/+$/, "").toLowerCase();
+  const want = norm(project);
+  if (!want || !exp?.decisions) return [];
+  for (const [key, lines] of Object.entries(exp.decisions)) {
+    if (norm(key) === want) return lines;
+  }
+  return [];
+}
+
+export const REFINE_SYSTEM =
+  "You rewrite a developer's prompt for Claude Code so it gets better results. Keep the user's language, intent and every requirement; do not invent features. Make it clear and specific: the goal first, then requirements as a short list, then constraints (the project's settled decisions, when they matter), then what done looks like. Start with the given slash command when there is one. Reply with the rewritten prompt only, no preamble.";
+
+/** What Haiku rewrites: the draft, what to use, and what is settled. */
+export function refineAsk(draft: string, use: Candidate[], decisions: string[]): string {
+  const command = use.find(
+    (c) => c.source === "installed" && c.kind !== "agent" && c.kind !== "mcp",
+  );
+  const helpers = use.filter((c) => c !== command && c.source === "installed");
+  const lines = [
+    command ? `Slash command to start with: /${command.name}` : "",
+    helpers.length
+      ? `Ask Claude to use: ${helpers.map((c) => `${c.name} (${c.kind})`).join(", ")}`
+      : "",
+    decisions.length
+      ? `Settled for this project:\n${decisions.map((d) => `- ${d}`).join("\n")}`
+      : "",
+    `Prompt:\n<<<\n${draft.slice(0, 4000)}\n>>>`,
+  ];
+  return lines.filter(Boolean).join("\n\n");
+}
+
+/** The rewritten prompt: quotes and fences Haiku sometimes adds, removed. */
+export function cleanRefined(text: string): string {
+  return text
+    .trim()
+    .replace(/^```[a-z]*\n?/i, "")
+    .replace(/\n?```$/, "")
+    .replace(/^<<<\n?/, "")
+    .replace(/\n?>>>$/, "")
+    .trim();
+}
+
+/** What the model reads beside a prompt sent in auto mode: the suggestions to use. */
+export function autoContext(items: Candidate[]): string | null {
+  const lines = items
+    .filter((c) => c.source === "installed")
+    .map((c) =>
+      c.kind === "agent"
+        ? `- the ${c.name} subagent`
+        : c.kind === "mcp"
+          ? `- the ${c.name} MCP server`
+          : `- the ${c.name} ${c.kind === "command" ? "command" : "skill"}`,
+    );
+  if (!lines.length) return null;
+  return `The user's tools suggest these for this request; use them where they help:\n${lines.join("\n")}`;
 }
 
 /** The candidates Haiku's reply names, in its order. */
