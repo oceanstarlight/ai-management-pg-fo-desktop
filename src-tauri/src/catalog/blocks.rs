@@ -1,4 +1,4 @@
-//! Blocks the composer offers: built-in ones shipped with the app
+//! The catalog's blocks: built-in ones shipped with the app
 //! (`catalog/builtin/*.md`) and the skills and subagents in the user's library.
 
 use std::collections::BTreeMap;
@@ -54,15 +54,6 @@ pub struct Origin {
     pub copyright: String,
 }
 
-impl Origin {
-    pub fn url(&self) -> String {
-        format!(
-            "https://github.com/{}/blob/{}/{}",
-            self.repo, self.commit, self.path
-        )
-    }
-}
-
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct BlockText {
     pub title: String,
@@ -74,7 +65,7 @@ pub struct BlockText {
 
 /// The app's estimate of what a block changes, from -2 to 2 each (`tokens`,
 /// `performance` and `quality` frontmatter). Tokens: below 0 saves, above 0
-/// costs more. The composer sums them for the blocks on the canvas.
+/// costs more.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
 pub struct Rating {
     pub tokens: i8,
@@ -137,7 +128,7 @@ pub struct Block {
     #[serde(default)]
     pub manual: bool,
     pub body: String,
-    /// Files next to a library skill's SKILL.md, which the composer does not copy.
+    /// Files next to a library skill's SKILL.md.
     pub extra_files: usize,
     /// Markdown files a bundled skill keeps next to its SKILL.md, as
     /// `(path relative to SKILL.md, text)`. Written along with the skill;
@@ -150,11 +141,6 @@ pub struct Block {
     pub origin: Option<Origin>,
     /// Bundled blocks only; library items have none.
     pub rating: Option<Rating>,
-    /// Library items: the original frontmatter, written unchanged so fields
-    /// the composer does not model (allowed-tools, permissionMode, ...) and the
-    /// item's own `name` survive.
-    #[serde(skip)]
-    pub frontmatter: Option<String>,
 }
 
 fn companion_paths<S: serde::Serializer>(
@@ -210,15 +196,6 @@ pub fn split(text: &str) -> (BTreeMap<String, String>, String) {
         ),
         None => (BTreeMap::new(), text),
     }
-}
-
-/// The frontmatter lines between the `---` fences, as written.
-fn raw_frontmatter(text: &str) -> Option<String> {
-    let text = normalize(text);
-    let start = body_start(&text)?;
-    let inner = text[..start].trim_end().strip_suffix("---")?;
-    let inner = inner.strip_prefix("---\n")?;
-    Some(inner.trim_end().to_string())
 }
 
 /// Splits a joined frontmatter list on ", " outside braces, so globs such as
@@ -322,7 +299,6 @@ fn parse_bundled(id: &str, stem: &str, text: &str, source: Source) -> Option<Blo
         companions: Vec::new(),
         origin: None,
         rating: Rating::parse(&fm),
-        frontmatter: None,
     })
 }
 
@@ -561,7 +537,6 @@ fn from_library(item: &LibraryItem) -> Option<Block> {
         companions: Vec::new(),
         origin: None,
         rating: None,
-        frontmatter: raw_frontmatter(&text),
     })
 }
 
@@ -575,6 +550,43 @@ pub fn all(library_items: &[LibraryItem], cache: Option<&Path>) -> Vec<Block> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Claude Code hook events a hook block may name.
+    const HOOK_EVENTS: &[&str] = &[
+        "SessionStart",
+        "Setup",
+        "SessionEnd",
+        "UserPromptSubmit",
+        "UserPromptExpansion",
+        "Stop",
+        "StopFailure",
+        "PreToolUse",
+        "PermissionRequest",
+        "PermissionDenied",
+        "PostToolUse",
+        "PostToolUseFailure",
+        "PostToolBatch",
+        "SubagentStart",
+        "SubagentStop",
+        "TaskCreated",
+        "TaskCompleted",
+        "TeammateIdle",
+        "PreCompact",
+        "PostCompact",
+        "PreModelSwitch",
+        "PostModelSwitch",
+        "ConfigChange",
+        "InstructionsLoaded",
+        "CwdChanged",
+        "DirectoryAdded",
+        "FileChanged",
+        "WorktreeCreate",
+        "WorktreeRemove",
+        "Notification",
+        "MessageDisplay",
+        "Elicitation",
+        "ElicitationResult",
+    ];
 
     /// English title, summary and category, with the same English category
     /// for every use of a Korean one.
@@ -698,11 +710,7 @@ mod tests {
             );
             if block.kind == BlockKind::Hook {
                 let event = block.event.as_deref().unwrap_or("");
-                assert!(
-                    super::super::compile::HOOK_EVENTS.contains(&event),
-                    "{}",
-                    block.id
-                );
+                assert!(HOOK_EVENTS.contains(&event), "{}", block.id);
             }
             assert!(
                 crate::library::check_id(&block.name).is_ok(),
@@ -803,17 +811,6 @@ mod tests {
     }
 
     #[test]
-    fn crlf_and_bom_are_normalized() {
-        let (fm, body) = split("\u{feff}---\r\nname: a\r\n---\r\n\r\nLine 1\r\nLine 2\r\n");
-        assert_eq!(fm["name"], "a");
-        assert_eq!(body, "Line 1\nLine 2\n");
-        assert_eq!(
-            raw_frontmatter("---\r\nname: a\r\nallowed-tools: Bash\r\n---\r\nBody").as_deref(),
-            Some("name: a\nallowed-tools: Bash")
-        );
-    }
-
-    #[test]
     fn split_returns_body_after_frontmatter() {
         let (fm, body) = split("---\nname: a\n---\n\n# Body\ntext\n");
         assert_eq!(fm["name"], "a");
@@ -847,10 +844,6 @@ mod tests {
         assert_eq!(block.id, "library:skill:deploy");
         assert_eq!(block.body, "Steps");
         assert_eq!(block.extra_files, 1);
-        assert_eq!(
-            block.frontmatter.as_deref(),
-            Some("name: deploy\ndescription: Ship it")
-        );
     }
 
     #[test]

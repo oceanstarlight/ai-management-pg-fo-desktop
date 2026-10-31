@@ -1,7 +1,6 @@
 //! The MCP server's tools: branch notes, to-dos and PR/CI status from the
-//! bridge, and composer documents built from the block catalog.
+//! bridge, the block catalog, and the app's automations.
 
-use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -9,9 +8,7 @@ use serde_json::{Value, json};
 
 use crate::automation;
 use crate::bridge::{self, Request};
-use crate::composer::catalog::{self, Block, BlockKind};
-use crate::composer::compile;
-use crate::tools::ToolId;
+use crate::catalog::{Block, BlockKind, blocks as catalog};
 
 /// `state.json` is rewritten every 30 seconds while the app runs.
 const RUNNING_WITHIN_MS: i64 = 90_000;
@@ -41,7 +38,6 @@ pub fn definitions() -> Vec<Value> {
     let path = json!({ "type": "string", "description": "Project folder (default: the current directory)" });
     let branch =
         json!({ "type": "string", "description": "Branch (default: the checked-out one)" });
-    let tool_id = json!({ "type": "string", "enum": ["claude", "codex"], "description": "Lay files out for this tool (default claude)" });
     vec![
         tool(
             "get_branch_context",
@@ -78,7 +74,7 @@ pub fn definitions() -> Vec<Value> {
         ),
         tool(
             "search_blocks",
-            "Searches Encela's block catalog (instructions, rules, skills, subagents, hooks, and the user's library). Returns ids for get_block and create_document.",
+            "Searches Encela's block catalog (instructions, rules, skills, subagents, hooks, and the user's library). Returns ids for get_block.",
             schema(
                 json!({
                     "query": { "type": "string", "description": "Words to match in the title, summary or category; empty lists all" },
@@ -93,44 +89,6 @@ pub fn definitions() -> Vec<Value> {
             "A catalog block in full: what it does, its text and where it comes from.",
             schema(json!({ "id": { "type": "string" } }), &["id"]),
             true,
-        ),
-        tool(
-            "list_documents",
-            "The composer documents saved in Encela.",
-            schema(json!({}), &[]),
-            true,
-        ),
-        tool(
-            "preview_document",
-            "The files a composer document writes (CLAUDE.md section, rules, skills, subagents, hooks, PLANS.md), with their content and warnings.",
-            schema(
-                json!({ "id": { "type": "string" }, "tool": tool_id }),
-                &["id"],
-            ),
-            true,
-        ),
-        tool(
-            "create_document",
-            "Creates a composer document in Encela from catalog blocks: each block is connected to the output its kind goes to, and an optional main goal becomes PLANS.md. Returns the files it would write. The user reviews and writes it from the app.",
-            schema(
-                json!({
-                    "name": { "type": "string" },
-                    "blockIds": { "type": "array", "items": { "type": "string" } },
-                    "goal": {
-                        "type": "object",
-                        "description": "Main goal for PLANS.md, e.g. from the branch's to-dos",
-                        "properties": {
-                            "title": { "type": "string" },
-                            "note": { "type": "string" },
-                            "subGoals": { "type": "array", "items": { "type": "string" } },
-                        },
-                        "required": ["title"],
-                    },
-                    "tool": tool_id,
-                }),
-                &["name", "blockIds"],
-            ),
-            false,
         ),
         tool(
             "list_automations",
@@ -217,24 +175,12 @@ fn now_ms() -> i64 {
         .unwrap_or(0)
 }
 
-fn short_id(prefix: &str) -> String {
-    let id = uuid::Uuid::new_v4().simple().to_string();
-    format!("{prefix}{}", &id[..12])
-}
-
 fn str_arg<'a>(args: &'a Value, key: &str) -> Option<&'a str> {
     args[key].as_str().map(str::trim).filter(|s| !s.is_empty())
 }
 
 fn required<'a>(args: &'a Value, key: &str) -> Result<&'a str, String> {
     str_arg(args, key).ok_or_else(|| format!("`{key}` is required"))
-}
-
-fn tool_arg(args: &Value) -> Result<ToolId, String> {
-    match str_arg(args, "tool") {
-        None => Ok(ToolId::Claude),
-        Some(t) => serde_json::from_value(json!(t)).map_err(|_| format!("Unknown tool: {t}")),
-    }
 }
 
 /// The repository and branch memos are filed under, as the app files them.
@@ -270,10 +216,6 @@ impl Server {
         catalog::all(&library, Some(&self.data_dir.join("catalog-cache")))
     }
 
-    fn docs_dir(&self) -> PathBuf {
-        crate::composer::docs_dir(&self.data_dir)
-    }
-
     /// Answers `tools/call`: a tool result, or a JSON-RPC error for an unknown tool.
     pub fn call(&self, name: &str, args: &Value) -> Result<Value, (i64, String)> {
         let result = match name {
@@ -283,9 +225,6 @@ impl Server {
             "append_note" => self.append_note(args),
             "search_blocks" => self.search_blocks(args),
             "get_block" => self.get_block(args),
-            "list_documents" => self.list_documents(),
-            "preview_document" => self.preview_document(args),
-            "create_document" => self.create_document(args),
             "list_automations" => self.list_automations(),
             "save_automation" => self.save_automation(args),
             "set_automation_enabled" => self.set_automation_enabled(args),
@@ -455,67 +394,6 @@ impl Server {
         serde_json::to_value(block).map_err(|e| e.to_string())
     }
 
-    fn list_documents(&self) -> ToolResult {
-        let docs = crate::composer::list_docs(&self.docs_dir());
-        serde_json::to_value(docs).map_err(|e| e.to_string())
-    }
-
-    fn preview_document(&self, args: &Value) -> ToolResult {
-        let id = required(args, "id")?;
-        if !crate::composer::valid_doc_id(id) {
-            return Err(format!("Invalid document id: {id}"));
-        }
-        let bytes = std::fs::read(self.docs_dir().join(format!("{id}.json")))
-            .map_err(|_| format!("No document with id {id}; use list_documents"))?;
-        let value: Value = serde_json::from_slice(&bytes).map_err(|e| e.to_string())?;
-        let doc = crate::composer::parse_doc(value)?;
-        let compiled = compile::compile(&doc, &self.catalog(), tool_arg(args)?);
-        serde_json::to_value(compiled).map_err(|e| e.to_string())
-    }
-
-    fn create_document(&self, args: &Value) -> ToolResult {
-        let name = required(args, "name")?;
-        let tool = tool_arg(args)?;
-        let ids: Vec<&str> = args["blockIds"]
-            .as_array()
-            .ok_or("`blockIds` must be a list of block ids")?
-            .iter()
-            .filter_map(Value::as_str)
-            .collect();
-        let catalog = self.catalog();
-        let mut picked: Vec<&Block> = Vec::new();
-        let mut unknown = Vec::new();
-        for id in ids {
-            match catalog.iter().find(|b| b.id == id) {
-                Some(b) if !picked.iter().any(|p| p.id == b.id) => picked.push(b),
-                Some(_) => {}
-                None => unknown.push(id),
-            }
-        }
-        if !unknown.is_empty() {
-            return Err(format!(
-                "Unknown block ids: {}; use search_blocks",
-                unknown.join(", ")
-            ));
-        }
-        let goal = Goal::from_arg(&args["goal"]);
-        if picked.is_empty() && goal.is_none() {
-            return Err("Give at least one block id or a goal".into());
-        }
-        let doc = build_doc(name, &picked, goal.as_ref(), tool);
-        let id = doc["id"].as_str().unwrap_or_default().to_string();
-        let compiled = compile::compile(&crate::composer::parse_doc(doc.clone())?, &catalog, tool);
-        let files: Vec<Value> = compiled
-            .files
-            .iter()
-            .map(|f| json!({ "path": f.path, "lines": f.lines }))
-            .collect();
-        self.send(
-            Request::SaveDoc { doc },
-            json!({ "id": id, "name": name, "files": files, "warnings": compiled.warnings }),
-        )
-    }
-
     fn list_automations(&self) -> ToolResult {
         let runs = automation::read_runs(&self.data_dir);
         let list: Vec<Value> = automation::read_automations(&self.data_dir)
@@ -634,136 +512,6 @@ fn search<'a>(catalog: &'a [Block], query: &str, kind: Option<BlockKind>) -> Vec
         .collect()
 }
 
-pub struct Goal {
-    title: String,
-    note: Option<String>,
-    sub_goals: Vec<String>,
-}
-
-impl Goal {
-    fn from_arg(arg: &Value) -> Option<Self> {
-        let title = arg["title"].as_str()?.trim();
-        if title.is_empty() {
-            return None;
-        }
-        Some(Self {
-            title: title.to_string(),
-            note: arg["note"]
-                .as_str()
-                .map(str::trim)
-                .filter(|n| !n.is_empty())
-                .map(str::to_string),
-            sub_goals: arg["subGoals"]
-                .as_array()
-                .into_iter()
-                .flatten()
-                .filter_map(Value::as_str)
-                .map(str::trim)
-                .filter(|s| !s.is_empty())
-                .map(str::to_string)
-                .collect(),
-        })
-    }
-}
-
-/// The output each kind of block goes to (rules join the instructions in
-/// tools without rule files, as the composer allows).
-fn target_of(kind: BlockKind, tool: ToolId) -> &'static str {
-    match kind {
-        BlockKind::Instruction => "instructions",
-        BlockKind::Rule if tool.has_rules() => "rules",
-        BlockKind::Rule => "instructions",
-        BlockKind::Skill => "skills",
-        BlockKind::Agent => "agents",
-        BlockKind::Hook => "hooks",
-    }
-}
-
-const TARGET_ORDER: &[&str] = &["instructions", "rules", "skills", "agents", "hooks"];
-
-fn kind_name(kind: BlockKind) -> String {
-    serde_json::to_value(kind)
-        .ok()
-        .and_then(|v| v.as_str().map(str::to_string))
-        .unwrap_or_default()
-}
-
-fn edge(source: &str, target: &str, kind: &str) -> Value {
-    json!({
-        "id": format!("xy-edge__{source}-{target}"),
-        "source": source,
-        "target": target,
-        "style": { "stroke": format!("var(--c-kind-{kind})"), "strokeWidth": 2 },
-    })
-}
-
-/// A composer document as the app saves one: blocks in a column, each kind's
-/// output to their right, and the goal with its PLANS.md output on top.
-pub fn build_doc(name: &str, blocks: &[&Block], goal: Option<&Goal>, tool: ToolId) -> Value {
-    const BLOCK_X: f64 = 0.0;
-    const OUTPUT_X: f64 = 340.0;
-    const ROW: f64 = 130.0;
-    let mut nodes = Vec::new();
-    let mut edges = Vec::new();
-    let mut y = 0.0;
-
-    if let Some(goal) = goal {
-        let plan = short_id("p");
-        let output = short_id("o");
-        let items: Vec<Value> = goal
-            .sub_goals
-            .iter()
-            .map(|text| json!({ "id": short_id("i"), "kind": "sub", "text": text, "status": "n" }))
-            .collect();
-        let mut data = json!({ "title": goal.title, "status": "n", "items": items });
-        if let Some(note) = &goal.note {
-            data["note"] = json!(note);
-        }
-        nodes.push(json!({ "id": plan, "type": "plan", "position": { "x": BLOCK_X - 120.0, "y": y }, "data": data }));
-        nodes.push(json!({
-            "id": output, "type": "output", "position": { "x": OUTPUT_X + 80.0, "y": y },
-            "data": { "target": "plans", "scope": "team", "order": [plan] },
-        }));
-        edges.push(edge(&plan, &output, "plan"));
-        y += 200.0 + 40.0 * goal.sub_goals.len() as f64;
-    }
-
-    let mut groups: BTreeMap<usize, Vec<&Block>> = BTreeMap::new();
-    for block in blocks {
-        let target = target_of(block.kind, tool);
-        let index = TARGET_ORDER.iter().position(|t| *t == target).unwrap_or(0);
-        groups.entry(index).or_default().push(block);
-    }
-    for (index, group) in groups {
-        let output = short_id("o");
-        let mut order = Vec::new();
-        for (row, block) in group.iter().enumerate() {
-            let id = short_id("b");
-            nodes.push(json!({
-                "id": id, "type": "block",
-                "position": { "x": BLOCK_X, "y": y + row as f64 * ROW },
-                "data": { "blockId": block.id },
-            }));
-            edges.push(edge(&id, &output, &kind_name(block.kind)));
-            order.push(id);
-        }
-        nodes.push(json!({
-            "id": output, "type": "output", "position": { "x": OUTPUT_X, "y": y },
-            "data": { "target": TARGET_ORDER[index], "scope": "team", "order": order },
-        }));
-        y += (group.len() as f64 * ROW).max(260.0) + 60.0;
-    }
-
-    json!({
-        "version": 1,
-        "id": format!("d{}", uuid::Uuid::new_v4().simple()),
-        "name": name,
-        "updatedAt": now_ms(),
-        "nodes": nodes,
-        "edges": edges,
-    })
-}
-
 /// Lets tests point `Server` at a folder laid out like the app's.
 #[cfg(test)]
 pub fn write_state(data_dir: &std::path::Path, state: &Value) {
@@ -868,81 +616,6 @@ mod tests {
         let ts = search(&catalog, "typescript", Some(BlockKind::Rule));
         assert!(ts.iter().any(|b| b.id == "builtin:typescript"));
         assert!(search(&catalog, "typescript zzzz-nothing", None).is_empty());
-    }
-
-    #[test]
-    fn a_created_document_compiles_and_reaches_the_inbox() {
-        let dir = temp();
-        let server = Server::new(dir.clone());
-        let args = json!({
-            "name": "From MCP",
-            "blockIds": ["builtin:concise-replies", "builtin:typescript", "builtin:review-checklist", "builtin:debugger", "builtin:concise-replies"],
-            "goal": { "title": "Ship login", "subGoals": ["API", "UI"] },
-        });
-        let out = server.call("create_document", &args).unwrap();
-        assert!(out.get("isError").is_none(), "{out}");
-        let out = text(&out);
-        let paths: Vec<&str> = out["files"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .map(|f| f["path"].as_str().unwrap())
-            .collect();
-        assert!(paths.contains(&"CLAUDE.md"), "{paths:?}");
-        assert!(paths.contains(&"PLANS.md"), "{paths:?}");
-        assert!(
-            paths.iter().any(|p| p.starts_with(".claude/rules/")),
-            "{paths:?}"
-        );
-        assert!(
-            paths.iter().any(|p| p.starts_with(".claude/agents/")),
-            "{paths:?}"
-        );
-
-        let requests = inbox(&dir);
-        assert_eq!(requests.len(), 1);
-        let doc = &requests[0]["doc"];
-        assert!(crate::composer::valid_doc_id(doc["id"].as_str().unwrap()));
-        // The duplicate id became one block node.
-        let blocks = doc["nodes"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .filter(|n| n["type"] == "block")
-            .count();
-        assert_eq!(blocks, 4);
-        match serde_json::from_value::<Request>(requests[0].clone()).unwrap() {
-            Request::SaveDoc { doc } => {
-                crate::composer::parse_doc(doc).unwrap();
-            }
-            other => panic!("{other:?}"),
-        }
-
-        let unknown = server
-            .call(
-                "create_document",
-                &json!({ "name": "x", "blockIds": ["builtin:nope"] }),
-            )
-            .unwrap();
-        assert_eq!(unknown["isError"], true);
-        std::fs::remove_dir_all(dir).unwrap();
-    }
-
-    #[test]
-    fn codex_rules_go_to_the_instructions() {
-        let catalog = catalog::all(&[], None);
-        let ts = catalog
-            .iter()
-            .find(|b| b.id == "builtin:typescript")
-            .unwrap();
-        let doc = build_doc("x", &[ts], None, ToolId::Codex);
-        let output = doc["nodes"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .find(|n| n["type"] == "output")
-            .unwrap();
-        assert_eq!(output["data"]["target"], "instructions");
     }
 
     #[test]

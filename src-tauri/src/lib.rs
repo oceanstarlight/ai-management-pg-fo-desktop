@@ -1,9 +1,9 @@
 mod activity;
 mod automation;
 mod bridge;
+mod catalog;
 mod claude_detect;
 mod claude_mod;
-mod composer;
 mod decisions;
 mod dock;
 mod extensions;
@@ -16,6 +16,7 @@ mod mcp_server;
 mod memo;
 mod prefs;
 mod project_docs;
+mod redact;
 mod shell;
 mod suggest;
 mod sync;
@@ -73,22 +74,10 @@ pub fn run() {
             library::library_import,
             library::library_forget,
             library::config_set_enabled,
-            composer::composer_catalog,
-            composer::composer_refresh_external,
-            composer::composer_docs,
-            composer::composer_doc_load,
-            composer::composer_doc_save,
-            composer::composer_doc_delete,
-            composer::composer_compile,
-            composer::composer_save_automation,
-            composer::composer_plan,
-            composer::composer_write,
-            activity::activity_refresh,
-            activity::activity_git_log,
-            activity::activity_local,
-            activity::activity_prompt_log,
-            activity::activity_settings,
-            activity::activity_set_settings,
+            activity::activity_sessions,
+            activity::activity_files,
+            catalog::catalog_list,
+            catalog::catalog_refresh,
             memo::memo_context,
             memo::memo_get,
             memo::memo_set_note,
@@ -98,26 +87,6 @@ pub fn run() {
             memo::memo_move_todo,
             memo::memo_clear_done,
             work::work_overview,
-            work::work_diff,
-            work::work_switch,
-            work::work_create_branch,
-            work::work_check_branch,
-            work::work_delete_branch,
-            work::work_add_worktree,
-            work::work_remove_worktree,
-            work::work_prune_worktrees,
-            work::work_commit,
-            work::work_push,
-            work::work_pull,
-            work::work_git_version,
-            work::work_stage,
-            work::work_commit_diff,
-            work::work_draft_message,
-            work::work_draft_tool,
-            work::work_conflict,
-            work::work_resolve,
-            work::work_continue,
-            work::work_abort,
             i18n::set_locale,
             bridge::bridge_github,
             claude_mod::claude_mod_status,
@@ -172,19 +141,6 @@ pub fn run() {
             github::github_login_cancel,
             github::github_logout,
             github::github_repo,
-            github::github_create_pr,
-            github::github_repos,
-            github::github_local_clones,
-            github::github_remote,
-            github::github_remote_create_branch,
-            github::github_remote_delete_branch,
-            github::github_remote_create_pr,
-            github::github_clone,
-            github::github_remote_tree,
-            github::github_remote_file,
-            github::github_remote_commit,
-            composer::remote::composer_plan_remote,
-            composer::remote::composer_write_remote,
             shell::view_mode,
             shell::view_switch,
         ])
@@ -193,9 +149,7 @@ pub fn run() {
             Dock::manage(handle);
             shell::Shell::manage(handle);
             library::Library::manage(handle)?;
-            composer::Composer::manage(handle)?;
             memo::Memo::manage(handle)?;
-            activity::Activity::manage(handle)?;
             prefs::Prefs::manage(handle)?;
             automation::Automations::manage(handle)?;
             github::GitHub::manage(handle);

@@ -159,8 +159,8 @@ fn ask(known: &[Decision], prompt: &str, answer: &str) -> String {
         } else {
             known.join("\n")
         },
-        crate::activity::redact::prompt_text(prompt),
-        crate::activity::redact::prompt_text(&clip(answer)),
+        crate::redact::prompt_text(prompt),
+        crate::redact::prompt_text(&clip(answer)),
     )
 }
 

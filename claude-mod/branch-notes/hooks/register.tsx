@@ -14,6 +14,7 @@ import {
   type View,
   words,
 } from "./core";
+import { describeTool, editSize, enqueue, FLUSH_MS, type Step, toolInput } from "./activity";
 import { isNewProject, missingFields, type Starter, startersFor } from "./starters";
 import {
   AI_DELAY_MS,
@@ -67,6 +68,12 @@ let liveTimer: { cancel: () => void } | null = null;
 let original: string | null = null;
 /** The prompt last sent, to pair with Claude's answer. */
 let lastPrompt = "";
+/** Activity steps waiting to go to the app. */
+let steps: Step[] = [];
+let flushTimer: { cancel: () => void } | null = null;
+/** Each tool call's edit size, by call id, until it finishes. */
+const edits = new Map<string, { added: number; removed: number }>();
+
 /** A new project's first prompt is still to come: the starter forms are offered. */
 let offerStarters = false;
 
@@ -422,6 +429,22 @@ async function showStarter($: EngineInterface, draft: string) {
   if (JSON.stringify(prev) !== JSON.stringify(next)) await update($, starter, () => next);
 }
 
+/** Queues a step for the app; the queue goes after a short pause. */
+async function track($: EngineInterface, step: Omit<Step, "at">) {
+  if (!session) return;
+  steps = enqueue(steps, { ...step, at: await $.clock.now() });
+  flushTimer ??= $.clock.after(FLUSH_MS, () => {
+    flushTimer = null;
+    const batch = steps;
+    steps = [];
+    if (batch.length) {
+      void send($, { op: "activity", session, project: projectDir, steps: batch }).catch(
+        () => false,
+      );
+    }
+  });
+}
+
 /** Asks the app to add, install or start what a suggestion names. */
 /** `prompt` is read only for a new automation. */
 async function act(
@@ -603,6 +626,54 @@ export const register: Register = (on) => {
     return next(e);
   });
 
+  // The live view: every tool call, each turn, and the context and cost.
+  on("tool.call", async ($, e, next) => {
+    const input = toolInput(e as unknown as Record<string, unknown>);
+    const id = e.tool_use_id ?? `${e.tool}-${Math.random()}`;
+    const { target, detail } = describeTool(e.tool, input);
+    const size = editSize(e.tool, input);
+    if (size.added || size.removed) edits.set(id, size);
+    await track($, { kind: "tool", id, tool: e.tool, target, detail, agent: e.agentId }).catch(
+      () => {},
+    );
+    const result = await next(e);
+    const done = edits.get(id);
+    edits.delete(id);
+    await track($, {
+      kind: "toolEnd",
+      id,
+      ok: !("deny" in result && result.deny) && !result.isError,
+      added: done?.added ?? 0,
+      removed: done?.removed ?? 0,
+    }).catch(() => {});
+    return result;
+  });
+
+  on("turn.start", async ($, e, next) => {
+    await track($, {
+      kind: "turn",
+      phase: "start",
+      id: e.turnId,
+      detail: e.text.slice(0, 300),
+      agent: e.agentId,
+    });
+    return next(e);
+  });
+
+  on("session.measure", async ($, e, next) => {
+    const cost = await $.session
+      .usage()
+      .then((u) => u.cost?.usd)
+      .catch(() => undefined);
+    await track($, {
+      kind: "usage",
+      contextPercent: e.context.percent,
+      tokens: e.context.tokens,
+      costUsd: cost,
+    });
+    return next(e);
+  });
+
   on("session.end", async ($, e, next) => {
     if (session) await send($, { op: "sessionEnd", session }).catch(() => false);
     return next(e);
@@ -611,6 +682,7 @@ export const register: Register = (on) => {
   // The branch can change between turns (git switch in the session); the
   // app looks for decisions settled in the answer.
   on("turn.complete", async ($, e, next) => {
+    await track($, { kind: "turn", phase: "end", id: e.turnId, agent: e.agentId });
     await refresh($);
     if (e.agentId === undefined && e.reason === "answer" && lastPrompt && session) {
       await send($, {

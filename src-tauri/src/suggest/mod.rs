@@ -365,7 +365,7 @@ pub struct LogEntry {
     pub id: String,
     pub at: i64,
     pub project: String,
-    /// Masked and cut like the prompt log (`activity::redact`).
+    /// Masked and cut like the prompt log (`crate::redact`).
     pub draft: String,
     pub by: String,
     pub items: Vec<LogItem>,
@@ -393,7 +393,7 @@ fn write_log(data_dir: &Path, log: &[LogEntry]) -> Result<()> {
 /// Adds a prompt to the log (newest last), dropping the oldest past the cap.
 pub fn append_log(data_dir: &Path, mut entry: LogEntry) -> Result<()> {
     let _guard = LOG_LOCK.lock().unwrap_or_else(|e| e.into_inner());
-    entry.draft = crate::activity::redact::prompt_text(&entry.draft);
+    entry.draft = crate::redact::prompt_text(&entry.draft);
     entry.items.truncate(10);
     entry
         .picked
@@ -632,7 +632,7 @@ pub fn cloud_prompt(app: &AppHandle, session: &str, project: String, prompt: &st
     with_live(app, session, |l| {
         l.project = project.clone();
         l.surface = CLOUD_SURFACE.into();
-        l.draft = crate::activity::redact::prompt_text(prompt);
+        l.draft = crate::redact::prompt_text(prompt);
         l.by = String::new();
         l.pending = true;
         l.items.clear();
@@ -742,6 +742,7 @@ pub fn apply_request(app: &AppHandle, request: crate::bridge::Request) {
             project,
             surface,
         } => {
+            crate::activity::start(app, &session, &project, &surface, false);
             with_live(app, &session, |l| {
                 l.project = project.clone();
                 l.surface = surface;
@@ -749,6 +750,7 @@ pub fn apply_request(app: &AppHandle, request: crate::bridge::Request) {
             session_started(app, project);
         }
         Request::SessionEnd { session } => {
+            crate::activity::end(app, &session);
             end_live(app, &session);
             drop_outbox(app, &session);
         }
@@ -762,7 +764,7 @@ pub fn apply_request(app: &AppHandle, request: crate::bridge::Request) {
             picked,
         } => with_live(app, &session, |l| {
             l.project = project;
-            l.draft = crate::activity::redact::prompt_text(&draft);
+            l.draft = crate::redact::prompt_text(&draft);
             l.by = by;
             l.pending = pending;
             l.items = items;

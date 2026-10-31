@@ -14,7 +14,7 @@ use serde::Serialize;
 use ureq::Agent;
 use ureq::tls::{RootCerts, TlsConfig};
 
-use super::catalog::{self, Block};
+use super::blocks::{self as catalog, Block};
 use crate::library::ops;
 
 #[derive(Debug, Default, Serialize)]

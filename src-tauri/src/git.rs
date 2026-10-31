@@ -41,13 +41,6 @@ pub fn run_raw(dir: &Path, args: &[&str]) -> Result<Vec<u8>> {
     run_env_raw(dir, args, &[])
 }
 
-/// Like `run`, with extra environment variables (an auth header for one
-/// network command).
-pub fn run_env(dir: &Path, args: &[&str], env: &[(String, String)]) -> Result<String> {
-    let out = run_env_raw(dir, args, env)?;
-    Ok(String::from_utf8_lossy(&out).trim_end().to_string())
-}
-
 fn run_env_raw(dir: &Path, args: &[&str], env: &[(String, String)]) -> Result<Vec<u8>> {
     let mut cmd = command(dir);
     cmd.args(args);

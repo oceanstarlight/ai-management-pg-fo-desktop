@@ -1,7 +1,7 @@
 //! An MCP server Claude Code can start: `<app> mcp [--data-dir <dir>]`, over
 //! stdio (newline-delimited JSON-RPC). It runs without the app's windows: it
-//! reads what the app keeps (`bridge/state.json`, composer documents, the
-//! block catalog) and leaves changes in the bridge inbox for the running app
+//! reads what the app keeps (`bridge/state.json`, the block catalog,
+//! automations) and leaves changes in the bridge inbox for the running app
 //! to apply, so the app stays the only writer of its data (`bridge.rs`).
 //!
 //! Only the parts of MCP a tools-only server needs: `initialize`, `ping`,
@@ -24,8 +24,7 @@ const INSTRUCTIONS: &str = "Encela keeps per-branch notes and to-dos, the branch
 and a catalog of instruction, rule, skill, subagent and hook blocks. Call get_branch_context at \
 the start of work on a branch, keep its to-dos current (add_todo, set_todo_done) and leave notes \
 for later sessions (append_note). To set up a project's CLAUDE.md, rules, skills or subagents, \
-pick blocks with search_blocks/get_block and build a document with create_document; the user \
-reviews it in the app before writing it to the project. To run something on a schedule (e.g. every \
+find ready-made blocks with search_blocks and read one with get_block, then write what fits. To run something on a schedule (e.g. every \
 morning collect news and mail it), use save_automation; Encela runs it with the user's claude.";
 
 /// Runs the server until stdin closes; the process exit code.
