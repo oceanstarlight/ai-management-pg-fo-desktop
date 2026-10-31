@@ -110,7 +110,10 @@ pub async fn prefs_set(app: AppHandle, key: String, value: Option<String>) -> Re
     let changed = blocking(app.clone(), move |store| store.set(&k, v.as_deref())).await?;
     if changed {
         announce(&app, &key, value.as_deref());
-        if key == crate::suggest::PREF || key == crate::suggest::AUTO_PREF {
+        if key == crate::suggest::PREF
+            || key == crate::suggest::AUTO_PREF
+            || key == crate::suggest::STARTERS_PREF
+        {
             crate::bridge::changed();
         }
         if is_synced(&key) {

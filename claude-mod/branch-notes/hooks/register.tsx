@@ -14,6 +14,7 @@ import {
   type View,
   words,
 } from "./core";
+import { isNewProject, missingFields, type Starter, startersFor } from "./starters";
 import {
   AI_DELAY_MS,
   AI_SYSTEM,
@@ -45,6 +46,9 @@ const REFRESH_MS = 5000;
 const view = atom({ plugin: "branch-notes", key: "view" } as const, null);
 const isHidden = atom({ plugin: "branch-notes", key: "isHidden" } as const, false);
 const suggestion = atom({ plugin: "branch-notes", key: "suggestion" } as const, null);
+/** The starter forms offered above an empty prompt, or the required fields
+ * a filled-in form still leaves blank. */
+const starter = atom({ plugin: "branch-notes", key: "starter" } as const, null);
 
 /** The export's suggestion settings and catalog, as last read. */
 let lastSuggest: SuggestExport | undefined;
@@ -63,6 +67,8 @@ let liveTimer: { cancel: () => void } | null = null;
 let original: string | null = null;
 /** The prompt last sent, to pair with Claude's answer. */
 let lastPrompt = "";
+/** A new project's first prompt is still to come: the starter forms are offered. */
+let offerStarters = false;
 
 /** `<app data>/bridge`, where the app writes `state.json` and reads `inbox/`. */
 async function bridgeDir($: EngineInterface): Promise<string | null> {
@@ -348,6 +354,7 @@ async function onDraft($: EngineInterface, text: string) {
   const draft = text.trim();
   if (draft === current) return;
   current = draft;
+  await showStarter($, draft).catch(() => {});
   if (!draft) muted = false;
   const mode = suggestMode({ suggest: lastSuggest });
   if (mode === "off" || muted || !wantsSuggestions(draft)) {
@@ -389,6 +396,30 @@ async function onDraft($: EngineInterface, text: string) {
     timer = null;
     if (current === draft) void askHaiku($, draft, list);
   });
+}
+
+/** Whether this session's project is new: no CLAUDE.md, nothing settled. */
+async function newProject($: EngineInterface): Promise<boolean> {
+  if (suggestMode({ suggest: lastSuggest }) === "off" || !projectDir) return false;
+  const s = sep(projectDir);
+  const md =
+    (await $.fs.exists(`${projectDir}${s}CLAUDE.md`).catch(() => false)) ||
+    (await $.fs.exists(`${projectDir}${s}.claude${s}CLAUDE.md`).catch(() => false));
+  return isNewProject(md, decisionsFor(lastSuggest, projectDir));
+}
+
+/** The forms above an empty prompt; blank required fields once one is filled in. */
+async function showStarter($: EngineInterface, draft: string) {
+  let next: { forms: Starter[] } | { missing: string[] } | null = null;
+  if (offerStarters && !draft) {
+    const locale = (await read($, view))?.locale ?? "en";
+    next = { forms: startersFor(lastSuggest?.starters, locale) };
+  } else if (draft.includes("*")) {
+    const missing = missingFields(draft);
+    if (missing.length) next = { missing };
+  }
+  const prev = await read($, starter);
+  if (JSON.stringify(prev) !== JSON.stringify(next)) await update($, starter, () => next);
 }
 
 /** Asks the app to add, install or start what a suggestion names. */
@@ -565,6 +596,8 @@ export const register: Register = (on) => {
     session = `s${now}${Math.floor(Math.random() * 1e6)}`;
     lastSeq = now;
     projectDir = (await git($, ["rev-parse", "--show-toplevel"])) ?? e.cwd;
+    offerStarters = await newProject($).catch(() => false);
+    await showStarter($, "").catch(() => {});
     await send($, { op: "sessionStart", session, project: projectDir, surface: e.surface ?? "" });
     $.clock.every(OUTBOX_MS, () => void readOutbox($).catch(() => {}));
     return next(e);
@@ -653,7 +686,8 @@ export const register: Register = (on) => {
     const band = !!v && !!text && !(await read($, isHidden));
     const s = await read($, suggestion);
     const suggest = !!s && (s.items.length > 0 || s.pending);
-    if (!band && !suggest) return next(e);
+    const st = await read($, starter);
+    if (!band && !suggest && !st) return next(e);
     const { Box, Button, Text } = $.ui.resolve(e);
     const legend = [
       s?.items.some((c) => c.source === "library") ? w.legendAdd : null,
@@ -666,6 +700,33 @@ export const register: Register = (on) => {
       .join(" · ");
     return (
       <Box flexDirection="column">
+        {st && "forms" in st ? (
+          <Box key="starter">
+            <Text dimColor>{`📝 ${w.starters} `}</Text>
+            {st.forms.map((f) => (
+              <Button
+                key={`starter-${f.id}`}
+                label={f.name}
+                onPress={() => void $.prompt.fill({ text: f.text, mode: "replace" })}
+              />
+            ))}
+            <Text> </Text>
+            <Button
+              key="starter-hide"
+              label="×"
+              dimColor
+              onPress={() => {
+                offerStarters = false;
+                void update($, starter, () => null);
+              }}
+            />
+          </Box>
+        ) : null}
+        {st && "missing" in st ? (
+          <Box key="starter-missing">
+            <Text dimColor wrap="truncate">{`📝 ${w.startersMissing(st.missing.join(", "))}`}</Text>
+          </Box>
+        ) : null}
         {suggest && s ? (
           <Box key="suggest">
             <Text dimColor>{`${s.by === "ai" ? "✨" : "💡"} ${w.suggest} `}</Text>
@@ -731,6 +792,8 @@ export const register: Register = (on) => {
     current = "";
     original = null;
     lastPrompt = e.text;
+    offerStarters = false;
+    await update($, starter, () => null).catch(() => {});
     const extra = e.command ? null : await autoApply($, e.text).catch(() => null);
     await clearSuggestion($).catch(() => {});
     await logSent($).catch(() => {});

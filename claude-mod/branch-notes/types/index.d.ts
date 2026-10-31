@@ -46,8 +46,20 @@ export type Suggestion = {
   pending: boolean;
 };
 
+/** A project starter form. The same as `Starter` in `hooks/starters.ts`. */
+export type Starter = { id: string; name: string; text: string };
+
+/** Above an empty prompt in a new project: the starter forms; once one is
+ * filled in, its required fields still left blank. */
+export type StarterView = { forms: Starter[] } | { missing: string[] };
+
 declare module "claude-code" {
   interface PluginState {
-    "branch-notes": { view: View | null; isHidden: boolean; suggestion: Suggestion | null };
+    "branch-notes": {
+      view: View | null;
+      isHidden: boolean;
+      suggestion: Suggestion | null;
+      starter: StarterView | null;
+    };
   }
 }

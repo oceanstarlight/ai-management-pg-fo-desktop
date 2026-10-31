@@ -1,6 +1,7 @@
 import { Logo } from "../../components/Logo";
 import { DecisionsPanel } from "../../features/suggest/DecisionsPanel";
 import { LivePanel } from "../../features/suggest/LivePanel";
+import { StarterPanel, useNewProject } from "../../features/suggest/StarterPanel";
 import { SuggestBox } from "../../features/suggest/SuggestBox";
 import { SuggestFeed } from "../../features/suggest/SuggestFeed";
 import { type MessageKey, useLocale, useT } from "../../i18n";
@@ -9,6 +10,8 @@ import { itemName, useSuggestStore } from "../../store/suggest";
 /** The home page: a prompt box with suggestions, and what Claude Code suggested. */
 export function SuggestPage() {
   const t = useT();
+  const fresh = useNewProject();
+  const setDraft = useSuggestStore((s) => s.setDraft);
   return (
     <div className="mx-auto max-w-5xl px-8 py-10">
       <div className="mb-2 flex items-center gap-3">
@@ -26,6 +29,7 @@ export function SuggestPage() {
           <SuggestFeed />
         </div>
         <aside className="space-y-6">
+          {fresh && <StarterPanel onApply={setDraft} />}
           <DecisionsPanel />
           <Stats />
           <CatalogCounts />

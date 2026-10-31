@@ -37,6 +37,10 @@ const FILES: &[(&str, &str)] = &[
         include_str!("../../claude-mod/branch-notes/hooks/suggest.ts"),
     ),
     (
+        "branch-notes/hooks/starters.ts",
+        include_str!("../../claude-mod/branch-notes/hooks/starters.ts"),
+    ),
+    (
         "branch-notes/types/index.d.ts",
         include_str!("../../claude-mod/branch-notes/types/index.d.ts"),
     ),

@@ -54,7 +54,7 @@ function engine(
     value: e.path === "/bridge/state.json" ? (files.state ?? state(mode)) : (files[e.path] ?? ""),
   }));
   on("fs.list", () => ({ value: [] }));
-  on("fs.exists", () => ({ value: false }));
+  on("fs.exists", (_, e) => ({ value: e.path in files }));
   on("process.run", (_, e) =>
     e.argv.includes("--show-toplevel")
       ? { value: { ...ran, exitCode: 0, stdout: "/repo\n" } }
@@ -317,4 +317,48 @@ test("refine rewrites the prompt with Haiku and undo brings it back", async ($, 
   });
   await clock.advance(1000);
   expect(box).toBe("make a memo site with next");
+});
+
+test("a new project's empty prompt offers the starter forms", async ($, on) => {
+  const filled: string[] = [];
+  engine(on, "keyword", "[]", []);
+  on("prompt.fill", (_, e) => {
+    filled.push(e.text);
+    return { isFilled: true, text: e.text, cursor: e.text.length };
+  });
+  on("prompt.submit", (_, e) => ({ text: e.text }));
+  await $.session.start({ cwd: "/", surface: "terminal", isInteractive: true });
+  let ui = await $.ui.mount({ ...ABOVE, surface: "terminal" });
+  expect((await ui.find({ type: "Text", text: /📝/ }))?.text).toContain("New project?");
+  await ui.press({ key: "starter-general" });
+  await ui.unmount();
+  expect(filled[0]).toContain("*Project topic: ");
+
+  await type($, "*Project topic: a todo app\n*Type: (website / mobile app) ");
+  ui = await $.ui.mount({ ...ABOVE, surface: "terminal" });
+  expect((await ui.find({ type: "Text", text: /📝/ }))?.text).toContain("left blank: Type");
+  await ui.unmount();
+
+  await $.prompt.submit({ text: "go", wait: false, origin: { kind: "composer" } });
+  ui = await $.ui.mount({ ...ABOVE, surface: "terminal" });
+  expect(await ui.find({ type: "Text", text: /📝/ })).toBeUndefined();
+  await ui.unmount();
+});
+
+test("a project with a CLAUDE.md gets no starter forms", async ($, on) => {
+  engine(on, "keyword", "[]", [], [], { "/repo/CLAUDE.md": "# repo" });
+  await $.session.start({ cwd: "/", surface: "terminal", isInteractive: true });
+  const ui = await $.ui.mount({ ...ABOVE, surface: "terminal" });
+  expect(await ui.find({ type: "Text", text: /📝/ })).toBeUndefined();
+  await ui.unmount();
+});
+
+test("the user's own starter forms come from the app", async ($, on) => {
+  const forms = [{ id: "mine", name: "Mine", text: "*Goal: " }];
+  engine(on, "keyword", "[]", [], [], { state: state("keyword", { starters: forms }) });
+  await $.session.start({ cwd: "/", surface: "terminal", isInteractive: true });
+  const ui = await $.ui.mount({ ...ABOVE, surface: "terminal" });
+  expect(await ui.find({ key: "starter-mine" })).toBeDefined();
+  expect(await ui.find({ key: "starter-general" })).toBeUndefined();
+  await ui.unmount();
 });

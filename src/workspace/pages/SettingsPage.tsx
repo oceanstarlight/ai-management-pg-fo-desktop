@@ -4,6 +4,7 @@ import { Magnet } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button, Card, PageHeader, Row, Segmented, Switch } from "../../components/ui";
 import { ModsCard } from "../../features/mods/ModsCard";
+import { StartersCard } from "../../features/suggest/StartersCard";
 import { type LocalePref, timeAgo, useLocaleStore, useT } from "../../i18n";
 import { useAccountStore } from "../../store/account";
 import { useActivityStore } from "../../store/activity";
@@ -129,6 +130,8 @@ export function SettingsPage() {
       <SyncCard />
 
       <ModsCard />
+
+      <StartersCard />
 
       <Card title={t("settings.library")}>
         <Row title={t("tools.default")} description={t("tools.defaultHint")}>
