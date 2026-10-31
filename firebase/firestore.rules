@@ -158,14 +158,15 @@ service cloud.firestore {
     // The 64-character token in the path is the key: whoever holds it may
     // write events and read the context; only the owner reads events, and
     // only the owner makes, changes or deletes the relay and its context.
+    // Any signed-in account may use it; the allow list is for sync only.
     match /relays/{token} {
       function owner() {
-        return allowed()
+        return signedIn()
           && get(/databases/$(database)/documents/relays/$(token)).data.uid == request.auth.uid;
       }
 
-      allow get, delete: if allowed() && resource.data.uid == request.auth.uid;
-      allow create, update: if allowed() && token.matches('^[0-9a-f]{64}$')
+      allow get, delete: if signedIn() && resource.data.uid == request.auth.uid;
+      allow create, update: if signedIn() && token.matches('^[0-9a-f]{64}$')
         && (resource == null || resource.data.uid == request.auth.uid)
         && request.resource.data.keys().hasOnly(['uid', 'updatedAt'])
         && request.resource.data.uid == request.auth.uid

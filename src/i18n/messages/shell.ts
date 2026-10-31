@@ -4,6 +4,7 @@ export const ko = {
   // Main window navigation
   "shell.nav.home": "홈",
   "shell.nav.suggest": "추천",
+  "shell.nav.connect": "Claude 연결",
   "shell.nav.tools": "도구",
   "shell.nav.composer": "문서 작성기",
   "shell.nav.library": "라이브러리",
@@ -61,6 +62,7 @@ export const ko = {
 export const en: Messages<typeof ko> = {
   "shell.nav.home": "Home",
   "shell.nav.suggest": "Suggestions",
+  "shell.nav.connect": "Connect Claude",
   "shell.nav.tools": "Tools",
   "shell.nav.composer": "Document composer",
   "shell.nav.library": "Library",

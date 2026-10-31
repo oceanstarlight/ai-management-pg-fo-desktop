@@ -3,7 +3,6 @@ import { isTauri } from "@tauri-apps/api/core";
 import { Magnet } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button, Card, PageHeader, Row, Segmented, Switch } from "../../components/ui";
-import { CloudRelayCard } from "../../features/mods/CloudRelayCard";
 import { ModsCard } from "../../features/mods/ModsCard";
 import { type LocalePref, timeAgo, useLocaleStore, useT } from "../../i18n";
 import { useAccountStore } from "../../store/account";
@@ -16,6 +15,7 @@ import { useProjectStore } from "../../store/project";
 import { useSyncStore } from "../../store/sync";
 import { type ThemePref, useThemeStore } from "../../store/theme";
 import { useUpdaterStore } from "../../store/updater";
+import { useWorkspaceStore } from "../../store/workspace";
 import { TOOL_IDS, TOOLS } from "../../tools";
 
 const THEMES: ThemePref[] = ["system", "light", "dark"];
@@ -60,6 +60,18 @@ export function SettingsPage() {
   return (
     <div className="mx-auto max-w-2xl space-y-6 px-8 py-10">
       <PageHeader title={t("settings.title")} />
+
+      <Card title={t("shell.nav.connect")}>
+        <Row title={t("connect.title")} description={t("connect.description")}>
+          <Button
+            size="sm"
+            variant="primary"
+            onClick={() => useWorkspaceStore.getState().go("connect")}
+          >
+            {t("connect.hint.button")}
+          </Button>
+        </Row>
+      </Card>
 
       <Card title={t("settings.display")}>
         <Row title={t("settings.theme")} description={t("settings.themeHint")}>
@@ -117,8 +129,6 @@ export function SettingsPage() {
       <SyncCard />
 
       <ModsCard />
-
-      <CloudRelayCard />
 
       <Card title={t("settings.library")}>
         <Row title={t("tools.default")} description={t("tools.defaultHint")}>

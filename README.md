@@ -90,7 +90,7 @@ The home screen is a prompt box. As you type, it finds what fits the task: skill
 
 Only Claude Code can be detected; the regular chat of the Claude desktop app cannot.
 
-**Claude Code in the cloud (claude.ai/code):** turn on **Settings → Cloud sessions**, add the hook to the project (commit and push the two files it writes), and paste the `ENCELA_RELAY=…` key into the cloud environment's variables. Prompts and answers then reach the app through your account (Firebase; deleted once received). A cloud prompt is seen after it is sent, so what you allow and the decisions are added to the next prompt.
+**Connect Claude** (shown on first launch) walks through both setups as checklists. **Claude Code in the cloud (claude.ai/code):** sign in to the app account, turn on the cloud connection, and paste the setup script it gives you into the cloud environment's Setup script (a repository hook with an `ENCELA_RELAY` variable is there as an advanced option). Prompts and answers then reach the app through your account (Firebase; deleted once received). A cloud prompt is seen after it is sent, so what you allow and the decisions are added to the next prompt.
 
 ### 🧩 Document composer
 

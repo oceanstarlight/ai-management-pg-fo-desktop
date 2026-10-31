@@ -4,12 +4,14 @@
 // In a cloud Claude Code session (claude.ai/code), sends each prompt
 // (UserPromptSubmit) and Claude's answer (Stop) to the Encela app on your
 // computer through Firestore, and adds what you chose in Encela to the next
-// prompt. It does nothing unless the session is remote and the environment
-// has ENCELA_RELAY (the key shown in Encela's settings), and it never blocks
-// or fails the session.
+// prompt. It does nothing unless the session is remote and has the relay key
+// (written in below by Encela's setup script, or the environment's
+// ENCELA_RELAY), and it never blocks or fails the session.
 
 import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const PROJECT = "__PROJECT__";
 const API_KEY = "__API_KEY__";
@@ -21,9 +23,15 @@ function quit() {
 }
 
 const kind = process.argv[2];
-const token = process.env.ENCELA_RELAY ?? "";
+const token = process.env.ENCELA_RELAY || "__TOKEN__";
 if (process.env.CLAUDE_CODE_REMOTE !== "true" || !/^[0-9a-f]{64}$/.test(token)) quit();
 if (kind !== "prompt" && kind !== "answer") quit();
+
+// Installed both for the user and in the project: the project's copy reports.
+const own = join(process.env.CLAUDE_PROJECT_DIR ?? "", ".claude/hooks/encela-relay.mjs");
+if (process.env.CLAUDE_PROJECT_DIR && fileURLToPath(import.meta.url) !== own && existsSync(own)) {
+  quit();
+}
 
 let input = {};
 try {
