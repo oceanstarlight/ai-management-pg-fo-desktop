@@ -34,7 +34,7 @@ const MAX_CONTEXT: usize = 8000;
 pub struct Status {
     enabled: bool,
     token: Option<String>,
-    /// `off`, `needsSignIn`, `notAllowed`, `ok` or `error`.
+    /// `off`, `needsSignIn`, `ok` or `error`.
     state: String,
     message: Option<String>,
     /// Epoch milliseconds of the last prompt or answer received.
@@ -108,13 +108,9 @@ pub fn start(app: &AppHandle) {
                     s.state = state.into();
                     s.message = None;
                 }
-                Err(Error::Forbidden) => {
-                    s.state = "notAllowed".into();
-                    s.message = Some(Error::Forbidden.into());
-                }
                 Err(e) => {
                     s.state = "error".into();
-                    s.message = Some(e.into());
+                    s.message = Some(relay_error(e));
                 }
             });
         }
@@ -137,6 +133,18 @@ fn with_session<T>(
     match account::session(app, &client)? {
         Some(session) => f(&client, &session).map(Some),
         None => Ok(None),
+    }
+}
+
+/// The relay needs only a signed-in account, so a refusal means the server's
+/// rules don't have it yet, not that the account lacks sync.
+fn relay_error(e: Error) -> String {
+    match e {
+        Error::Forbidden => crate::tr!(
+            "서버가 연결을 거부했어요. 앱 개발자가 최신 Firestore 규칙(firebase/firestore.rules)을 게시해야 해요.",
+            "The server refused. The latest Firestore rules (firebase/firestore.rules) need to be published."
+        ),
+        e => e.into(),
     }
 }
 
@@ -400,10 +408,12 @@ fn new_token() -> String {
     )
 }
 
-/// The hook script for this Firebase project.
-fn hook_script() -> String {
+/// The hook script for this Firebase project; with a token, it needs no
+/// `ENCELA_RELAY` variable.
+fn hook_script(token: Option<&str>) -> String {
     let config = config();
     include_str!("relay_hook.mjs")
+        .replace("__TOKEN__", token.unwrap_or(""))
         .replace(
             "__PROJECT__",
             config.as_ref().map_or("", |c| c.project_id.as_str()),
@@ -458,8 +468,50 @@ fn merge_hooks(settings: &mut Value) {
     }
 }
 
+/// A script for the cloud environment's Setup script: installs the hook for
+/// the user (every repository of that environment), with the key written in.
+fn setup_script(token: &str) -> String {
+    format!(
+        r#"# Encela: sends this environment's Claude Code prompts and answers to the
+# Encela app (through your Encela account) and adds what you chose there to
+# the next prompt. Keep this key private; turning the connection off in
+# Encela revokes it.
+mkdir -p "$HOME/.claude/hooks"
+cat > "$HOME/.claude/hooks/encela-relay.mjs" <<'ENCELA_HOOK'
+{hook}ENCELA_HOOK
+node - <<'ENCELA_SETTINGS'
+const fs = require("fs");
+const file = require("path").join(require("os").homedir(), ".claude", "settings.json");
+let settings = {{}};
+if (fs.existsSync(file)) settings = JSON.parse(fs.readFileSync(file, "utf8"));
+if (!settings.hooks || typeof settings.hooks !== "object") settings.hooks = {{}};
+for (const [event, kind] of [["UserPromptSubmit", "prompt"], ["Stop", "answer"]]) {{
+  const list = Array.isArray(settings.hooks[event]) ? settings.hooks[event] : (settings.hooks[event] = []);
+  if (!JSON.stringify(list).includes("encela-relay")) {{
+    list.push({{ hooks: [{{ type: "command", command: `node "$HOME/.claude/hooks/encela-relay.mjs" ${{kind}}`, timeout: 10 }}] }});
+  }}
+}}
+fs.writeFileSync(file, JSON.stringify(settings, null, 2) + "\n");
+ENCELA_SETTINGS
+"#,
+        hook = hook_script(Some(token))
+    )
+}
+
 // ---------------------------------------------------------------------------
 // Commands
+
+/// The setup script to paste into the cloud environment (needs the relay on).
+#[tauri::command]
+pub fn relay_setup_script(app: AppHandle) -> Result<String, String> {
+    match token(&app).filter(|_| enabled(&app)) {
+        Some(token) => Ok(setup_script(&token)),
+        None => Err(crate::tr!(
+            "먼저 클라우드 연결을 켜 주세요.",
+            "Turn on the cloud connection first."
+        )),
+    }
+}
 
 #[tauri::command]
 pub fn relay_status(app: AppHandle) -> Status {
@@ -481,7 +533,7 @@ pub async fn relay_set_enabled(app: AppHandle, enabled: bool) -> Result<Status, 
                 }});
                 request(client, session, "PATCH", &url, Some(body))
             })
-            .map_err(String::from)?;
+            .map_err(relay_error)?;
             if created.is_none() {
                 return Err(crate::tr!(
                     "먼저 설정 › 계정에서 로그인해 주세요.",
@@ -526,7 +578,7 @@ pub async fn relay_install_hook(project: String) -> Result<Vec<String>, String> 
         if let Some(dir) = script.parent() {
             std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
         }
-        std::fs::write(&script, hook_script()).map_err(|e| e.to_string())?;
+        std::fs::write(&script, hook_script(None)).map_err(|e| e.to_string())?;
 
         let path = root.join(".claude/settings.json");
         let mut settings: Value = match std::fs::read_to_string(&path) {
@@ -628,7 +680,11 @@ mod tests {
 
     #[test]
     fn the_hook_script_gets_the_project() {
-        let script = hook_script();
+        let script = hook_script(None);
         assert!(!script.contains("__PROJECT__") && !script.contains("__API_KEY__"));
+        assert!(!script.contains("__TOKEN__"));
+        let setup = setup_script(&"a".repeat(64));
+        assert!(setup.contains(&"a".repeat(64)));
+        assert!(!setup.contains("__TOKEN__"));
     }
 }

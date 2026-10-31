@@ -4,18 +4,11 @@ import { ExternalLink } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Button, Card, Row, Segmented, Switch } from "../../components/ui";
 import { type MessageKey, useT } from "../../i18n";
+import { type ModStatus, OWN_MOD } from "../../store/connection";
 import { AUTO_DOCK_PREF, AUTO_PREF, useSwitchPref } from "../../store/live";
 import { getPref, onPrefChanged, setPref } from "../../store/prefs";
 
-// Mirrors src-tauri/src/claude_mod.rs.
-export interface ModStatus {
-  claudeVersion: string | null;
-  supported: boolean;
-  installed: string[];
-  ownOutdated: boolean;
-}
-
-export const OWN = "branch-notes@ai-management";
+const OWN = OWN_MOD;
 
 // Mirrors `McpStatus` in src-tauri/src/claude_mod.rs.
 interface McpStatus {

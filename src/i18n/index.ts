@@ -7,6 +7,7 @@ import * as automation from "./messages/automation";
 import * as commands from "./messages/commands";
 import * as common from "./messages/common";
 import * as composer from "./messages/composer";
+import * as connect from "./messages/connect";
 import * as docs from "./messages/docs";
 import * as mcp from "./messages/mcp";
 import * as memo from "./messages/memo";
@@ -39,6 +40,7 @@ const KO = {
   ...activity.ko,
   ...automation.ko,
   ...suggest.ko,
+  ...connect.ko,
 };
 export type MessageKey = keyof typeof KO;
 const EN: Record<MessageKey, string> = {
@@ -56,6 +58,7 @@ const EN: Record<MessageKey, string> = {
   ...activity.en,
   ...automation.en,
   ...suggest.en,
+  ...connect.en,
 };
 const MESSAGES: Record<Locale, Record<MessageKey, string>> = { ko: KO, en: EN };
 

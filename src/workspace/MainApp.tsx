@@ -21,6 +21,7 @@ import { NavSidebar } from "./NavSidebar";
 import { AutomationsPage } from "./pages/AutomationsPage";
 import { CommandsPage } from "./pages/CommandsPage";
 import { ConfigPage } from "./pages/ConfigPage";
+import { ConnectPage } from "./pages/ConnectPage";
 import { LibraryPage } from "./pages/LibraryPage";
 import { McpPage } from "./pages/McpPage";
 import { MemoPage } from "./pages/MemoPage";
@@ -35,6 +36,7 @@ const ComposerPage = lazy(() => import("./composer/ComposerPage"));
 
 const PAGES: Record<Page, () => React.ReactNode> = {
   home: () => <SuggestPage />,
+  connect: () => <ConnectPage />,
   composer: () => (
     <Suspense fallback={null}>
       <ComposerPage />

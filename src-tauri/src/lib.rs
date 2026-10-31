@@ -147,6 +147,7 @@ pub fn run() {
             sync::relay::relay_status,
             sync::relay::relay_set_enabled,
             sync::relay::relay_install_hook,
+            sync::relay::relay_setup_script,
             decisions::decisions_list,
             decisions::decisions_save,
             decisions::decisions_apply,

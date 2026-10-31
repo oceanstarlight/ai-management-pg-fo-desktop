@@ -2,6 +2,7 @@ import { ask } from "@tauri-apps/plugin-dialog";
 import {
   AlarmClock,
   Blocks,
+  Cable,
   CircleUserRound,
   FileText,
   GitBranch,
@@ -35,6 +36,7 @@ type NavItem = { page: Page; label: MessageKey; icon: LucideIcon };
 /** The app is about suggestions; everything else is a tool. */
 const NAV: NavItem[] = [
   { page: "home", label: "shell.nav.suggest", icon: Sparkles },
+  { page: "connect", label: "shell.nav.connect", icon: Cable },
   { page: "library", label: "shell.nav.library", icon: Library },
   { page: "mcp", label: "shell.nav.mcp", icon: Plug },
   { page: "automations", label: "shell.nav.automations", icon: AlarmClock },
