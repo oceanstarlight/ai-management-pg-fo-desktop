@@ -1,5 +1,6 @@
 import { Check, Copy, LoaderCircle, X } from "lucide-react";
 import { useEffect, useState } from "react";
+import { missingFields } from "../../../claude-mod/branch-notes/hooks/starters";
 import { draftWith } from "../../../claude-mod/branch-notes/hooks/suggest";
 import { Button, IconButton } from "../../components/ui";
 import { useLocale, useT } from "../../i18n";
@@ -29,6 +30,7 @@ export function SuggestBox() {
   const { select, choose } = useProjectStore.getState();
   const projects = project && !recent.includes(project) ? [project, ...recent] : recent;
   const short = draft.trim().length > 0 && items.length === 0 && !pending;
+  const missing = draft.includes("*") ? missingFields(draft) : [];
 
   return (
     <div>
@@ -37,7 +39,7 @@ export function SuggestBox() {
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           placeholder={t("suggest.placeholder")}
-          rows={4}
+          rows={Math.min(16, Math.max(4, draft.split("\n").length))}
           className="block w-full resize-none rounded-t-2xl bg-transparent px-4 pt-3.5 pb-1 text-sm text-text outline-none placeholder:text-text-subtle"
         />
         <div className="flex items-center gap-2 px-3 pb-2.5 text-fs-12 text-text-subtle">
@@ -95,6 +97,11 @@ export function SuggestBox() {
           {t("suggest.openSettings")}
         </Button>
       )}
+      {missing.length > 0 && (
+        <p className="mt-2 px-1 text-xs text-warning">
+          {t("suggest.starters.missing", { names: missing.join(", ") })}
+        </p>
+      )}
       {error && (
         <p className="selectable mt-2 text-xs text-danger">{t("suggest.aiFailed", { error })}</p>
       )}
@@ -112,7 +119,7 @@ export function SuggestBox() {
             }}
           />
         ))}
-        {short && !off && (
+        {short && !off && missing.length === 0 && (
           <p className="px-1 text-fs-12 text-text-subtle">
             {draft.trim().length < 8 ? t("suggest.tooShort") : t("suggest.none")}
           </p>

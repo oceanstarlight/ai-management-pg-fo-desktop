@@ -86,6 +86,13 @@ export const ko = {
   "suggest.decisions.applied": "CLAUDE.md에 반영했어요.",
   "suggest.decisions.inClaudeMd": "CLAUDE.md에 반영됨",
   "suggest.decisions.suggest": "결정에 맞는 추천",
+
+  "suggest.starters.title": "새 프로젝트 시작 틀",
+  "suggest.starters.description":
+    "틀을 고르고 항목을 채운 뒤 적용하면 프롬프트가 만들어져요. Claude가 질문하고 계획부터 세워요.",
+  "suggest.starters.apply": "적용",
+  "suggest.starters.edit": "틀 편집",
+  "suggest.starters.missing": "필수 항목이 비어 있어요: {names}",
 };
 
 export const en: Messages<typeof ko> = {
@@ -175,4 +182,11 @@ export const en: Messages<typeof ko> = {
   "suggest.decisions.applied": "Written to CLAUDE.md.",
   "suggest.decisions.inClaudeMd": "In CLAUDE.md",
   "suggest.decisions.suggest": "Suggested for these decisions",
+
+  "suggest.starters.title": "New project starter",
+  "suggest.starters.description":
+    "Pick a form, fill in the fields and apply to write the prompt. Claude asks questions and plans first.",
+  "suggest.starters.apply": "Apply",
+  "suggest.starters.edit": "Edit forms",
+  "suggest.starters.missing": "Required fields left blank: {names}",
 };

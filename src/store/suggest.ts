@@ -63,6 +63,7 @@ interface LoadedFile {
 interface Candidates {
   catalog: SuggestExport;
   files: LoadedFile[];
+  hasClaudeMd: boolean;
 }
 
 /** A logged item's name; the new-automation entry in the reader's words. */
@@ -75,12 +76,16 @@ export function itemName(item: LogItem, locale: "ko" | "en"): string {
 /** What can be suggested for a project (`null`: none open). */
 export async function candidatesFor(
   project: string | null,
-): Promise<{ catalog: SuggestExport; candidates: Candidate[] }> {
+): Promise<{ catalog: SuggestExport; candidates: Candidate[]; hasClaudeMd: boolean }> {
   const c = await invoke<Candidates>("suggest_candidates", { project });
   const installed = c.files
     .map((f) => installedCandidate(f.kind, f.name, f.text, f.plugin ?? undefined))
     .filter((x): x is Candidate => x !== null);
-  return { catalog: c.catalog, candidates: buildCandidates(installed, c.catalog) };
+  return {
+    catalog: c.catalog,
+    candidates: buildCandidates(installed, c.catalog),
+    hasClaudeMd: c.hasClaudeMd,
+  };
 }
 
 const EMPTY: Overview = { mode: "ai", log: [], top: [], prompts: 0, picked: 0 };
@@ -91,6 +96,8 @@ interface SuggestState {
   catalog: SuggestExport | null;
   /** The project the candidates were read for. */
   project: string | null;
+  /** That project has a CLAUDE.md (the starter forms are for new projects). */
+  hasClaudeMd: boolean;
   draft: string;
   items: Candidate[];
   by: "keyword" | "ai";
@@ -130,6 +137,7 @@ export const useSuggestStore = create<SuggestState>((set, get) => {
     candidates: [],
     catalog: null,
     project: null,
+    hasClaudeMd: false,
     draft: "",
     items: [],
     by: "keyword",
@@ -142,14 +150,15 @@ export const useSuggestStore = create<SuggestState>((set, get) => {
         listening = true;
         void listen("suggest-log-changed", () => void get().loadOverview());
         void listen("automations-changed", () => void get().loadCandidates(get().project));
+        void listen("decisions-changed", () => void get().loadCandidates(get().project));
       }
       set({ overview: await invoke<Overview>("suggest_overview") });
     },
 
     loadCandidates: async (project) => {
       if (!isTauri()) return;
-      const { catalog, candidates } = await candidatesFor(project);
-      set({ project, catalog, candidates });
+      const { catalog, candidates, hasClaudeMd } = await candidatesFor(project);
+      set({ project, catalog, candidates, hasClaudeMd });
       const { draft } = get();
       if (draft) get().setDraft(draft);
     },

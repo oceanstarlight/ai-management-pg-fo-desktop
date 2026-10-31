@@ -26,6 +26,9 @@ pub const PREF: &str = "promptSuggest";
 /// `on`: picked suggestions are used without asking (the mod applies them
 /// when the prompt is sent). Anything else asks first.
 pub const AUTO_PREF: &str = "suggestAuto";
+/// The user's project starter forms (a JSON list of `{ id, name, text }`);
+/// unset means the built-in ones (`claude-mod/branch-notes/hooks/starters.ts`).
+pub const STARTERS_PREF: &str = "promptStarters";
 /// `off` keeps the app from turning into the sidebar when Claude starts.
 pub const AUTO_DOCK_PREF: &str = "autoDockClaude";
 /// Emitted with every live session (`Vec<Live>`) when one changes.
@@ -63,6 +66,10 @@ pub struct Catalog {
     automations: Vec<AutomationEntry>,
     /// Each project's decisions as `topic: value` lines, by project folder.
     decisions: std::collections::BTreeMap<String, Vec<String>>,
+    /// The user's project starter forms, passed through as the app saved
+    /// them (the mod checks them); `None` for the built-in ones.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    starters: Option<serde_json::Value>,
 }
 
 #[derive(Serialize)]
@@ -212,7 +219,15 @@ pub fn catalog(app: &AppHandle) -> Catalog {
         mcp: mcp_entries(installed.as_deref()),
         automations,
         decisions: crate::decisions::lines_by_project(app),
+        starters: starters_of(crate::prefs::get(app, STARTERS_PREF)),
     }
+}
+
+/// The starter forms pref as a JSON list, when it is one.
+fn starters_of(value: Option<String>) -> Option<serde_json::Value> {
+    value
+        .and_then(|v| serde_json::from_str::<serde_json::Value>(&v).ok())
+        .filter(|v| v.as_array().is_some_and(|list| !list.is_empty()))
 }
 
 // ---------------------------------------------------------------------------
@@ -305,6 +320,11 @@ fn parse_plugins(json: &str) -> Vec<(String, PathBuf)> {
             (!name.is_empty()).then_some((name, path))
         })
         .collect()
+}
+
+/// Whether Claude Code reads a project CLAUDE.md in this folder.
+fn has_claude_md(project: &Path) -> bool {
+    project.join("CLAUDE.md").is_file() || project.join(".claude").join("CLAUDE.md").is_file()
 }
 
 fn loaded_files(app: &AppHandle, project: Option<&Path>) -> Vec<LoadedFile> {
@@ -771,6 +791,9 @@ pub struct Overview {
 pub struct Candidates {
     catalog: Catalog,
     files: Vec<LoadedFile>,
+    /// The project has a CLAUDE.md (at its root or in `.claude`); without
+    /// one, and without decisions, the prompt box offers the starter forms.
+    has_claude_md: bool,
 }
 
 async fn blocking<T: Send + 'static>(f: impl FnOnce() -> Result<T> + Send + 'static) -> Result<T> {
@@ -807,6 +830,7 @@ pub async fn suggest_candidates(app: AppHandle, project: Option<String>) -> Resu
         Ok(Candidates {
             catalog: catalog(&app),
             files: loaded_files(&app, project.as_deref()),
+            has_claude_md: project.as_deref().is_some_and(has_claude_md),
         })
     })
     .await
@@ -1080,6 +1104,29 @@ mod tests {
         assert_eq!(mode_of(None), "ai");
         assert_eq!(mode_of(Some("keyword".into())), "keyword");
         assert_eq!(mode_of(Some("x".into())), "ai");
+    }
+
+    #[test]
+    fn starters_pass_through_only_as_a_non_empty_list() {
+        assert_eq!(starters_of(None), None);
+        assert_eq!(starters_of(Some("not json".into())), None);
+        assert_eq!(starters_of(Some("[]".into())), None);
+        assert_eq!(starters_of(Some("{}".into())), None);
+        let list = starters_of(Some(r#"[{"id":"a","name":"A","text":"*x: "}]"#.into())).unwrap();
+        assert_eq!(list[0]["name"], "A");
+    }
+
+    #[test]
+    fn claude_md_counts_at_the_root_or_in_dot_claude() {
+        let dir = std::env::temp_dir().join(format!("aim-md-{}", uuid::Uuid::new_v4()));
+        fs::create_dir_all(dir.join(".claude")).unwrap();
+        assert!(!has_claude_md(&dir));
+        fs::write(dir.join(".claude/CLAUDE.md"), "# x").unwrap();
+        assert!(has_claude_md(&dir));
+        fs::remove_file(dir.join(".claude/CLAUDE.md")).unwrap();
+        fs::write(dir.join("CLAUDE.md"), "# x").unwrap();
+        assert!(has_claude_md(&dir));
+        fs::remove_dir_all(&dir).unwrap();
     }
 
     #[test]

@@ -71,6 +71,8 @@ export type SuggestExport = {
     installed: boolean;
   }[];
   automations?: { id: string; name: string; prompt: string; enabled: boolean }[];
+  /** The user's project starter forms (`starters.ts`); unset for the built-in ones. */
+  starters?: unknown;
 };
 
 /** Words that ask for something on a schedule. */
