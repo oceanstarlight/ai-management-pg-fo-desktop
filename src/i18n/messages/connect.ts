@@ -31,7 +31,7 @@ export const ko = {
   "connect.cloud.enableHint": "켜면 이 컴퓨터만의 연결 키가 만들어져요. 끄면 키가 폐기돼요.",
   "connect.cloud.script": "설정 스크립트 붙여넣기",
   "connect.cloud.scriptHint":
-    "claude.ai/code에서 환경 메뉴 → Edit → Setup script 맨 끝에 붙여 넣고 저장해요. 네트워크 접근이 Limited면 Allowed domains에 firestore.googleapis.com을 추가해요. 스크립트에 연결 키가 들어 있으니 다른 사람에게 보여주지 마세요.",
+    "claude.ai/code에서 환경 메뉴 → Edit → Setup script 맨 끝에 붙여 넣고 저장해요. 네트워크 접근이 Limited면 Allowed domains에 Firebase Realtime Database 주소(<프로젝트>-default-rtdb.firebaseio.com)를 추가해요. 스크립트에 연결 키가 들어 있으니 다른 사람에게 보여주지 마세요.",
   "connect.cloud.copyScript": "스크립트 복사",
   "connect.cloud.copied": "복사했어요. claude.ai/code 환경 설정의 Setup script에 붙여 넣으세요.",
   "connect.cloud.openWeb": "claude.ai/code 열기",
@@ -82,7 +82,7 @@ export const en: Messages<typeof ko> = {
     "Makes a connection key for this computer. Turning it off revokes the key.",
   "connect.cloud.script": "Paste the setup script",
   "connect.cloud.scriptHint":
-    "In claude.ai/code, open the environment menu → Edit, paste it at the end of Setup script and save. With limited network access, add firestore.googleapis.com to Allowed domains. The script holds your connection key; don't share it.",
+    "In claude.ai/code, open the environment menu → Edit, paste it at the end of Setup script and save. With limited network access, add the Firebase Realtime Database host (<project>-default-rtdb.firebaseio.com) to Allowed domains. The script holds your connection key; don't share it.",
   "connect.cloud.copyScript": "Copy script",
   "connect.cloud.copied": "Copied. Paste it into Setup script in the claude.ai/code environment.",
   "connect.cloud.openWeb": "Open claude.ai/code",

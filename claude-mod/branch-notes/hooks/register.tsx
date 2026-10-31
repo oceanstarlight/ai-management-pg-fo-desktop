@@ -1,5 +1,6 @@
 import type { EngineInterface, Register } from "claude-code";
 import { atom, read, update } from "claude-code";
+import { describeTool, editSize, enqueue, FLUSH_MS, type Step, toolInput } from "./activity";
 import {
   applyLocally,
   bandText,
@@ -14,7 +15,6 @@ import {
   type View,
   words,
 } from "./core";
-import { describeTool, editSize, enqueue, FLUSH_MS, type Step, toolInput } from "./activity";
 import { isNewProject, missingFields, type Starter, startersFor } from "./starters";
 import {
   AI_DELAY_MS,
@@ -433,7 +433,8 @@ async function showStarter($: EngineInterface, draft: string) {
 async function track($: EngineInterface, step: Omit<Step, "at">) {
   if (!session) return;
   steps = enqueue(steps, { ...step, at: await $.clock.now() });
-  flushTimer ??= $.clock.after(FLUSH_MS, () => {
+  if (flushTimer) return;
+  flushTimer = $.clock.after(FLUSH_MS, () => {
     flushTimer = null;
     const batch = steps;
     steps = [];

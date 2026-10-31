@@ -3,7 +3,10 @@ import { describeTool, editSize, enqueue, MAX_BATCH, toolInput } from "./activit
 
 describe("activity", () => {
   test("each tool names its file or what it runs", () => {
-    expect(describeTool("Read", { file_path: "/r/a.ts" })).toEqual({ target: "/r/a.ts", detail: "" });
+    expect(describeTool("Read", { file_path: "/r/a.ts" })).toEqual({
+      target: "/r/a.ts",
+      detail: "",
+    });
     expect(describeTool("Bash", { command: "pnpm test" }).detail).toBe("pnpm test");
     expect(describeTool("Grep", { pattern: "TODO", path: "src" })).toEqual({
       target: "src",

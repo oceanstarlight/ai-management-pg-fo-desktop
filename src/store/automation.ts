@@ -151,3 +151,11 @@ export const useAutomationStore = create<AutomationState>((set, get) => ({
     return draft;
   },
 }));
+
+/** Model aliases an automation can run on. */
+export const MODELS: { alias: string; label: string }[] = [
+  { alias: "fable", label: "Fable 5.1" },
+  { alias: "opus", label: "Opus 5.5" },
+  { alias: "sonnet", label: "Sonnet 5.5" },
+  { alias: "haiku", label: "Haiku 5.5" },
+];

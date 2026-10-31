@@ -40,9 +40,10 @@ export function useNewProject(): boolean {
 export function StarterPanel({ onApply }: { onApply: (text: string) => void }) {
   const t = useT();
   const starters = useStarters();
-  const go = useWorkspaceStore((s) => s.go);
+  const goProject = useWorkspaceStore((s) => s.goProject);
   const [picked, setPicked] = useState<string | null>(null);
   const [values, setValues] = useState<Record<number, string>>({});
+  const [more, setMore] = useState(false);
   const form = starters.find((s) => s.id === picked) ?? starters[0];
   const fields = form ? starterFields(form.text) : [];
   const missing = fields.filter((f) => f.required && !values[f.line]?.trim());
@@ -50,28 +51,28 @@ export function StarterPanel({ onApply }: { onApply: (text: string) => void }) {
   const choose = (id: string) => {
     setPicked(id);
     setValues({});
+    setMore(false);
   };
+  const optional = fields.filter((f) => !f.required).length;
+  const shown = more ? fields : fields.filter((f) => f.required);
 
   return (
     <section>
-      <div className="mb-2 flex items-center gap-1.5 px-1">
-        <FilePen size={13} className="shrink-0 text-accent" />
-        <h2 className="min-w-0 flex-1 text-xs font-semibold text-text-muted">
+      <div className="mb-1.5 flex items-center gap-1.5">
+        <FilePen size={12} className="shrink-0 text-accent" />
+        <h2 className="min-w-0 flex-1 text-fs-11 font-medium tracking-wide text-text-subtle">
           {t("suggest.starters.title")}
         </h2>
         <button
           type="button"
           className="text-fs-11 text-text-subtle hover:text-text"
-          onClick={() => {
-            go("settings");
-            setTimeout(() => document.getElementById(STARTERS_CARD)?.scrollIntoView(), 50);
-          }}
+          onClick={() => goProject("starters")}
         >
           {t("suggest.starters.edit")}
         </button>
       </div>
-      <div className="rounded-xl border border-border bg-surface-raised p-3">
-        <p className="text-fs-11 text-text-muted">{t("suggest.starters.description")}</p>
+      <div>
+        <p className="text-fs-12 text-text-muted">{t("suggest.starters.description")}</p>
         <div className="mt-2 flex flex-wrap gap-1">
           {starters.map((s) => (
             <button
@@ -90,9 +91,9 @@ export function StarterPanel({ onApply }: { onApply: (text: string) => void }) {
           ))}
         </div>
         <div className="mt-3 space-y-2">
-          {fields.map((f) => (
+          {shown.map((f) => (
             <label key={`${form?.id}:${f.line}`} className="block">
-              <span className="text-fs-12 font-medium">
+              <span className="text-fs-12 text-text-muted">
                 {f.label}
                 {f.required && <span className="ml-0.5 text-danger">*</span>}
               </span>
@@ -100,11 +101,20 @@ export function StarterPanel({ onApply }: { onApply: (text: string) => void }) {
                 value={values[f.line] ?? ""}
                 placeholder={f.hint}
                 onChange={(e) => setValues({ ...values, [f.line]: e.target.value })}
-                className="mt-0.5 block w-full rounded-md border border-border bg-surface px-2 py-1 text-fs-12 text-text outline-none placeholder:text-text-subtle focus:border-border-strong"
+                className="mt-1 block w-full rounded-md bg-surface-raised px-2.5 py-1.5 text-fs-12 text-text ring-1 ring-transparent outline-none placeholder:text-text-subtle focus:ring-border-strong"
               />
             </label>
           ))}
         </div>
+        {optional > 0 && (
+          <button
+            type="button"
+            onClick={() => setMore(!more)}
+            className="mt-2 text-fs-12 text-text-subtle hover:text-text"
+          >
+            {t(more ? "suggest.starters.less" : "suggest.starters.more", { n: optional })}
+          </button>
+        )}
         <div className="mt-3 flex items-center gap-2">
           <span className="min-w-0 flex-1 truncate text-fs-11 text-text-subtle">
             {missing.length > 0 &&

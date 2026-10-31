@@ -116,7 +116,7 @@ export function ExtensionGallery() {
           return (
             <article
               key={ext.id}
-              className="flex flex-col rounded-xl border border-border bg-surface-raised p-3.5 shadow-card"
+              className="flex flex-col rounded-lg bg-surface-raised p-3.5 shadow-card"
             >
               <div className="mb-2 flex items-start gap-2.5">
                 <span

@@ -91,7 +91,7 @@ export function SuggestionCard({
   const usable = c.source !== "installed" || !!onInsert;
   return (
     <article
-      className={`flex items-start gap-3 rounded-xl border border-border bg-surface-raised ${
+      className={`flex items-start gap-3 rounded-lg bg-surface-raised ${
         compact ? "px-3 py-2" : "px-4 py-3"
       }`}
     >

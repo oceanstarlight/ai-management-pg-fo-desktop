@@ -4,7 +4,7 @@ import { Button, IconButton } from "../../components/ui";
 import { useT } from "../../i18n";
 import { type Provider, useAccountStore } from "../../store/account";
 import { useGitHubStore } from "../../store/github";
-import { open } from "../work/GitHubSection";
+import { open } from "../work/useGitHubSync";
 import { GitHubMark, GoogleMark } from "./BrandIcons";
 
 const PROVIDERS: Provider[] = ["password", "google.com", "github.com"];
@@ -40,10 +40,10 @@ export function AccountDialog() {
         role="dialog"
         aria-modal="true"
         aria-label={t("account.title")}
-        className="flex max-h-full w-full max-w-md flex-col rounded-2xl border border-border bg-surface-raised shadow-card"
+        className="flex max-h-full w-full max-w-md flex-col rounded-lg bg-surface-raised"
       >
         <header className="flex items-center gap-2 px-5 pt-4 pb-1">
-          <h2 className="font-serif text-lg font-medium">
+          <h2 className="text-lg font-medium">
             {signedIn ? t("account.title") : t("account.signIn")}
           </h2>
           <IconButton label={t("account.close")} onClick={closeDialog} className="ml-auto">
@@ -278,7 +278,9 @@ function Manage() {
       )}
 
       <section>
-        <h3 className="text-xs font-semibold text-text-muted">{t("account.methods")}</h3>
+        <h3 className="text-fs-11 font-medium tracking-wide text-text-subtle">
+          {t("account.methods")}
+        </h3>
         <p className="mt-0.5 mb-2 text-fs-11 text-text-subtle">{t("account.methodsHint")}</p>
         <ul className="divide-y divide-border rounded-lg border border-border">
           {PROVIDERS.map((p) => (

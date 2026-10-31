@@ -47,20 +47,13 @@ export const ko = {
   "files.keepMine": "내 변경으로 덮어쓰기",
   "files.edit": "편집",
   // Views and pages
-  "docs.view.map": "설정 지도",
+  "docs.view.map": "적용 현황",
   "docs.view.library": "라이브러리",
   "docs.view.edit": "편집",
   "docs.edit.empty": "편집할 Claude 문서가 없어요.",
   "docs.edit.noProject":
     "로컬 프로젝트가 없으면 작업 탭에서 GitHub 저장소를 열어 바로 고칠 수 있어요.",
   "docs.edit.back": "목록",
-  "docs.edit.save": "저장",
-  "docs.edit.saved": "저장됨",
-  "docs.edit.changedOutside": "다른 곳에서 파일이 바뀌었어요. 덮어쓸까요?",
-  "docs.mapPage.description":
-    "{tool}가 프로젝트에서 읽는 지침 · skill · subagent · 설정을 범위별로 보여줘요.",
-  "docs.libraryPage.description":
-    "내 skill · subagent를 모아 두고 프로젝트마다 나만 또는 팀으로 적용해요.",
 
   // Settings map: sections (kinds)
   "docs.section.instructions": "지침",
@@ -134,9 +127,9 @@ export const ko = {
   "docs.library.structureHint":
     "skills/<이름>/SKILL.md, agents/<이름>.md 구조. git 레포 폴더를 고르면 여러 PC에서 같이 쓸 수 있습니다.",
   "docs.library.pickProject":
-    "설정 지도에서 프로젝트를 고르면 항목을 그 프로젝트에 적용하거나 뺄 수 있습니다.",
+    "프로젝트 › 적용 현황에서 항목을 열린 프로젝트에 적용하거나 뺄 수 있어요.",
   "docs.library.empty":
-    '라이브러리가 비어 있습니다. 설정 지도에서 skill·agent의 "라이브러리에 추가"를 누르거나 폴더에 직접 넣어 주세요.',
+    '라이브러리가 비어 있어요. 프로젝트 › 적용 현황에서 skill·agent의 "라이브러리에 추가"를 누르거나 폴더에 직접 넣어 주세요.',
   "docs.library.destinationHint":
     "{tool} 프로젝트에 적용하면 skill은 {skills}, subagent는 {agents}에 들어가요.",
   "docs.library.codexAgentsHint":
@@ -197,20 +190,13 @@ export const en: Messages<typeof ko> = {
   "files.useTheirs": "Load the changed file (discard mine)",
   "files.keepMine": "Overwrite with my changes",
   "files.edit": "Edit",
-  "docs.view.map": "Settings map",
+  "docs.view.map": "What applies",
   "docs.view.library": "Library",
   "docs.view.edit": "Edit",
   "docs.edit.empty": "No Claude documents to edit.",
   "docs.edit.noProject":
     "Without a local project, open the GitHub repository in Work and edit it there.",
   "docs.edit.back": "List",
-  "docs.edit.save": "Save",
-  "docs.edit.saved": "Saved",
-  "docs.edit.changedOutside": "The file changed elsewhere. Overwrite it?",
-  "docs.mapPage.description":
-    "Shows the instructions, skills, subagents and settings {tool} reads in a project, by scope.",
-  "docs.libraryPage.description":
-    "Keep your skills and subagents in one place and apply them to each project, just for you or for your team.",
 
   "docs.section.instructions": "Instructions",
   "docs.section.instructionsHint": "Instructions included in every conversation",
@@ -279,9 +265,9 @@ export const en: Messages<typeof ko> = {
   "docs.library.structureHint":
     "Layout: skills/<name>/SKILL.md, agents/<name>.md. Choose a git repo folder to share it across PCs.",
   "docs.library.pickProject":
-    "Choose a project in the settings map to apply items to it or remove them.",
+    "Apply items to the open project or remove them under Project › What applies.",
   "docs.library.empty":
-    'The library is empty. Click "Add to library" on a skill or agent in the settings map, or put files in the folder yourself.',
+    'The library is empty. Click "Add to library" on a skill or agent under Project › What applies, or put files in the folder yourself.',
   "docs.library.destinationHint":
     "In a {tool} project, skills go to {skills} and subagents to {agents}.",
   "docs.library.codexAgentsHint":

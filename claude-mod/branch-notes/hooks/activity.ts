@@ -64,7 +64,10 @@ export function describeTool(
     case "WebSearch":
       return { target: "", detail: cut(str(input.query)) };
     default:
-      return { target: "", detail: tool.startsWith("mcp__") ? tool.split("__").slice(1).join(" ") : "" };
+      return {
+        target: "",
+        detail: tool.startsWith("mcp__") ? tool.split("__").slice(1).join(" ") : "",
+      };
   }
 }
 

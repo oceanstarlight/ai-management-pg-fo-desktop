@@ -91,12 +91,6 @@ export const useSyncStore = create<SyncStore>((set, get) => {
         listening = true;
         void listen<SyncStatus>("sync-status", (event) => set({ status: event.payload }));
         void listen<FilesSynced>("files-synced", ({ payload }) => {
-          // Lazily: the sidebar bundle doesn't carry the composer.
-          if (payload.docIds.length) {
-            void import("./composer").then((m) =>
-              m.useComposerStore.getState().reloadFromDisk(payload.docIds),
-            );
-          }
           if (payload.library) void useLibraryStore.getState().load(true);
           set({ partial: payload.partial });
           // Held and failed items come every round: tell about each once.

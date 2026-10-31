@@ -77,7 +77,7 @@ const HEALTH_DOT: Record<Health, string> = {
 };
 
 /** MCP servers of the current project, every scope, with their status. */
-export function McpPage() {
+export function McpPage({ embedded = false }: { embedded?: boolean }) {
   const t = useT();
   const project = useProjectStore((s) => s.current);
   const choose = useProjectStore((s) => s.choose);
@@ -102,8 +102,9 @@ export function McpPage() {
   });
 
   return (
-    <div className="mx-auto max-w-4xl px-8 py-10">
+    <div className={embedded ? "" : "mx-auto max-w-4xl px-8 py-10"}>
       <PageHeader
+        embedded={embedded}
         title={t("mcp.title")}
         description={t(tool === "codex" ? "mcp.codex.description" : "mcp.description")}
         actions={
@@ -182,7 +183,7 @@ export function McpPage() {
                   : null;
               return (
                 <section key={scope}>
-                  <h3 className="mb-1.5 text-xs font-semibold text-text-muted">
+                  <h3 className="mb-1.5 text-fs-11 font-medium tracking-wide text-text-subtle">
                     {t(scopeKey(tool, "scope", scope))}{" "}
                     <span className="font-normal">{list.length}</span>
                   </h3>
@@ -196,7 +197,7 @@ export function McpPage() {
                       {loading ? t("mcp.checking") : t("mcp.empty")}
                     </p>
                   ) : (
-                    <ul className="divide-y divide-border rounded-xl border border-border bg-surface-raised">
+                    <ul className="divide-y divide-border rounded-lg bg-surface-raised">
                       {list.map((s) => (
                         <ServerRow
                           key={`${s.scope}:${s.name}`}
@@ -355,7 +356,9 @@ function RecommendedList({
   if (!recommended.length) return null;
   return (
     <section className="mt-8">
-      <h3 className="text-xs font-semibold text-text-muted">{t("mcp.rec.title")}</h3>
+      <h3 className="text-fs-11 font-medium tracking-wide text-text-subtle">
+        {t("mcp.rec.title")}
+      </h3>
       <p className="mb-2 text-fs-11 text-text-subtle">
         {t("mcp.rec.hint")}
         {tool === "codex" && ` ${t("mcp.codex.recHint")}`}
@@ -366,7 +369,7 @@ function RecommendedList({
           return (
             <div
               key={r.id}
-              className="flex items-start gap-2 rounded-xl border border-border bg-surface-raised px-3 py-2.5"
+              className="flex items-start gap-2 rounded-lg bg-surface-raised px-3 py-2.5"
             >
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-1.5">
@@ -431,10 +434,10 @@ function Dialog({
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="flex max-h-full w-full max-w-xl flex-col rounded-2xl border border-border bg-surface-raised shadow-card"
+        className="flex max-h-full w-full max-w-xl flex-col rounded-lg bg-surface-raised"
       >
         <header className="flex items-center gap-2 border-b border-border px-5 py-3.5">
-          <h2 className="font-serif text-lg font-medium">{title}</h2>
+          <h2 className="text-lg font-medium">{title}</h2>
           <IconButton label={t("work.close")} onClick={onClose} className="ml-auto">
             <X size={17} />
           </IconButton>

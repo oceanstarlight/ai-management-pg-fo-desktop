@@ -2,13 +2,11 @@ import { invoke, isTauri } from "@tauri-apps/api/core";
 import { create } from "zustand";
 import { getPref, onPrefChanged, setPref } from "../store/prefs";
 import * as account from "./messages/account";
-import * as activity from "./messages/activity";
 import * as automation from "./messages/automation";
-import * as commands from "./messages/commands";
 import * as common from "./messages/common";
-import * as composer from "./messages/composer";
 import * as connect from "./messages/connect";
 import * as docs from "./messages/docs";
+import * as live from "./messages/live";
 import * as mcp from "./messages/mcp";
 import * as memo from "./messages/memo";
 import * as settings from "./messages/settings";
@@ -27,38 +25,34 @@ export type LocalePref = "system" | Locale;
 
 const KO = {
   ...common.ko,
-  ...commands.ko,
   ...shell.ko,
   ...settings.ko,
-  ...composer.ko,
   ...docs.ko,
   ...mcp.ko,
   ...work.ko,
   ...memo.ko,
   ...account.ko,
   ...tools.ko,
-  ...activity.ko,
   ...automation.ko,
   ...suggest.ko,
   ...connect.ko,
+  ...live.ko,
 };
 export type MessageKey = keyof typeof KO;
 const EN: Record<MessageKey, string> = {
   ...common.en,
-  ...commands.en,
   ...shell.en,
   ...settings.en,
-  ...composer.en,
   ...docs.en,
   ...mcp.en,
   ...work.en,
   ...memo.en,
   ...account.en,
   ...tools.en,
-  ...activity.en,
   ...automation.en,
   ...suggest.en,
   ...connect.en,
+  ...live.en,
 };
 const MESSAGES: Record<Locale, Record<MessageKey, string>> = { ko: KO, en: EN };
 

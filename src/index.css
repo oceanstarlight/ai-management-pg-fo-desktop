@@ -4,86 +4,96 @@
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
 /*
- * Design tokens. Warm neutral surfaces, near-black text, one warm accent.
- * Components use the semantic names below; the raw values live in the
- * light/dark blocks so both windows switch theme together.
+ * Design tokens. A dark, quiet tool: graphite surfaces, hairlines only where
+ * they carry structure, one warm accent. The light theme keeps the same
+ * structure. Components use the semantic names below; the raw values live in
+ * the dark/light blocks so both windows switch theme together. `--c-act-*`
+ * colour what Claude is doing (reading, editing, running...).
  */
 :root,
+[data-theme="dark"] {
+  color-scheme: dark;
+  --c-bg: #101113;
+  --c-sidebar: #0c0d0e;
+  --c-raised: #17181b;
+  --c-sunken: #0a0b0c;
+  --c-hover: rgb(255 255 255 / 0.045);
+  --c-active: rgb(255 255 255 / 0.08);
+  --c-border: rgb(255 255 255 / 0.07);
+  --c-border-strong: rgb(255 255 255 / 0.15);
+  --c-text: #e7e6e2;
+  --c-text-muted: #a3a29c;
+  /* Still >= 4.5:1 on the background, for small labels. */
+  --c-text-subtle: #7f7e79;
+  --c-accent: #ef8b5d;
+  --c-accent-hover: #f59f77;
+  --c-accent-soft: rgb(239 139 93 / 0.14);
+  --c-accent-fg: #141414;
+  --c-primary: #e7e6e2;
+  --c-primary-hover: #ffffff;
+  --c-primary-fg: #101113;
+  --c-success: #8cc56d;
+  --c-info: #7fa9de;
+  --c-warning: #d8b25a;
+  --c-danger: #ee8a83;
+  --c-danger-soft: rgb(238 138 131 / 0.12);
+  --c-shadow: 0 8px 32px rgb(0 0 0 / 0.45);
+  --c-kind-rule: #7fa9de;
+  --c-kind-skill: #8cc56d;
+  --c-kind-agent: #b596e6;
+  --c-memo: #26241b;
+  --c-act-read: #7fa9de;
+  --c-act-search: #b596e6;
+  --c-act-edit: #ef8b5d;
+  --c-act-run: #8cc56d;
+  --c-act-agent: #de8fbc;
+  --c-act-web: #6cc3c0;
+  --c-act-plan: #d8b25a;
+  --c-act-mcp: #9fb0c4;
+  --c-act-other: #8e8d88;
+  --c-grid: rgb(255 255 255 / 0.035);
+}
+
 [data-theme="light"] {
   color-scheme: light;
-  --c-bg: #faf9f6;
-  --c-sidebar: #f2f0e9;
+  --c-bg: #fafaf8;
+  --c-sidebar: #f2f2ef;
   --c-raised: #ffffff;
-  --c-sunken: #efede5;
-  --c-hover: rgb(40 36 28 / 0.06);
-  --c-active: rgb(40 36 28 / 0.1);
-  --c-border: rgb(40 36 28 / 0.13);
-  --c-border-strong: rgb(40 36 28 / 0.26);
-  --c-text: #1d1b17;
-  --c-text-muted: #5e5b54;
-  /* Still >= 4.5:1 on every light surface, for small labels. */
-  --c-text-subtle: #6d6a62;
-  --c-accent: #c4643c;
-  --c-accent-hover: #ad5531;
-  --c-accent-soft: rgb(196 100 60 / 0.12);
+  --c-sunken: #eeeeea;
+  --c-hover: rgb(20 20 18 / 0.045);
+  --c-active: rgb(20 20 18 / 0.08);
+  --c-border: rgb(20 20 18 / 0.09);
+  --c-border-strong: rgb(20 20 18 / 0.2);
+  --c-text: #1a1a18;
+  --c-text-muted: #5b5a55;
+  --c-text-subtle: #6c6b65;
+  --c-accent: #c5592b;
+  --c-accent-hover: #ab4a20;
+  --c-accent-soft: rgb(197 89 43 / 0.1);
   --c-accent-fg: #ffffff;
-  --c-primary: #1d1b17;
-  --c-primary-hover: #3a3731;
-  --c-primary-fg: #faf9f6;
-  --c-success: #2f6b1f;
+  --c-primary: #1a1a18;
+  --c-primary-hover: #34342f;
+  --c-primary-fg: #fafaf8;
+  --c-success: #3a7a24;
   --c-info: #2f63a6;
   --c-warning: #8a5a0b;
   --c-danger: #a3322b;
-  --c-danger-soft: rgb(163 50 43 / 0.1);
-  --c-shadow: 0 1px 2px rgb(0 0 0 / 0.04), 0 4px 16px rgb(0 0 0 / 0.04);
-  --c-kind-instruction: #c4643c;
-  --c-kind-rule: #2f6fb8;
-  --c-kind-skill: #3b8547;
-  --c-kind-agent: #8357c2;
-  --c-merged: #8250df;
-  --c-kind-hook: #9a7a12;
-  --c-kind-plan: #1f7f86;
-  --c-memo: #fbf1c7;
-  --c-memo-border: #e2cf86;
-  --c-drop: #ea6c0a;
-}
-
-[data-theme="dark"] {
-  color-scheme: dark;
-  --c-bg: #262522;
-  --c-sidebar: #1e1d1b;
-  --c-raised: #302f2c;
-  --c-sunken: #1a1917;
-  --c-hover: rgb(240 236 226 / 0.06);
-  --c-active: rgb(240 236 226 / 0.1);
-  --c-border: rgb(240 236 226 / 0.12);
-  --c-border-strong: rgb(240 236 226 / 0.24);
-  --c-text: #f3f1ea;
-  --c-text-muted: #b3b0a6;
-  --c-text-subtle: #9a978e;
-  --c-accent: #d9825d;
-  --c-accent-hover: #e39472;
-  --c-accent-soft: rgb(217 130 93 / 0.16);
-  --c-accent-fg: #1d1b17;
-  --c-primary: #f3f1ea;
-  --c-primary-hover: #dedbd2;
-  --c-primary-fg: #1d1b17;
-  --c-success: #86c35a;
-  --c-info: #86b2e3;
-  --c-warning: #d9ab4c;
-  --c-danger: #ef8d86;
-  --c-danger-soft: rgb(239 141 134 / 0.12);
-  --c-shadow: 0 1px 2px rgb(0 0 0 / 0.2), 0 4px 16px rgb(0 0 0 / 0.2);
-  --c-kind-instruction: #d9825d;
-  --c-kind-rule: #6fa3e0;
-  --c-kind-skill: #74b77f;
-  --c-kind-agent: #b08ce6;
-  --c-merged: #b08cf5;
-  --c-kind-hook: #d6b74e;
-  --c-kind-plan: #5cc0c7;
-  --c-memo: #3b3624;
-  --c-memo-border: #6b5f34;
-  --c-drop: #fb923c;
+  --c-danger-soft: rgb(163 50 43 / 0.08);
+  --c-shadow: 0 8px 32px rgb(0 0 0 / 0.1);
+  --c-kind-rule: #2f63a6;
+  --c-kind-skill: #3a7a24;
+  --c-kind-agent: #7a4fbd;
+  --c-memo: #fbf3d2;
+  --c-act-read: #2f6fb8;
+  --c-act-search: #7a4fbd;
+  --c-act-edit: #c5592b;
+  --c-act-run: #3a7a24;
+  --c-act-agent: #b0407e;
+  --c-act-web: #1d7f7c;
+  --c-act-plan: #8a6a0b;
+  --c-act-mcp: #4f6278;
+  --c-act-other: #6c6b65;
+  --c-grid: rgb(20 20 18 / 0.04);
 }
 
 /* Font size setting: every text size is scaled by --fs (see store/fontSize.ts). */
@@ -130,30 +140,25 @@
   --color-accent-hover: var(--c-accent-hover);
   --color-accent-soft: var(--c-accent-soft);
   --color-accent-fg: var(--c-accent-fg);
-  /* The logo's gradient (src-tauri/icons/source/logo.svg); same in both themes. */
-  --color-brand-from: #f2915f;
-  --color-brand-via: #c85d9a;
-  --color-brand-to: #6d4fe8;
   --color-primary: var(--c-primary);
   --color-primary-hover: var(--c-primary-hover);
   --color-primary-fg: var(--c-primary-fg);
   --color-success: var(--c-success);
   --color-info: var(--c-info);
-  --color-merged: var(--c-merged);
   --color-warning: var(--c-warning);
   --color-danger: var(--c-danger);
   --color-danger-soft: var(--c-danger-soft);
   --shadow-card: var(--c-shadow);
-  --color-kind-instruction: var(--c-kind-instruction);
-  --color-kind-rule: var(--c-kind-rule);
-  --color-kind-skill: var(--c-kind-skill);
-  --color-kind-agent: var(--c-kind-agent);
-  --color-kind-hook: var(--c-kind-hook);
-  --color-kind-plan: var(--c-kind-plan);
   --color-memo: var(--c-memo);
-  --color-memo-border: var(--c-memo-border);
-  /* Where a dragged row will land. */
-  --color-drop: var(--c-drop);
+  --color-act-read: var(--c-act-read);
+  --color-act-search: var(--c-act-search);
+  --color-act-edit: var(--c-act-edit);
+  --color-act-run: var(--c-act-run);
+  --color-act-agent: var(--c-act-agent);
+  --color-act-web: var(--c-act-web);
+  --color-act-plan: var(--c-act-plan);
+  --color-act-mcp: var(--c-act-mcp);
+  --color-act-other: var(--c-act-other);
 }
 
 /* A native select's list takes its colors from the select; a transparent
@@ -162,30 +167,6 @@ select option,
 select optgroup {
   background-color: var(--c-raised);
   color: var(--c-text);
-}
-
-/* Work tab flow: a line blending two step colors. Registered as colors so
-   the browser can fade them when a step changes (CI running → passed). */
-@property --line-from {
-  syntax: "<color>";
-  inherits: false;
-  initial-value: transparent;
-}
-@property --line-to {
-  syntax: "<color>";
-  inherits: false;
-  initial-value: transparent;
-}
-.flow-line {
-  background: linear-gradient(to right, var(--line-from), var(--line-to));
-  transition:
-    --line-from 0.7s ease,
-    --line-to 0.7s ease;
-}
-@media (prefers-reduced-motion: reduce) {
-  .flow-line {
-    transition: none;
-  }
 }
 
 /* A pixel size that follows the font size setting: `text-fs-11` is 11px at "default". */
@@ -230,70 +211,70 @@ body {
   }
 }
 
-/* React Flow, restyled with the app tokens. The extra specificity beats its
-   own stylesheet (incl. `.react-flow.dark`), which loads later. */
-html[data-theme] .react-flow {
-  --xy-background-color: var(--c-bg);
-  --xy-background-pattern-color: var(--c-border-strong);
-  --xy-edge-stroke: var(--c-border-strong);
-  --xy-edge-stroke-selected: var(--c-accent);
-  --xy-connectionline-stroke: var(--c-accent);
-  --xy-handle-background-color: var(--c-raised);
-  --xy-handle-border-color: var(--c-border-strong);
-  --xy-minimap-background-color: var(--c-raised);
-  --xy-minimap-mask-background-color: rgb(0 0 0 / 0.06);
-  --xy-controls-button-background-color: var(--c-raised);
-  --xy-controls-button-background-color-hover: var(--c-hover);
-  --xy-controls-button-color: var(--c-text-muted);
-  --xy-controls-button-color-hover: var(--c-text);
-  --xy-controls-button-border-color: var(--c-border);
-  --xy-controls-box-shadow: var(--c-shadow);
-  --xy-attribution-background-color: transparent;
-  --xy-selection-background-color: var(--c-accent-soft);
-  --xy-selection-border: 1px dashed var(--c-accent);
-  /* Nodes draw their own card, border and selection state. */
-  --xy-node-border: 0;
-  --xy-node-background-color: transparent;
-  --xy-node-color: inherit;
-  --xy-node-boxshadow-hover: none;
-  --xy-node-boxshadow-selected: none;
+/* Live view motion. Everything that moves stops for reduced motion. */
+@keyframes pulse-ring {
+  0% {
+    transform: scale(1);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(2.4);
+    opacity: 0;
+  }
 }
-
-/* Our "output" node type also gets React Flow's built-in output-node box. */
-html[data-theme] .react-flow__node-output {
-  padding: 0;
-  width: auto;
-  border-radius: 0;
-  font-size: inherit;
-  text-align: inherit;
+@keyframes breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.06);
+  }
 }
-
-/* Likewise our "group" type and React Flow's group box (its size comes inline). */
-html[data-theme] .react-flow__node-group {
-  padding: 0;
-  border-radius: 0;
-  font-size: inherit;
-  text-align: inherit;
-  background-color: transparent;
+@keyframes orbit {
+  to {
+    transform: rotate(360deg);
+  }
 }
-
-.react-flow__attribution a {
-  color: var(--c-text-subtle);
+@keyframes step-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
-
-.react-flow__minimap {
-  border: 1px solid var(--c-border);
-  border-radius: 10px;
-  overflow: hidden;
+@keyframes cell-flash {
+  0% {
+    filter: brightness(1.9);
+  }
+  100% {
+    filter: none;
+  }
 }
-
-.react-flow__controls {
-  border-radius: 10px;
-  overflow: hidden;
+.anim-pulse-ring {
+  animation: pulse-ring 1.6s cubic-bezier(0.2, 0.6, 0.3, 1) infinite;
 }
-
-.react-flow__handle {
-  width: 12px;
-  height: 12px;
-  border-width: 2px;
+.anim-breathe {
+  animation: breathe 3.2s ease-in-out infinite;
+}
+.anim-orbit {
+  animation: orbit var(--orbit, 6s) linear infinite;
+}
+.anim-step-in {
+  animation: step-in 0.25s ease-out;
+}
+.anim-cell-flash {
+  animation: cell-flash 0.9s ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .anim-pulse-ring,
+  .anim-breathe,
+  .anim-orbit,
+  .anim-step-in,
+  .anim-cell-flash {
+    animation: none;
+  }
 }

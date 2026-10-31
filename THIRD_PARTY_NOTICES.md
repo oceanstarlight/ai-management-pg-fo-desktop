@@ -96,4 +96,4 @@ Fonts (SIL Open Font License 1.1): Pretendard, Source Serif 4, JetBrains Mono.
 Icons: Lucide (ISC). Google and GitHub marks on the sign-in buttons: Simple
 Icons 16.35.0 (CC0-1.0, unchanged paths drawn in the text color); the marks
 are trademarks of Google LLC and GitHub, Inc., used only to label signing in
-with those services. Graph editor: React Flow (MIT).
+with those services.

@@ -15,7 +15,8 @@ const CLAUDE_CODE_WEB = "https://claude.ai/code";
 const base = (path: string) => path.split(/[\\/]/).filter(Boolean).pop() ?? path;
 
 /** Everything needed for Encela to see Claude Code, as two checklists. */
-export function ConnectPage() {
+/** The Claude connection checklist, shown at the top of the settings. */
+export function ConnectPage({ embedded = false }: { embedded?: boolean }) {
   const t = useT();
   const load = useConnectionStore((s) => s.load);
   const [notice, setNotice] = useState<{ text: string; bad?: boolean } | null>(null);
@@ -36,11 +37,17 @@ export function ConnectPage() {
   };
 
   return (
-    <div className="mx-auto max-w-3xl px-8 py-10">
-      <h1 className="font-serif text-fs-28 leading-tight font-medium tracking-tight">
+    <div className={embedded ? "" : "mx-auto max-w-3xl px-8 py-10"}>
+      <h2
+        className={
+          embedded ? "px-4 text-sm font-semibold" : "text-fs-20 font-semibold tracking-tight"
+        }
+      >
         {t("connect.title")}
-      </h1>
-      <p className="mt-2 mb-8 max-w-2xl text-sm text-text-muted">{t("connect.description")}</p>
+      </h2>
+      <p className={`mt-1 mb-6 max-w-2xl text-sm text-text-muted ${embedded ? "px-4" : ""}`}>
+        {t("connect.description")}
+      </p>
       <div className="space-y-8">
         <LocalSection run={run} />
         <CloudSection run={run} />
@@ -313,9 +320,7 @@ function Section({
           {left === 0 ? t("connect.done") : t("connect.todo", { n: left })}
         </span>
       </div>
-      <div className="divide-y divide-border rounded-xl border border-border bg-surface-raised">
-        {children}
-      </div>
+      <div className="space-y-1">{children}</div>
     </section>
   );
 }

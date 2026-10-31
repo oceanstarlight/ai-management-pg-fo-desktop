@@ -1,15 +1,15 @@
 import { isTauri } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { lazy, Suspense, useEffect } from "react";
+import { useEffect } from "react";
 import { ErrorBoundary } from "../components/ErrorBoundary";
 import { AccountDialog } from "../features/account/AccountDialog";
 import { SyncNotice } from "../features/sync/SyncNotice";
 import { UpdateNotice } from "../features/update/UpdateNotice";
-import { useGitHubSync } from "../features/work/GitHubSection";
+import { useGitHubSync } from "../features/work/useGitHubSync";
 import { useAccountStore } from "../store/account";
+import { useActivityStore } from "../store/activity";
 import { useAutomationStore } from "../store/automation";
-import { useComposerStore } from "../store/composer";
 import { subscribeDockStatus } from "../store/dock";
 import { useLiveStore } from "../store/live";
 import { restoreProject } from "../store/project";
@@ -19,38 +19,18 @@ import { type Page, useWorkspaceStore } from "../store/workspace";
 import { saveBeforeLeaving } from "./leave";
 import { NavSidebar } from "./NavSidebar";
 import { AutomationsPage } from "./pages/AutomationsPage";
-import { CommandsPage } from "./pages/CommandsPage";
-import { ConfigPage } from "./pages/ConfigPage";
-import { ConnectPage } from "./pages/ConnectPage";
-import { LibraryPage } from "./pages/LibraryPage";
-import { McpPage } from "./pages/McpPage";
+import { HomePage } from "./pages/HomePage";
 import { MemoPage } from "./pages/MemoPage";
-import { ProjectDocsPage } from "./pages/ProjectDocsPage";
+import { ProjectPage } from "./pages/ProjectPage";
 import { SettingsPage } from "./pages/SettingsPage";
-import { SuggestPage } from "./pages/SuggestPage";
-import { TreesPage } from "./pages/TreesPage";
-import { WorkPage } from "./pages/WorkPage";
-
-// The graph editor is the heaviest page; load it on first use.
-const ComposerPage = lazy(() => import("./composer/ComposerPage"));
+import { ToolsPage } from "./pages/ToolsPage";
 
 const PAGES: Record<Page, () => React.ReactNode> = {
-  home: () => <SuggestPage />,
-  connect: () => <ConnectPage />,
-  composer: () => (
-    <Suspense fallback={null}>
-      <ComposerPage />
-    </Suspense>
-  ),
-  library: () => <LibraryPage />,
-  config: () => <ConfigPage />,
-  files: () => <ProjectDocsPage />,
-  mcp: () => <McpPage />,
-  commands: () => <CommandsPage />,
-  work: () => <WorkPage />,
-  trees: () => <TreesPage />,
-  memo: () => <MemoPage />,
+  home: () => <HomePage />,
+  project: () => <ProjectPage />,
+  tools: () => <ToolsPage />,
   automations: () => <AutomationsPage />,
+  memo: () => <MemoPage />,
   settings: () => <SettingsPage />,
 };
 
@@ -59,10 +39,10 @@ export default function MainApp() {
   useGitHubSync();
   const page = useWorkspaceStore((s) => s.page);
 
-  // Recent documents in the navigation, and the project selected last.
+  // The project selected last, and what Claude Code is doing.
   useEffect(() => {
-    void useComposerStore.getState().loadDocs();
     restoreProject();
+    useActivityStore.getState().init();
     void useSyncStore.getState().init();
     void useAccountStore.getState().init();
     startUpdateChecks();
@@ -70,7 +50,7 @@ export default function MainApp() {
   }, []);
 
   // The window is destroyed on close (also when switching to the sidebar from
-  // the tray or shortcut); save the open document first.
+  // the tray or shortcut); save the open note first.
   useEffect(() => {
     if (!isTauri()) return;
     const unlisten = getCurrentWindow().onCloseRequested(() => saveBeforeLeaving());
@@ -103,7 +83,7 @@ export default function MainApp() {
     <div className="flex h-full">
       <NavSidebar />
       <main
-        className={`min-w-0 flex-1 ${page === "composer" ? "overflow-hidden" : "overflow-y-auto"}`}
+        className={`min-w-0 flex-1 bg-surface ${page === "home" ? "overflow-hidden" : "overflow-y-auto"}`}
       >
         <ErrorBoundary resetKey={page}>{PAGES[page]()}</ErrorBoundary>
       </main>

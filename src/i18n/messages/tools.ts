@@ -2,7 +2,6 @@ import type { Messages } from "./types";
 
 export const ko = {
   "tools.label": "도구",
-  "tools.auto": "자동",
   "tools.autoWith": "자동 ({tool})",
   "tools.reason.files": "프로젝트 파일로 감지: {files}",
   "tools.reason.installed": "설치된 CLI로 감지 ({tool}만 설치됨)",
@@ -16,7 +15,6 @@ export const ko = {
 
 export const en: Messages<typeof ko> = {
   "tools.label": "Tool",
-  "tools.auto": "Auto",
   "tools.autoWith": "Auto ({tool})",
   "tools.reason.files": "Detected from project files: {files}",
   "tools.reason.installed": "Detected from the installed CLI (only {tool} is installed)",

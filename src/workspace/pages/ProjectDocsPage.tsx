@@ -129,7 +129,7 @@ const joinPath = (project: string, rel: string) => {
 };
 
 /** The project's AI tool documents, found automatically, edited in place. */
-export function ProjectDocsPage() {
+export function ProjectDocsPage({ embedded = false }: { embedded?: boolean }) {
   const t = useT();
   const project = useProjectStore((s) => s.current);
   const tool = useProjectStore((s) => s.tool);
@@ -159,8 +159,13 @@ export function ProjectDocsPage() {
   }, [refresh]);
 
   return (
-    <div className="mx-auto flex h-full max-w-6xl flex-col px-8 py-10">
+    <div
+      className={
+        embedded ? "flex h-full flex-col" : "mx-auto flex h-full max-w-6xl flex-col px-8 py-10"
+      }
+    >
       <PageHeader
+        embedded={embedded}
         title={t("files.title")}
         description={t(tool === "codex" ? "files.descriptionCodex" : "files.description")}
       />

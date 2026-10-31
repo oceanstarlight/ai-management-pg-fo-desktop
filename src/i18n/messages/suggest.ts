@@ -1,9 +1,6 @@
 import type { Messages } from "./types";
 
 export const ko = {
-  "suggest.title": "무엇을 하려고 해요?",
-  "suggest.description":
-    "프롬프트를 쓰면 맞는 skill · subagent · MCP 서버 · 자동화를 바로 찾아 줘요. Claude Code 터미널에서 입력할 때도 똑같이 추천해요.",
   "suggest.placeholder": "예: 로그인할 때 가끔 500 에러가 나는데 원인 찾아서 고쳐줘",
   "suggest.copy": "프롬프트 복사",
   "suggest.copied": "복사했어요",
@@ -39,15 +36,6 @@ export const ko = {
   "suggest.feed.picked": "고름",
   "suggest.feed.clear": "기록 지우기",
   "suggest.feed.clearConfirm": "추천 기록을 모두 지울까요?",
-  "suggest.stats.prompts": "감지한 프롬프트",
-  "suggest.stats.picked": "추천을 쓴 프롬프트",
-  "suggest.stats.top": "자주 추천된 것",
-  "suggest.catalog.title": "추천할 수 있는 것",
-  "suggest.catalog.installed": "설치됨",
-  "suggest.catalog.library": "라이브러리",
-  "suggest.catalog.mcp": "MCP 서버",
-  "suggest.catalog.extensions": "확장",
-  "suggest.catalog.automations": "자동화",
   "suggest.live.title": "Claude Code 실시간",
   "suggest.live.empty": "Claude Code를 실행하고 프롬프트를 쓰면 여기에 실시간으로 보여요.",
   "suggest.live.idle": "입력 중인 프롬프트가 없어요.",
@@ -58,10 +46,8 @@ export const ko = {
   "suggest.live.auto": "자동 적용",
   "suggest.live.autoHint":
     "켜면 프롬프트를 보낼 때 추천을 모두 바로 적용해요 (라이브러리 추가, 확장 설치, MCP 추가 포함).",
-  "suggest.live.sent": "Claude Code에 보냈어요.",
   "suggest.live.cloud": "클라우드",
   "suggest.live.cloudHint": "보낸 프롬프트예요. 허용한 항목과 결정 내용은 다음 프롬프트에 붙어요.",
-  "suggest.setup.title": "엔셀라 연결 mod를 설치해 주세요",
   "suggest.setup.description":
     "Claude Code에서 쓰는 프롬프트를 감지하려면 이 mod가 필요해요. 설치한 뒤 Claude Code를 새로 열거나 /reload-plugins 하면 여기에 실시간으로 보여요.",
   "suggest.setup.outdated":
@@ -91,14 +77,13 @@ export const ko = {
   "suggest.starters.description":
     "틀을 고르고 항목을 채운 뒤 적용하면 프롬프트가 만들어져요. Claude가 질문하고 계획부터 세워요.",
   "suggest.starters.apply": "적용",
+  "suggest.starters.more": "선택 항목 {n}개 더 채우기",
+  "suggest.starters.less": "선택 항목 접기",
   "suggest.starters.edit": "틀 편집",
   "suggest.starters.missing": "필수 항목이 비어 있어요: {names}",
 };
 
 export const en: Messages<typeof ko> = {
-  "suggest.title": "What do you want to do?",
-  "suggest.description":
-    "Write a prompt and get the skills, subagents, MCP servers and automations that fit it. The same suggestions show while you type in the Claude Code terminal.",
   "suggest.placeholder": "e.g. Login sometimes fails with a 500 error, find the cause and fix it",
   "suggest.copy": "Copy prompt",
   "suggest.copied": "Copied",
@@ -134,15 +119,6 @@ export const en: Messages<typeof ko> = {
   "suggest.feed.picked": "picked",
   "suggest.feed.clear": "Clear history",
   "suggest.feed.clearConfirm": "Clear all suggestion history?",
-  "suggest.stats.prompts": "Prompts seen",
-  "suggest.stats.picked": "Used a suggestion",
-  "suggest.stats.top": "Suggested most",
-  "suggest.catalog.title": "What can be suggested",
-  "suggest.catalog.installed": "Installed",
-  "suggest.catalog.library": "Library",
-  "suggest.catalog.mcp": "MCP servers",
-  "suggest.catalog.extensions": "Extensions",
-  "suggest.catalog.automations": "Automations",
   "suggest.live.title": "Claude Code, live",
   "suggest.live.empty": "Start Claude Code and write a prompt; it shows up here as you type.",
   "suggest.live.idle": "No prompt being written.",
@@ -153,11 +129,9 @@ export const en: Messages<typeof ko> = {
   "suggest.live.auto": "Apply automatically",
   "suggest.live.autoHint":
     "When on, every suggestion is used as the prompt is sent (library items added, extensions installed, MCP servers added).",
-  "suggest.live.sent": "Sent to Claude Code.",
   "suggest.live.cloud": "cloud",
   "suggest.live.cloudHint":
     "This prompt was already sent. What you allow and the decisions go with the next one.",
-  "suggest.setup.title": "Install the Encela link mod",
   "suggest.setup.description":
     "This mod lets Encela see the prompts you write in Claude Code. After installing, open a new Claude Code session or run /reload-plugins and they show up here live.",
   "suggest.setup.outdated":
@@ -187,6 +161,8 @@ export const en: Messages<typeof ko> = {
   "suggest.starters.description":
     "Pick a form, fill in the fields and apply to write the prompt. Claude asks questions and plans first.",
   "suggest.starters.apply": "Apply",
+  "suggest.starters.more": "Fill in {n} optional fields",
+  "suggest.starters.less": "Hide optional fields",
   "suggest.starters.edit": "Edit forms",
   "suggest.starters.missing": "Required fields left blank: {names}",
 };

@@ -7,7 +7,7 @@ import { openConnect } from "../../store/workspace";
 
 /** Points to the connection page until Claude Code is connected one way or
  * the other; renders `fallback` once it is. */
-export function ConnectHint({ fallback }: { fallback: ReactNode }) {
+export function ConnectHint({ fallback = null }: { fallback?: ReactNode }) {
   const t = useT();
   const { mod, relay, load } = useConnectionStore();
   useEffect(() => {
@@ -16,7 +16,7 @@ export function ConnectHint({ fallback }: { fallback: ReactNode }) {
 
   if (!mod || !relay || modReady(mod) || relay.enabled) return <>{fallback}</>;
   return (
-    <div className="rounded-xl border border-accent/40 bg-surface-raised px-4 py-3">
+    <div className="border-l-2 border-accent pl-3">
       <div className="flex items-center gap-2 text-fs-13 font-semibold text-text">
         <Cable size={14} className="text-accent" />
         {t("connect.hint.title")}

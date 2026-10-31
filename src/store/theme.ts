@@ -14,7 +14,7 @@ const dark = window.matchMedia("(prefers-color-scheme: dark)");
 function readPref(): ThemePref {
   const value = getPref(KEY);
   if (value === "light" || value === "dark" || value === "system") return value;
-  return "system";
+  return "dark";
 }
 
 function resolve(pref: ThemePref): Resolved {

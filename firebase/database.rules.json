@@ -12,7 +12,9 @@
           "$id": {
             ".write": "(!data.exists() && newData.exists() && root.child('relays').child($token).child('owner').exists()) || (!newData.exists() && auth != null && root.child('relays').child($token).child('owner').val() === auth.uid)",
             ".validate": "newData.hasChildren(['kind', 'session', 'at'])",
-            "kind": { ".validate": "newData.isString() && newData.val().matches(/^(prompt|answer|tool|toolEnd)$/)" },
+            "kind": {
+              ".validate": "newData.isString() && newData.val().matches(/^(prompt|answer|tool|toolEnd)$/)"
+            },
             "session": { ".validate": "newData.isString() && newData.val().length <= 200" },
             "repo": { ".validate": "newData.isString() && newData.val().length <= 200" },
             "at": { ".validate": "newData.isNumber()" },
