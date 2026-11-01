@@ -4,20 +4,10 @@ import { create } from "zustand";
 import { getPref, setPref } from "./prefs";
 import { switchView } from "./view";
 
-export type Page =
-  | "home"
-  | "connect"
-  | "composer"
-  | "library"
-  | "config"
-  | "files"
-  | "mcp"
-  | "commands"
-  | "work"
-  | "trees"
-  | "memo"
-  | "automations"
-  | "settings";
+export type Page = "home" | "tools" | "project" | "automations" | "memo" | "settings";
+
+/** The settings section with the Claude connection, to scroll to. */
+export const CONNECT_SECTION = "connect";
 
 const COLLAPSED_KEY = "nav-collapsed";
 /** A page the main window opens on once (set by the sidebar). */
@@ -25,15 +15,19 @@ const OPEN_PAGE_KEY = "openPage";
 /** Set once the connection page was shown on first launch. */
 const CONNECT_SEEN_KEY = "connectSeen";
 
-/** The first page: one asked for, the connection page on first launch, else home. */
+/** Scrolls the open page to a section once it is drawn. */
+export function scrollToSection(id: string) {
+  setTimeout(() => document.getElementById(id)?.scrollIntoView({ block: "start" }), 60);
+}
+
+/** The first page: the connection settings when asked or on first launch, else home. */
 function firstPage(): Page {
-  if (getPref(OPEN_PAGE_KEY) === "connect") {
-    setPref(OPEN_PAGE_KEY, null);
-    return "connect";
-  }
-  if (getPref(CONNECT_SEEN_KEY) === null) {
-    setPref(CONNECT_SEEN_KEY, "1");
-    return "connect";
+  const connect = getPref(OPEN_PAGE_KEY) === "connect" || getPref(CONNECT_SEEN_KEY) === null;
+  setPref(OPEN_PAGE_KEY, null);
+  setPref(CONNECT_SEEN_KEY, "1");
+  if (connect) {
+    scrollToSection(CONNECT_SECTION);
+    return "settings";
   }
   return "home";
 }
@@ -46,8 +40,16 @@ function readCollapsed(): boolean {
   }
 }
 
+export type ToolsTab = "library" | "mcp" | "extensions" | "catalog";
+export type ProjectTab = "docs" | "map" | "decisions" | "starters";
+
 interface WorkspaceState {
   page: Page;
+  toolsTab: ToolsTab;
+  projectTab: ProjectTab;
+  setToolsTab: (tab: ToolsTab) => void;
+  /** Opens the project page on a tab. */
+  goProject: (tab: ProjectTab) => void;
   /** The left navigation shows icons only. */
   collapsed: boolean;
   go: (page: Page) => void;
@@ -56,6 +58,10 @@ interface WorkspaceState {
 
 export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   page: firstPage(),
+  toolsTab: "library",
+  projectTab: "docs",
+  setToolsTab: (toolsTab) => set({ toolsTab }),
+  goProject: (projectTab) => set({ page: "project", projectTab }),
   collapsed: readCollapsed(),
   go: (page) => set({ page }),
   toggleCollapsed: () => {
@@ -69,7 +75,8 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
 export async function openConnect() {
   const label = isTauri() ? getCurrentWebviewWindow().label : "main";
   if (label !== "sidebar") {
-    useWorkspaceStore.getState().go("connect");
+    useWorkspaceStore.getState().go("settings");
+    scrollToSection(CONNECT_SECTION);
     return;
   }
   // The main window is made anew and reads this when it starts.

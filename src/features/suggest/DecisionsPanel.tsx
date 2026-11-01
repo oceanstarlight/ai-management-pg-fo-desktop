@@ -49,7 +49,7 @@ export function DecisionsPanel({ compact = false }: { compact?: boolean }) {
   if (!project) {
     return (
       <section>
-        <h2 className="mb-2 px-1 text-xs font-semibold text-text-muted">
+        <h2 className="mb-1.5 text-fs-11 font-medium tracking-wide text-text-subtle">
           {t("suggest.decisions.title")}
         </h2>
         <p className="px-1 text-fs-12 text-text-subtle">{t("suggest.decisions.noProject")}</p>
@@ -76,7 +76,7 @@ export function DecisionsPanel({ compact = false }: { compact?: boolean }) {
   return (
     <section>
       <div className="mb-2 flex items-center gap-2 px-1">
-        <h2 className="flex-1 text-xs font-semibold text-text-muted">
+        <h2 className="flex-1 text-fs-11 font-medium tracking-wide text-text-subtle">
           {t("suggest.decisions.title")}
         </h2>
         <IconButton
@@ -101,11 +101,11 @@ export function DecisionsPanel({ compact = false }: { compact?: boolean }) {
       </div>
 
       {rows.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-border px-3 py-4 text-center text-fs-12 text-text-muted">
+        <p className="rounded-lg px-3 py-4 text-center text-fs-12 text-text-muted">
           {t("suggest.decisions.empty")}
         </p>
       ) : (
-        <ul className="space-y-1 rounded-xl border border-border bg-surface-raised p-1.5">
+        <ul className="space-y-1 rounded-lg bg-surface-raised p-1.5">
           {rows.map((d) => (
             <li key={d.id} className="group flex items-center gap-1">
               <input

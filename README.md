@@ -2,7 +2,7 @@
 
 # Encela
 
-**A desktop companion for AI coding tools: build your Claude Code and Codex setup visually, manage git work, and keep notes per branch, right next to your terminal.**
+**A desktop companion for Claude Code: watch what it is doing, live, on a map of your project, and get the right skills, servers and decisions into your prompts, right next to your terminal.**
 
 **English** · [한국어](READMEkr.md) · [中文](READMEzh.md)
 
@@ -15,46 +15,31 @@
 > [!NOTE]
 > Early development. Windows comes first; Linux and macOS are planned.
 
-<!-- Screenshot: main window (document composer) — e.g. docs/images/composer.png -->
-
 ## Why
 
-AI coding tools are configured through a pile of files: `CLAUDE.md`, `AGENTS.md`, rules, skills, subagents, hooks, MCP servers, settings in three different scopes. It is hard to see which ones are actually in effect, and writing them by hand is slow.
+When Claude Code works on a task, it reads files, edits them, runs commands and starts subagents, and in a terminal that scrolls by fast. Its setup (`CLAUDE.md`, rules, skills, subagents, MCP servers) is spread over many files.
 
-Encela puts all of that in one window:
+Encela puts both in one window:
 
-- **Get suggestions** while you write a prompt: the skills, subagents, MCP servers and automations that fit it, in the app and in the Claude Code terminal.
-- **See** what your AI tool reads in a project, and from where.
-- **Build** instruction files by snapping blocks together instead of writing them from scratch.
-- **Work** with git and GitHub without leaving the app, and keep a to-do list for every branch.
+- **Watch** what Claude is doing right now: which file it reads or edits, what it runs, how far the turn has gone, on a live map of your project.
+- **Get suggestions** while you write a prompt: the skills, subagents, MCP servers and automations that fit it, and a form to start a new project from.
+- **Keep** what you and Claude settled (platform, language, framework…) and feed it back into every prompt.
 - **Dock** a slim sidebar next to your terminal or editor so it is always one glance away.
 
 ## Features at a glance
 
 | Screen | What you can do |
 |---|---|
-| ✨ **Suggestions** (home) | Write a prompt and get matching skills, subagents, commands, MCP servers and automations, used or installed in one click; a live feed of what was suggested for each prompt you sent in Claude Code |
-| 🧩 **Document composer** | Drag blocks onto a canvas and write `CLAUDE.md` / `AGENTS.md`, rules, skills, subagents, hooks and `PLANS.md` |
-| 🗺️ **Settings map** | See every instruction, rule, skill, subagent, command, MCP server and setting your tool loads, with its scope and status |
-| 📄 **Project docs** | Open a folder and edit its AI config files in the app; get told when they change on disk |
-| 📚 **Library** | Keep your favorite skills and subagents in one place and switch them on or off per project; install popular open-source extensions from GitHub (plugins, MCP servers) in one click |
-| ⏰ **Automations** | Run your `claude` on a schedule (e.g. every morning: collect news with a Haiku subagent and mail it to you); build one in the composer or ask Claude Code to |
-| 🔌 **MCP servers** | List, add, edit, remove and health-check MCP servers; paste a JSON snippet or `claude mcp add` command to import |
-| 🌿 **Work** | Branches, worktrees, diffs, commit / push / pull, pull requests, CI status, merge-conflict helper |
+| 📡 **Live** (home) | What Claude Code is doing, as it happens: a status mark and this turn's numbers (tools, reads, edits, lines, commands, context, cost), a map of the project's files that lights up as they are read and edited, and a timeline of every step. Beside it: the prompt box with suggestions, a starter form for new projects, the project's decisions and the branch's notes |
+| 📁 **Project** | The project's `CLAUDE.md`, rules, skills, agents and settings files to edit in place; what applies to the project and from where; its decisions; the starter forms |
+| 🧰 **Toolbox** | Your library of skills and subagents, MCP servers, open-source extensions, and a catalog of about 100 ready-made blocks to copy |
+| ⏰ **Automations** | Run your `claude` on a schedule (e.g. every morning: collect news with a Haiku subagent and mail it to you) |
 | 📝 **Notes** | Notes and to-dos for each repository and branch, synced across your devices |
-| 📌 **Sidebar** | A narrow panel that docks next to the window you are using and follows it |
+| 📌 **Sidebar** | The live view, suggestions and notes in a narrow panel that docks next to the window you are using |
 
 ## Supported tools
 
-Each project uses one tool. The app detects it from the files in the project (you can override it), and every screen follows that choice.
-
-| | Claude Code | Codex |
-|---|:---:|:---:|
-| Settings map, library, project docs | ✅ | ✅ |
-| Document composer | ✅ | ✅ (instructions go to `AGENTS.md`; Codex has no rules folder) |
-| MCP servers | ✅ (with connection check) | ✅ (no connection check) |
-| Worktrees, AI commit message draft | ✅ | ✅ |
-| Branch-notes mod inside the tool | ✅ | — |
+Live view, suggestions and decisions work with **Claude Code** (terminal, cmd, the Code tab of the Claude desktop app, and claude.ai/code in the cloud). Project documents, the library and MCP servers also work with **Codex** projects.
 
 ## Install
 
@@ -62,102 +47,45 @@ Each project uses one tool. The app detects it from the files in the project (yo
 2. Run it. The installer is not code-signed yet, so Windows SmartScreen may warn you: choose **More info → Run anyway**.
 3. The app checks for updates at launch and every 6 hours and offers **Update and restart**.
 
-**You also need**
-
-- [Claude Code](https://docs.claude.com/en/docs/claude-code) and/or [Codex](https://github.com/openai/codex) installed, if you want the app to work with them. The app runs the `claude` / `codex` command you already have; it never asks for your login.
-- [Git](https://git-scm.com/) for the Work screen.
+**You also need** [Claude Code](https://docs.claude.com/en/docs/claude-code) 2.1.287 or later. The app runs the `claude` command you already have; it never asks for your login.
 
 ## Getting started
 
-1. **Pick a project.** Open the **Settings map** and choose a project folder. You now see what your tool currently loads for that project, by scope.
-2. **Open the Document composer**, drag a few blocks onto the canvas, connect them to an output such as `CLAUDE.md`, and check the preview on the right.
-3. **Write to project.** You get a preview of every file change before anything is written.
-4. **Switch to sidebar** when you start coding. Press <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>Space</kbd> to show or hide it, or use the tray icon to get the main window back.
+1. **Connect Claude** (Settings opens on it the first time): install the Encela link mod with one click. For claude.ai/code, follow the cloud checklist.
+2. **Pick a project** at the top of the menu.
+3. **Start Claude Code** in that folder. The app docks next to it as a sidebar and starts drawing what it does. <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>Space</kbd> shows or hides it; the tray icon brings the main window back.
 
 ## A closer look
 
-### ✨ Suggestions
+### 📡 Live
 
-The home screen is a prompt box. As you type, it finds what fits the task: skills, subagents and commands Claude Code already has, items from your library, recommended MCP servers, extensions, and your automations (or "make this an automation" for anything recurring). Keyword matches show at once, then Haiku picks through your own `claude` once you stop typing. Each suggestion is one click: put it in the prompt, add it to the project, install it, add the server, or open a new automation. With the Encela link mod installed, the same suggestions show above the Claude Code prompt, and every prompt you send there shows up in the feed with what was suggested and what you picked. The other screens are under **Tools**.
+- **Status**: idle, thinking, reading, searching, editing, running, a subagent at work… with the file or command it is on and how long the turn has run.
+- **This turn's numbers**: tool calls, reads, edits, lines added and removed, commands, failures, how full the context window is, and the session's cost so far.
+- **File map**: every file of the project as a tile, grouped by top folder. Files Claude read glow cool, files it edited glow warm (brighter the more it touched them), and a marker sits on the one it is working on.
+- **Timeline**: each prompt with every tool call under it: the file or command, lines changed, success or failure.
+- Several sessions at once (terminal and cloud) can be switched at the top. Nothing of this is stored or synced; it lives only while the app runs.
 
-**Working with Claude Code (with the mod installed):**
+### ✨ Suggestions and decisions
 
-1. Start Claude Code (terminal, cmd, or the Code tab of the desktop app), then the app. It finds Claude Code and docks as a sidebar next to it, on the session's project.
-2. As you type a prompt, the sidebar shows it live with suggestions. Press **Allow** on one, or turn on **Apply automatically** to use them all when the prompt is sent (library items added, extensions installed, MCP servers added).
-3. **Refine prompt** has Haiku rewrite your prompt into a clearer one with the picked items and the project's decisions; **Original** puts your text back.
-4. When Claude settles something in its answers (platform, language, framework, database…), it is saved under **Decisions** for the project. You can edit or add them; they go into every prompt as context, bring their own suggestions, and are written to `CLAUDE.md` (a `Project decisions` section) once you confirm.
-5. The **Docs** tab of the sidebar edits `CLAUDE.md`, rules, skills, subagents and commands directly. For a GitHub repository without a local clone, commit to a new branch and merge it into the default branch.
+As you type (in the app or above the Claude Code prompt), Encela finds what fits the task: skills, subagents and commands Claude Code has, items from your library, MCP servers, extensions, and your automations. Keyword matches show at once, then Haiku picks through your own `claude`. **Refine prompt** rewrites your prompt into a clearer one; **Original** puts your text back. When Claude settles something in its answers, it is saved under **Decisions** and goes into every prompt; it is written to `CLAUDE.md` once you confirm. A brand-new project (no `CLAUDE.md`, no decisions) gets a **starter form** (general, web & app, automation & CLI, data & AI) whose fields become the first prompt; the forms can be edited.
 
-Only Claude Code can be detected; the regular chat of the Claude desktop app cannot.
+### ☁️ Claude Code in the cloud
 
-**Connect Claude** (shown on first launch) walks through both setups as checklists. **Claude Code in the cloud (claude.ai/code):** sign in to the app account, turn on the cloud connection, and paste the setup script it gives you into the cloud environment's Setup script (a repository hook with an `ENCELA_RELAY` variable is there as an advanced option). Prompts and answers then reach the app through your account (Firebase; deleted once received). A cloud prompt is seen after it is sent, so what you allow and the decisions are added to the next prompt.
+Sign in to the app account, turn on the cloud connection, and paste the setup script into the cloud environment's Setup script. Prompts, answers and tool calls (tool, file path, the first 300 characters of a command, lines changed; never file contents) reach the app through the Firebase Realtime Database over one streaming connection, and are deleted once received.
 
-### 🧩 Document composer
+### 📁 Project · 🧰 Toolbox
 
-<!-- Screenshot: composer canvas with the "Expected effect" panel — e.g. docs/images/composer-ratings.png -->
-
-Build AI instruction files like a node graph.
-
-```mermaid
-flowchart LR
-    A["Blocks<br/>instructions · rules · skills<br/>subagents · hooks · plans"] --> B["Canvas<br/>connect, reorder,<br/>switch on/off"]
-    B --> C["Outputs<br/>CLAUDE.md · AGENTS.md · rules<br/>skills · agents · hooks · PLANS.md"]
-    C --> D["Preview → write to project<br/>or commit to GitHub"]
-```
-
-- **About 100 ready-made blocks**: the app's own, plus license-checked blocks from popular open-source collections (obra/superpowers, mattpocock/skills, anthropics/skills, wshobson/agents, VoltAgent subagents, awesome-cursorrules and more). Source, commit and license are kept with every block; see [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
-- **Expected effect**: each block shows whether it tends to raise or lower **tokens**, **performance** and **quality** (−2 to +2). The canvas adds up the blocks you placed and shows performance, quality and token use as bars.
-- **Click a block** to read what it makes the AI do and see its full text. Double-click a block or output to preview the real file.
-- **Subagents**: pick the model (Auto, Fable, Opus, Sonnet, Haiku). **Hooks**: set the event and command, merged into your settings after you confirm.
-- **Plans**: write a `PLANS.md` with goals, sub-goals and steps (write text, hand off to a subagent, use a skill, ask the user), each marked done / in progress / not yet.
-- **Safe writes**: the app only manages its own marked section of `CLAUDE.md` and never silently overwrites a file it did not write.
-- **Write without cloning**: send the result straight to a GitHub repository as a commit on a branch or a new pull request.
-- Undo / redo, team vs personal outputs (`CLAUDE.md` vs `CLAUDE.local.md`), and "Get latest" to refresh third-party blocks from their source.
-
-### 🗺️ Settings map
-
-Shows everything the tool reads in the selected project: instructions, rules, skills, subagents, commands, MCP servers and settings, grouped by **scope** (personal / project / local) with a **status** (in use, conditional, turned off, shadowed, broken JSON…).
-
-### 📄 Project docs · 📚 Library
-
-- **Project docs** finds `CLAUDE.md` (including in subfolders), `AGENTS.md`, rules, skills, agents, commands and settings files in a folder and lets you edit them in the app.
-- **Library** keeps the skills and subagents you reuse. Add one to a project or remove it again with one click.
-- **GitHub extensions**: license-checked open-source Claude Code extensions (REA, superpowers, compound-engineering, agent-skills, wshobson/agents, VoltAgent subagents) installed with your own `claude` command.
+- **Documents** finds `CLAUDE.md` (including in subfolders), rules, skills, agents, commands and settings files and lets you edit them in the app. **What applies** shows everything the tool reads, by scope and status, and switches library items on or off per project.
+- **Library** keeps the skills and subagents you reuse. **MCP servers**: list, add, edit, remove and health-check them. **Extensions**: license-checked open-source Claude Code extensions installed with your own `claude`. **Catalog**: about 100 ready-made blocks (the app's own plus license-checked ones from open-source collections; see [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md)) to read and copy.
+- The branch, its local changes and its pull request and CI are shown on the Live screen (sign in to GitHub for PRs and CI); git itself is left to your terminal and Claude Code.
 
 ### ⏰ Automations
 
-- Pick a time (daily, on weekdays) or an interval, a model, the tools it may use, and an email address for the result.
-- In the document composer, connect instruction, rule, skill and subagent blocks to an **Automation** output: they become the run's instructions and subagents (e.g. a scraper subagent on Haiku).
-- Runs use your own `claude -p` while the app or its tray icon is running; a run missed while the app was closed runs once within a day. Results, cost and errors are kept per run, with a desktop notification.
-- Results are mailed through an email MCP server connected to Claude Code (e.g. Gmail). Claude Code can also list, create and run automations through the app's MCP server.
-
-### 🔌 MCP servers
-
-One screen for project (`.mcp.json`), local and personal servers: check if they connect, add / edit / remove them, toggle project servers, or install a recommended server. Secrets are masked, and the app suggests `${VARIABLE}` references instead of pasting keys into files. Personal Claude Code servers are handled through your own `claude mcp` command.
-
-### 🌿 Work (git · GitHub)
-
-<!-- Screenshot: Work screen with the flow card — e.g. docs/images/work.png -->
-
-- A **flow card** shows where the branch is: commit → push → pull request → CI, with a button for the next step.
-- Changes with per-file staging, history with diffs, branches and worktrees.
-- **Commit message drafts** written by your own `claude` or `codex` CLI.
-- **Sign in to GitHub** to see pull requests, CI and issues, create pull requests, and get desktop notifications when CI finishes or a PR is merged or closed.
-- **Pick from your GitHub repositories**: open the local clone if you have one; otherwise browse branches, commits and PRs, edit files and commit directly on GitHub, or clone.
-- A **conflict helper** walks through each conflicting block (current / incoming / both).
+Pick a time or an interval, a model, the tools it may use, and an email address for the result. Runs use your own `claude -p` while the app or its tray icon is running. Claude Code can also list, create and run automations through the app's MCP server.
 
 ### 📝 Notes & sync
 
-- Notes and to-dos per repository and branch. When you switch branches in the terminal, the notes follow.
-- Optional sync across devices (notes, composer documents, library) with an app account: email, Google or GitHub. Sync is currently open to approved accounts only. If two devices edit the same thing, the newer one wins and the other is kept as a copy.
-
-### 🔗 Inside Claude Code: Encela link mod
-
-Install the **Encela link mod** from Settings, or from the card on the Suggestions screen (Claude Code 2.1.287 or later; in Claude Code it is the `branch-notes` plugin). It is what lets the app see your Claude Code prompts. Claude Code then shows this branch's to-dos, PR and CI in one line above the prompt, adds `/todo`, `/memo` and `/notes`, and lets Claude read your notes while it works. As you type a prompt, it suggests matching skills, subagents and commands you have, items from your library (one press adds them to the project), extensions to install, MCP servers and automations. By default Haiku picks them through your own Claude Code once you stop typing; Settings can switch to keyword matching or turn it off. Recommended community mods (token-weather, blast-radius, replay-theater, claude-hud) can be installed from Settings too.
-
-### 📌 Sidebar
-
-Docks next to the window you are using (Windows Terminal, VS Code, Claude desktop, Codex) and follows it. Settings: magnet on/off, always on top, show/hide shortcut, theme, language (English / Korean), text size.
+Notes and to-dos per repository and branch; they follow the branch you switch to. Inside Claude Code the link mod shows them above the prompt and adds `/todo`, `/memo` and `/notes`. Optional sync across devices with an app account (email, Google or GitHub).
 
 ## Privacy & security
 
@@ -211,7 +139,7 @@ claude plugin test .
 | Path | What's there |
 |---|---|
 | `src/` | React 19 + TypeScript frontend (`workspace/` main window, `sidebar/` sidebar, `features/` shared panels) |
-| `src-tauri/` | Rust backend (Tauri 2). `tools/` has one adapter per AI tool, `catalog/` the composer blocks |
+| `src-tauri/` | Rust backend (Tauri 2). `tools/` has one adapter per AI tool, `catalog/` the block catalog, `activity.rs` the live session view |
 | `claude-mod/` | The Claude Code mod (talks to the app through files in `<app data>/bridge`) |
 | `firebase/` | Security rules for sync |
 | `docs/` | Plan, research notes, setup guides, test checklists |

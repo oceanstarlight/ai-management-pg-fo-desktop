@@ -261,7 +261,9 @@ export function ModsCard() {
           {message.text}
         </p>
       )}
-      <p className="px-4 pt-3 text-xs font-semibold text-text-muted">{t("mods.recommended")}</p>
+      <p className="px-4 pt-3 text-fs-11 font-medium tracking-wide text-text-subtle">
+        {t("mods.recommended")}
+      </p>
       {RECOMMENDED.map((m) => (
         <Row
           key={m.id}

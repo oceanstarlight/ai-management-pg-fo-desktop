@@ -4,7 +4,7 @@
 //!
 //! - the config map (`config_scan`): which instructions, skills, agents, MCP
 //!   servers and settings apply to a project, from where, and whether active
-//! - the file layout the library and the composer write into (`ToolId` methods)
+//! - the file layout the library writes into (`ToolId` methods)
 //! - detection (`tool_detect`): which tool a project is set up for
 //!
 //! Nothing here writes files, and no tool's credentials are ever read.
@@ -47,13 +47,6 @@ impl ToolId {
     }
 
     /// Folder (relative to the main worktree) the app creates worktrees in.
-    pub fn worktrees_dir(self) -> &'static str {
-        match self {
-            ToolId::Claude => ".claude/worktrees",
-            ToolId::Codex => ".codex/worktrees",
-        }
-    }
-
     /// File (relative to the project) a subagent `<id>` is written to.
     pub fn agent_file(self, id: &str) -> String {
         match self {
@@ -65,23 +58,6 @@ impl ToolId {
     /// Whether subagents are TOML files (converted from the library's Markdown).
     pub fn agents_are_toml(self) -> bool {
         self == ToolId::Codex
-    }
-
-    /// The always-loaded instructions file the composer writes its section to.
-    pub fn instructions_file(self, personal: bool) -> &'static str {
-        match (self, personal) {
-            (ToolId::Claude, false) => "CLAUDE.md",
-            (ToolId::Claude, true) => "CLAUDE.local.md",
-            // Codex has no personal instructions file next to AGENTS.md
-            // (AGENTS.override.md replaces it). AGENTS.md is the team's, so
-            // the composer writes Codex instructions for the team only.
-            (ToolId::Codex, _) => "AGENTS.md",
-        }
-    }
-
-    /// Whether the tool has path-scoped instruction files (`.claude/rules`).
-    pub fn has_rules(self) -> bool {
-        self == ToolId::Claude
     }
 
     /// Whether a single subagent can be turned off for one project.

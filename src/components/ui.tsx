@@ -5,8 +5,7 @@ type Variant = "primary" | "accent" | "secondary" | "ghost";
 const VARIANTS: Record<Variant, string> = {
   primary: "bg-primary text-primary-fg hover:bg-primary-hover",
   accent: "bg-accent text-accent-fg hover:bg-accent-hover",
-  secondary:
-    "border border-border bg-surface-raised text-text hover:border-border-strong hover:bg-hover",
+  secondary: "bg-hover text-text hover:bg-active",
   ghost: "text-text-muted hover:bg-hover hover:text-text",
 };
 
@@ -21,11 +20,11 @@ export function Button({
   className = "",
   ...props
 }: ButtonProps) {
-  const sizing = size === "sm" ? "h-7 px-2.5 text-xs" : "h-9 px-3.5 text-sm";
+  const sizing = size === "sm" ? "h-7 px-2.5 text-xs" : "h-8 px-3 text-sm";
   return (
     <button
       type="button"
-      className={`inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 ${sizing} ${VARIANTS[variant]} ${className}`}
+      className={`inline-flex shrink-0 items-center justify-center gap-1.5 rounded-md font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 ${sizing} ${VARIANTS[variant]} ${className}`}
       {...props}
     />
   );
@@ -42,7 +41,7 @@ export function IconButton({ label, className = "", ...props }: IconButtonProps)
       type="button"
       title={label}
       aria-label={label}
-      className={`inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-text-muted transition-colors hover:bg-hover hover:text-text disabled:opacity-50 ${className}`}
+      className={`inline-flex size-8 shrink-0 items-center justify-center rounded-md text-text-muted transition-colors hover:bg-hover hover:text-text disabled:opacity-50 ${className}`}
       {...props}
     />
   );
@@ -52,16 +51,23 @@ export function PageHeader({
   title,
   description,
   actions,
+  embedded = false,
 }: {
   title: string;
   description?: ReactNode;
   actions?: ReactNode;
+  /** Inside a tab of another page: the title is that page's, so only read out. */
+  embedded?: boolean;
 }) {
   return (
-    <header className="mb-6 flex items-start gap-4">
+    <header className={`${embedded ? "mb-6" : "mb-8"} flex items-start gap-4`}>
       <div className="min-w-0 flex-1">
-        <h1 className="font-serif text-fs-26 leading-tight font-medium tracking-tight">{title}</h1>
-        {description && <p className="mt-1.5 text-sm text-text-muted">{description}</p>}
+        <h1
+          className={embedded ? "sr-only" : "text-fs-20 leading-tight font-semibold tracking-tight"}
+        >
+          {title}
+        </h1>
+        {description && <p className="mt-1 max-w-2xl text-sm text-text-muted">{description}</p>}
       </div>
       {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
     </header>
@@ -80,7 +86,7 @@ export function Segmented<T extends string>({
   label: string;
 }) {
   return (
-    <fieldset aria-label={label} className="inline-flex rounded-lg bg-sunken p-0.5">
+    <fieldset aria-label={label} className="inline-flex rounded-md bg-sunken p-0.5">
       {options.map((option) => {
         const selected = option.value === value;
         return (
@@ -89,10 +95,8 @@ export function Segmented<T extends string>({
             type="button"
             aria-pressed={selected}
             onClick={() => onChange(option.value)}
-            className={`h-7 rounded-md px-3 text-xs font-medium transition-colors ${
-              selected
-                ? "bg-surface-raised text-text shadow-card"
-                : "text-text-muted hover:text-text"
+            className={`h-6 rounded px-2.5 text-xs font-medium transition-colors ${
+              selected ? "bg-active text-text" : "text-text-muted hover:text-text"
             }`}
           >
             {option.label}
@@ -135,15 +139,33 @@ export function Switch({
   );
 }
 
-/** A titled group of settings rows on a card. */
+/** A titled group of settings rows: a heading and the rows, no box around them. */
 export function Card({ title, children }: { title?: string; children: ReactNode }) {
   return (
     <section>
-      {title && <h2 className="mb-2 px-1 text-xs font-semibold text-text-muted">{title}</h2>}
-      <div className="divide-y divide-border rounded-xl border border-border bg-surface-raised">
-        {children}
-      </div>
+      {title && <SectionTitle className="px-4">{title}</SectionTitle>}
+      <div>{children}</div>
     </section>
+  );
+}
+
+/** The small heading over a group of things. */
+export function SectionTitle({
+  children,
+  className = "",
+  actions,
+}: {
+  children: ReactNode;
+  className?: string;
+  actions?: ReactNode;
+}) {
+  return (
+    <div className={`mb-1.5 flex items-center gap-2 ${className}`}>
+      <h2 className="min-w-0 flex-1 truncate text-fs-11 font-medium tracking-wide text-text-subtle">
+        {children}
+      </h2>
+      {actions}
+    </div>
   );
 }
 
@@ -157,12 +179,50 @@ export function Row({
   children?: ReactNode;
 }) {
   return (
-    <div className="flex items-center gap-4 px-4 py-3">
+    <div className="flex items-center gap-4 rounded-md px-4 py-2.5">
       <div className="min-w-0 flex-1">
         <div className="text-sm font-medium">{title}</div>
         {description && <div className="mt-0.5 text-xs text-text-muted">{description}</div>}
       </div>
       {children}
+    </div>
+  );
+}
+
+/** Text tabs over a page's sections; the chosen one is marked by a short bar. */
+export function Tabs<T extends string>({
+  value,
+  options,
+  onChange,
+  label,
+}: {
+  value: T;
+  options: { value: T; label: string }[];
+  onChange: (value: T) => void;
+  label: string;
+}) {
+  return (
+    <div role="tablist" aria-label={label} className="flex gap-6">
+      {options.map((o) => {
+        const selected = o.value === value;
+        return (
+          <button
+            key={o.value}
+            type="button"
+            role="tab"
+            aria-selected={selected}
+            onClick={() => onChange(o.value)}
+            className={`relative pb-2 text-sm transition-colors ${
+              selected ? "font-medium text-text" : "text-text-muted hover:text-text"
+            }`}
+          >
+            {o.label}
+            {selected && (
+              <span className="absolute right-0 bottom-0 left-0 h-0.5 rounded-full bg-accent" />
+            )}
+          </button>
+        );
+      })}
     </div>
   );
 }

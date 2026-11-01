@@ -211,7 +211,7 @@ impl Library {
         Ok(())
     }
 
-    /// The current library folder's items, for the composer's block catalog.
+    /// The current library folder's items, for the block catalog.
     pub(crate) fn items(&self) -> Vec<LibraryItem> {
         let dir = self.dir(&self.lock());
         list(&dir)

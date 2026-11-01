@@ -10,9 +10,10 @@
       (() => {
         try {
           const pref = localStorage.getItem("theme");
+          // Dark unless the user chose light, or the system when asked to follow it.
           const dark =
-            pref === "dark" ||
-            (pref !== "light" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+            pref !== "light" &&
+            (pref !== "system" || window.matchMedia("(prefers-color-scheme: dark)").matches);
           document.documentElement.dataset.theme = dark ? "dark" : "light";
         } catch {
           // Storage unavailable: the app applies the theme once it loads.
@@ -20,7 +21,8 @@
       })();
     </script>
     <style>
-      html[data-theme="dark"] body { background: #262522; }
+      html[data-theme="dark"] body { background: #101113; }
+      html[data-theme="light"] body { background: #fafaf8; }
     </style>
   </head>
 

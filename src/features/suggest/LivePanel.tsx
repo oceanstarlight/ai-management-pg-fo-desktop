@@ -25,7 +25,9 @@ export function LivePanel() {
   return (
     <section>
       <div className="mb-2 flex items-center gap-2 px-1">
-        <h2 className="flex-1 text-xs font-semibold text-text-muted">{t("suggest.live.title")}</h2>
+        <h2 className="flex-1 text-fs-11 font-medium tracking-wide text-text-subtle">
+          {t("suggest.live.title")}
+        </h2>
         <span className="text-fs-11 text-text-subtle" title={t("suggest.live.autoHint")}>
           {t("suggest.live.auto")}
         </span>
@@ -36,7 +38,7 @@ export function LivePanel() {
       ) : (
         <ConnectHint
           fallback={
-            <p className="rounded-xl border border-dashed border-border px-4 py-5 text-center text-fs-13 text-text-muted">
+            <p className="rounded-lg px-4 py-5 text-center text-fs-13 text-text-muted">
               {t("suggest.live.empty")}
             </p>
           }
@@ -63,7 +65,7 @@ function SessionCard({ live, auto }: { live: Live; auto: boolean }) {
   }, [live.draft === ""]);
 
   return (
-    <div className="rounded-xl border border-border bg-surface-raised px-3 py-2.5">
+    <div className="rounded-lg bg-surface-raised px-3 py-2.5">
       <div className="mb-1 flex items-center gap-1.5 text-fs-11 text-text-subtle">
         {cloud ? <Cloud size={12} /> : <TerminalSquare size={12} />}
         <span className="truncate">{base(live.project) || live.surface}</span>

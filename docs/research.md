@@ -450,3 +450,20 @@ AGPL 프로젝트는 아이디어만 참고하고 코드는 가져오지 않는�
 - Claude 실행 감지: Windows는 `CreateToolhelp32Snapshot`/`Process32NextW`로 `claude.exe`, Linux는 `/proc/*/comm`. npm으로 설치한 claude는 `node`로 보여서 못 찾음 → mod의 `sessionStart`가 사이드바를 띄우는 것으로 보완.
 - 클라우드 세션 중계(2026-10-30, 이 클라우드 컨테이너에서 확인): 클라우드 Claude Code는 사용자 PC의 bridge 폴더에 닿지 않고, MCP 서버도 클라우드에서 실행돼서 못 씀. 그래서 저장소에 넣는 훅(`UserPromptSubmit`/`Stop`, `.claude/hooks/encela-relay.mjs`)이 Firestore REST로 `relays/{token}/events`에 보내고, `relays/{token}/context/{owner__repo}`를 읽어 `additionalContext`로 붙임. 토큰은 클라우드 환경 변수 `ENCELA_RELAY`(64자 hex), 훅은 `CLAUDE_CODE_REMOTE=true`일 때만 동작. 컨테이너는 node 22·curl이 있고 `HTTPS_PROXY`를 거쳐 firestore.googleapis.com에 닿음(curl은 프록시 환경 변수를 따름, node fetch는 기본으로 안 따름 → curl 사용). Stop 훅 입력에 `last_assistant_message`가 없으면 `transcript_path` JSONL에서 마지막 사용자 프롬프트 뒤의 assistant 텍스트를 모음.
 - 클라우드 환경의 Setup script는 저장된 환경 변수를 못 읽음(문서 확인) → 설정 스크립트에 키를 직접 넣고 `~/.claude/hooks/encela-relay.mjs` + `~/.claude/settings.json` 훅으로 설치(read-merge-write). 클라우드 컨테이너에 `~/.claude/settings.json`이 있어 사용자 훅 위치로 씀. 저장소 훅도 있으면 저장소 쪽만 보냄.
+
+## 18. 세션 활동 · 클라우드 중계 비용 (2026-10-31)
+
+**mod API로 받는 활동** (Claude Code 2.1.316 `plugin-authoring` 타입 파일로 확인)
+- `tool.call`: 입력은 `{ tool, tool_use_id, agentId?, ...도구 인자 }`(Bash면 `e.command`, Read·Edit·Write면 `e.file_path`, Edit은 `old_string`/`new_string`, Write는 `content`, Agent는 `description`/`subagent_type`). `await next(e)`의 결과는 `{ result, text, isError? }` 또는 `{ deny }`. 수정 줄 수는 결과가 아니라 입력에서 셈(Edit: new/old 줄 수, MultiEdit: 합, Write: content 줄 수).
+- `turn.start`: `{ text, turnId, agentId? }`(서브에이전트 실행은 `agentId`가 있음). `turn.complete`: `{ answer, durationMs, isAborted, turnId, agentId? ... }`.
+- `session.measure`: 메인 턴이 끝날 때 등 `{ context: { tokens?, window, percent? }, rateLimits }`. 비용은 `$.session.usage()`의 `cost.usd`(무료 호출).
+- 검증기는 `tool.call`처럼 도구를 막을 수 있는 훅 안의 비동기 호출에 `.catch`가 없으면 경고 → 활동 전송은 실패해도 도구를 막지 않게 `.catch(() => {})`.
+
+**클라우드 중계 비용** (Firebase 공식 문서 요약, 검색 결과로 확인. 이 세션은 firebase.google.com에 직접 접속 불가)
+- Firestore: 조회 결과가 없어도 **조회 1회 = 읽기 1회** 최소 과금, 무료 읽기는 **프로젝트 전체 하루 5만**. 4초 폴링이면 앱이 켜져 있는 사용자 1명당 하루 약 21,600 읽기 → 2~3명이면 무료 한도 초과. 실시간 리스너는 바뀐 문서만 과금되지만 Firestore REST에는 리스너가 없어 Rust에서 gRPC/WebChannel을 직접 구현해야 함.
+- Realtime Database: 횟수가 아니라 **저장 용량·내려받은 용량** 과금. Spark(무료) 저장 1GB, 다운로드 월 10GB, **동시 연결 100개**(데이터베이스당). Blaze는 10GB 넘으면 $1/GB, 동시 연결 20만.
+- RTDB REST 스트리밍: `Accept: text/event-stream`으로 GET하면 SSE로 `put`(경로 + 데이터, 그 위치를 교체)·`patch`(일부 키만 갱신)·`keep-alive`(data null)·`cancel`(규칙이 막음)·`auth_revoked`(토큰 만료, 새 토큰으로 다시 연결) 이벤트가 옴. 307 리다이렉트를 따라가야 하고, 인증은 `?auth=<ID 토큰>`.
+- 다른 후보: Cloudflare Workers + Durable Objects WebSocket(쉬는 동안 과금 없음, 무료 요금제 여부는 문서마다 달라 확인 필요, 서버 운영 필요), ntfy(공개 서버는 토픽 이름만 알면 누구나 읽음 → 제외).
+- 출처: https://firebase.google.cn/docs/firestore/pricing , https://firebase.google.com/docs/firestore/enterprise/query-realtime-pricing-examples , https://firebase.google.com/pricing , https://firebase.google.cn/docs/reference/rest , https://firebase.blog/posts/2014/03/announcing-streaming-for-firebase-rest , https://developers.cloudflare.com/durable-objects/platform/pricing
+
+**진행 상황 시각화 참고** (개념만 참고, 코드는 가져오지 않음): 저장소를 treemap·지도로 그리고 에이전트가 건드린 파일을 빛나게 하는 방식(cosmtrek/mindwalk, zzzgydi/wake), 어두운 화면은 옅은 경계선(흰색 6~10%)과 크기·굵기로 위계를 주고 강조색은 아껴 씀(Raycast 디자인 분석 글).

@@ -103,10 +103,6 @@ pub enum Request {
         branch: String,
         text: String,
     },
-    /// A new composer document (the MCP server's `create_document`).
-    SaveDoc {
-        doc: Value,
-    },
     /// A new or changed automation (the MCP server's `save_automation`).
     SaveAutomation {
         automation: Value,
@@ -156,6 +152,12 @@ pub enum Request {
         pending: bool,
         items: Vec<crate::suggest::LiveItem>,
         picked: Vec<String>,
+    },
+    /// What a session did since the last batch: tool calls, turns, usage.
+    Activity {
+        session: String,
+        project: String,
+        steps: Vec<crate::activity::Step>,
     },
     /// What Claude answered, to find the decisions in it.
     TurnAnswer {
@@ -270,8 +272,7 @@ pub fn apply(store: &Store, request: Request) -> Result<(String, String), String
         }
         Request::SetDone { id, done } => store.update_todo(&id, None, Some(done)),
         Request::DeleteTodo { id } => store.delete_todo(&id),
-        Request::SaveDoc { .. }
-        | Request::SaveAutomation { .. }
+        Request::SaveAutomation { .. }
         | Request::SetAutomationEnabled { .. }
         | Request::RunAutomation { .. }
         | Request::ApplyLibrary { .. }
@@ -282,7 +283,8 @@ pub fn apply(store: &Store, request: Request) -> Result<(String, String), String
         | Request::SessionStart { .. }
         | Request::SessionEnd { .. }
         | Request::SuggestLive { .. }
-        | Request::TurnAnswer { .. } => Err("not a memo request".into()),
+        | Request::TurnAnswer { .. }
+        | Request::Activity { .. } => Err("not a memo request".into()),
         Request::AppendNote {
             repo_key,
             branch,
@@ -351,10 +353,6 @@ pub fn manage(app: &AppHandle) {
         loop {
             if let Ok(store) = app.state::<Memo>().store() {
                 for request in take_requests(&inbox) {
-                    if let Request::SaveDoc { doc } = request {
-                        let _ = crate::composer::save_new_doc(&app, doc);
-                        continue;
-                    }
                     if matches!(
                         request,
                         Request::SaveAutomation { .. }
@@ -381,6 +379,15 @@ pub fn manage(app: &AppHandle) {
                             | Request::SuggestLive { .. }
                     ) {
                         crate::suggest::apply_request(&app, request);
+                        continue;
+                    }
+                    if let Request::Activity {
+                        session,
+                        project,
+                        steps,
+                    } = request
+                    {
+                        crate::activity::record(&app, &session, &project, false, steps);
                         continue;
                     }
                     if let Request::TurnAnswer { .. } = request {
@@ -546,13 +553,10 @@ mod tests {
     fn enqueued_requests_come_back_in_order() {
         let dir = std::env::temp_dir().join(format!("aim-enqueue-{}", uuid::Uuid::new_v4()));
         let first = Request::DeleteTodo { id: "a".into() };
-        let doc = serde_json::json!({ "id": "dx", "nodes": [] });
+        let second = Request::RunAutomation { id: "x".into() };
         enqueue(&dir, &first).unwrap();
-        enqueue(&dir, &Request::SaveDoc { doc: doc.clone() }).unwrap();
-        assert_eq!(
-            take_requests(&dir.join("inbox")),
-            [first, Request::SaveDoc { doc }]
-        );
+        enqueue(&dir, &second).unwrap();
+        assert_eq!(take_requests(&dir.join("inbox")), [first, second]);
         fs::remove_dir_all(&dir).unwrap();
     }
 

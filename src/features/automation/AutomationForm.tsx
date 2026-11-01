@@ -5,8 +5,7 @@ import { type ReactNode, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Button, IconButton, Segmented } from "../../components/ui";
 import { type MessageKey, useT } from "../../i18n";
-import { type Automation, DEFAULT_MAIL_TOOL } from "../../store/automation";
-import { MODELS } from "../../store/composer";
+import { type Automation, DEFAULT_MAIL_TOOL, MODELS } from "../../store/automation";
 import { dayLabel } from "./schedule";
 
 /** Tool groups offered as checkboxes; anything else goes in the free field. */
@@ -109,10 +108,10 @@ export function AutomationForm({
         role="dialog"
         aria-modal="true"
         aria-label={t(initial.id ? "auto.form.titleEdit" : "auto.form.titleNew")}
-        className="flex max-h-full w-full max-w-xl flex-col rounded-2xl border border-border bg-surface-raised shadow-card"
+        className="flex max-h-full w-full max-w-xl flex-col rounded-lg bg-surface-raised"
       >
         <header className="flex items-center gap-2 border-b border-border px-5 py-3.5">
-          <h2 className="font-serif text-lg font-medium">
+          <h2 className="text-lg font-medium">
             {t(initial.id ? "auto.form.titleEdit" : "auto.form.titleNew")}
           </h2>
           <IconButton label={t("auto.form.cancel")} onClick={onClose} className="ml-auto">

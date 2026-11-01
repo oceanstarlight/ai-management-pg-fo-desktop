@@ -186,35 +186,9 @@ fn kill_tree(child: &mut std::process::Child) {
     let _ = child.kill();
 }
 
-/// Which tool's CLI drafts text for a project of `preferred`: its own if
-/// installed, else the other installed one, else `None`.
-pub fn choose(preferred: ToolId, installed: &[ToolId]) -> Option<ToolId> {
-    if installed.contains(&preferred) {
-        return Some(preferred);
-    }
-    ToolId::ALL.into_iter().find(|t| installed.contains(t))
-}
-
-/// Tools whose CLI is installed.
-pub fn installed() -> Vec<ToolId> {
-    ToolId::ALL
-        .into_iter()
-        .filter(|t| find(*t).is_some())
-        .collect()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn choose_prefers_own_then_other() {
-        use ToolId::*;
-        assert_eq!(choose(Codex, &[Claude, Codex]), Some(Codex));
-        assert_eq!(choose(Codex, &[Claude]), Some(Claude));
-        assert_eq!(choose(Claude, &[Codex]), Some(Codex));
-        assert_eq!(choose(Claude, &[]), None);
-    }
 
     #[test]
     fn finds_in_given_dirs() {

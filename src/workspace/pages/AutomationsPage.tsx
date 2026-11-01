@@ -4,7 +4,6 @@ import {
   Check,
   ChevronDown,
   Clock,
-  FileText,
   LoaderCircle,
   Mail,
   Pencil,
@@ -25,8 +24,6 @@ import {
   type Run,
   useAutomationStore,
 } from "../../store/automation";
-import { useComposerStore } from "../../store/composer";
-import { useWorkspaceStore } from "../../store/workspace";
 
 function StatusIcon({ run }: { run: Run }) {
   if (run.status === "running")
@@ -80,8 +77,6 @@ function RunRow({ run, showName }: { run: Run; showName?: boolean }) {
 function AutomationCard({ item, runs, onEdit }: { item: Item; runs: Run[]; onEdit: () => void }) {
   const t = useT();
   const { setEnabled, run, remove } = useAutomationStore();
-  const openDoc = useComposerStore((s) => s.openDoc);
-  const go = useWorkspaceStore((s) => s.go);
   const [error, setError] = useState<string | null>(null);
   const agents = Object.keys(item.agents);
   const last = runs[0];
@@ -101,9 +96,7 @@ function AutomationCard({ item, runs, onEdit }: { item: Item; runs: Run[]; onEdi
   };
 
   return (
-    <article
-      className={`rounded-xl border border-border bg-surface-raised shadow-card ${item.enabled ? "" : "opacity-75"}`}
-    >
+    <article className={`rounded-lg bg-surface-raised ${item.enabled ? "" : "opacity-75"}`}>
       <div className="flex items-start gap-3 px-4 pt-3.5">
         <span
           className={`mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg ${
@@ -160,19 +153,6 @@ function AutomationCard({ item, runs, onEdit }: { item: Item; runs: Run[]; onEdi
             <Mail size={11} />
             {item.email}
           </span>
-        )}
-        {item.docId && (
-          <button
-            type="button"
-            onClick={() => {
-              void openDoc(item.docId as string);
-              go("composer");
-            }}
-            className="flex items-center gap-1 rounded-full px-2 py-0.5 text-accent hover:bg-accent-soft"
-          >
-            <FileText size={11} />
-            {t("auto.openDoc")}
-          </button>
         )}
       </div>
 
@@ -239,7 +219,7 @@ export function AutomationsPage() {
       />
       {!claudeFound && <p className="mb-4 text-xs text-warning">{t("auto.noClaude")}</p>}
       {loaded && items.length === 0 && (
-        <p className="rounded-xl border border-dashed border-border px-4 py-8 text-center text-sm text-text-muted">
+        <p className="rounded-lg px-4 py-8 text-center text-sm text-text-muted">
           {t("auto.empty")}
         </p>
       )}
@@ -256,8 +236,10 @@ export function AutomationsPage() {
 
       {runs.length > 0 && (
         <section className="mt-8">
-          <h2 className="mb-2 px-1 text-xs font-semibold text-text-muted">{t("auto.runs")}</h2>
-          <ul className="rounded-xl border border-border bg-surface-raised p-1.5">
+          <h2 className="mb-1.5 text-fs-11 font-medium tracking-wide text-text-subtle">
+            {t("auto.runs")}
+          </h2>
+          <ul className="rounded-lg bg-surface-raised p-1.5">
             {runs.slice(0, 30).map((r) => (
               <RunRow key={r.id} run={r} showName />
             ))}

@@ -362,3 +362,17 @@ test("the user's own starter forms come from the app", async ($, on) => {
   expect(await ui.find({ key: "starter-general" })).toBeUndefined();
   await ui.unmount();
 });
+
+test("tool calls and turns go to the app as activity steps", async ($, on) => {
+  const written: string[] = [];
+  const clock = engine(on, "keyword", "[]", [], written);
+  on("tool.call", () => ({ result: "ok" }));
+  await $.session.start({ cwd: "/", surface: "terminal", isInteractive: true });
+  await $.tool.call({ tool: "Edit", file_path: "/repo/a.ts", old_string: "a", new_string: "b\nc" });
+  await clock.advance(1000);
+  const batch = sent(written).find((r) => r.op === "activity");
+  expect(batch?.project).toBe("/repo");
+  expect(batch?.steps.map((s: { kind: string }) => s.kind)).toEqual(["tool", "toolEnd"]);
+  expect(batch?.steps[0]).toMatchObject({ tool: "Edit", target: "/repo/a.ts" });
+  expect(batch?.steps[1]).toMatchObject({ ok: true, added: 2, removed: 1 });
+});

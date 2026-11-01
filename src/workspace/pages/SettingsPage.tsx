@@ -7,7 +7,6 @@ import { ModsCard } from "../../features/mods/ModsCard";
 import { StartersCard } from "../../features/suggest/StartersCard";
 import { type LocalePref, timeAgo, useLocaleStore, useT } from "../../i18n";
 import { useAccountStore } from "../../store/account";
-import { useActivityStore } from "../../store/activity";
 import { useDockStore } from "../../store/dock";
 import { FONT_SIZES, useFontSizeStore } from "../../store/fontSize";
 import { useLibraryStore } from "../../store/library";
@@ -16,8 +15,9 @@ import { useProjectStore } from "../../store/project";
 import { useSyncStore } from "../../store/sync";
 import { type ThemePref, useThemeStore } from "../../store/theme";
 import { useUpdaterStore } from "../../store/updater";
-import { useWorkspaceStore } from "../../store/workspace";
+import { CONNECT_SECTION } from "../../store/workspace";
 import { TOOL_IDS, TOOLS } from "../../tools";
+import { ConnectPage } from "./ConnectPage";
 
 const THEMES: ThemePref[] = ["system", "light", "dark"];
 
@@ -59,20 +59,12 @@ export function SettingsPage() {
   }, [load]);
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6 px-8 py-10">
+    <div className="mx-auto max-w-3xl space-y-10 px-10 pt-8 pb-16">
       <PageHeader title={t("settings.title")} />
 
-      <Card title={t("shell.nav.connect")}>
-        <Row title={t("connect.title")} description={t("connect.description")}>
-          <Button
-            size="sm"
-            variant="primary"
-            onClick={() => useWorkspaceStore.getState().go("connect")}
-          >
-            {t("connect.hint.button")}
-          </Button>
-        </Row>
-      </Card>
+      <section id={CONNECT_SECTION} className="scroll-mt-6">
+        <ConnectPage embedded />
+      </section>
 
       <Card title={t("settings.display")}>
         <Row title={t("settings.theme")} description={t("settings.themeHint")}>
@@ -124,8 +116,6 @@ export function SettingsPage() {
       </Card>
 
       <NotifyCard />
-
-      <ActivityCard />
 
       <SyncCard />
 
@@ -188,58 +178,6 @@ function NotifyCard() {
       <Row title={t("settings.notifyGitHub")} description={t("settings.notifyGitHubHint")}>
         <Switch label={t("settings.notifyGitHub")} checked={on} onChange={setOn} />
       </Row>
-    </Card>
-  );
-}
-
-function ActivityCard() {
-  const t = useT();
-  const { settings, settingsError, loadSettings, saveSettings } = useActivityStore();
-
-  useEffect(() => {
-    void loadSettings();
-  }, [loadSettings]);
-
-  const retention = settings?.retentionDays == null ? "none" : String(settings.retentionDays);
-  const options = [
-    { value: "30", label: t("activity.settings.days30") },
-    { value: "90", label: t("activity.settings.days90") },
-    { value: "365", label: t("activity.settings.days365") },
-    { value: "none", label: t("activity.settings.forever") },
-  ];
-  return (
-    <Card title={t("activity.settings.title")}>
-      <Row
-        title={t("activity.settings.retention")}
-        description={t("activity.settings.retentionHint")}
-      >
-        <Segmented
-          label={t("activity.settings.retention")}
-          value={settings ? retention : ""}
-          options={options}
-          onChange={(v) => void saveSettings({ retentionDays: v === "none" ? null : Number(v) })}
-        />
-      </Row>
-      <Row
-        title={t("activity.settings.syncPrompts")}
-        description={t("activity.settings.syncPromptsHint")}
-      >
-        <Switch
-          label={t("activity.settings.syncPrompts")}
-          checked={settings?.syncPrompts ?? false}
-          disabled={!settings}
-          onChange={(syncPrompts) => void saveSettings({ syncPrompts })}
-        />
-      </Row>
-      {settingsError && (
-        <Row
-          title={
-            <span className="text-danger">
-              {t("activity.settings.failed", { error: settingsError })}
-            </span>
-          }
-        />
-      )}
     </Card>
   );
 }

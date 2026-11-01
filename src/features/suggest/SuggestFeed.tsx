@@ -21,7 +21,9 @@ export function SuggestFeed({ compact = false }: { compact?: boolean }) {
   return (
     <section>
       <div className="mb-2 flex items-center gap-2 px-1">
-        <h2 className="flex-1 text-xs font-semibold text-text-muted">{t("suggest.feed.title")}</h2>
+        <h2 className="flex-1 text-fs-11 font-medium tracking-wide text-text-subtle">
+          {t("suggest.feed.title")}
+        </h2>
         {log.length > 0 && (
           <IconButton
             label={t("suggest.feed.clear")}
@@ -38,7 +40,7 @@ export function SuggestFeed({ compact = false }: { compact?: boolean }) {
         )}
       </div>
       {log.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-border px-4 py-6 text-center text-fs-13 text-text-muted">
+        <p className="rounded-lg px-4 py-6 text-center text-fs-13 text-text-muted">
           {t("suggest.feed.empty")}
         </p>
       ) : (
@@ -56,7 +58,7 @@ function FeedEntry({ entry }: { entry: LogEntry }) {
   const t = useT();
   const locale = useLocale();
   return (
-    <li className="rounded-xl border border-border bg-surface-raised px-3 py-2.5">
+    <li className="rounded-lg bg-surface-raised px-3 py-2.5">
       <div className="mb-1 flex items-center gap-2 text-fs-11 text-text-subtle">
         <span>{entry.by === "ai" ? "✨" : "💡"}</span>
         {entry.project && <span className="truncate">{base(entry.project)}</span>}

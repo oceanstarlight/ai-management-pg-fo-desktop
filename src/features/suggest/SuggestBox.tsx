@@ -10,14 +10,11 @@ import { useSuggestStore } from "../../store/suggest";
 import { useWorkspaceStore } from "../../store/workspace";
 import { SuggestionCard } from "./SuggestionCard";
 
-const CHOOSE = "\u0000choose";
-
 /** The app's own prompt box: suggestions as you type, like in the terminal. */
 export function SuggestBox() {
   const t = useT();
   const locale = useLocale();
   const project = useProjectStore((s) => s.current);
-  const recent = useProjectStore((s) => s.recent);
   const { draft, items, by, pending, error, catalog, setDraft, loadCandidates } = useSuggestStore();
   const go = useWorkspaceStore((s) => s.go);
   const [copied, setCopied] = useState(false);
@@ -27,40 +24,20 @@ export function SuggestBox() {
   }, [project, loadCandidates]);
 
   const off = catalog?.mode === "off";
-  const { select, choose } = useProjectStore.getState();
-  const projects = project && !recent.includes(project) ? [project, ...recent] : recent;
   const short = draft.trim().length > 0 && items.length === 0 && !pending;
   const missing = draft.includes("*") ? missingFields(draft) : [];
 
   return (
     <div>
-      <div className="rounded-2xl border border-border bg-surface-raised shadow-card focus-within:border-border-strong">
+      <div className="rounded-lg bg-surface-raised ring-1 ring-transparent transition-shadow focus-within:ring-border-strong">
         <textarea
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           placeholder={t("suggest.placeholder")}
-          rows={Math.min(16, Math.max(4, draft.split("\n").length))}
-          className="block w-full resize-none rounded-t-2xl bg-transparent px-4 pt-3.5 pb-1 text-sm text-text outline-none placeholder:text-text-subtle"
+          rows={Math.min(14, Math.max(3, draft.split("\n").length))}
+          className="block w-full resize-none rounded-t-lg bg-transparent px-3.5 pt-3 pb-1 text-sm text-text outline-none placeholder:text-text-subtle"
         />
         <div className="flex items-center gap-2 px-3 pb-2.5 text-fs-12 text-text-subtle">
-          <select
-            aria-label={t("docs.project.recent")}
-            title={project ?? undefined}
-            value={project ?? ""}
-            onChange={(e) => {
-              if (e.target.value === CHOOSE) void choose();
-              else if (e.target.value) void select(e.target.value);
-            }}
-            className="max-w-40 shrink-0 truncate rounded-md border border-border bg-surface px-1.5 py-1 text-fs-12 text-text-muted"
-          >
-            {!project && <option value="">{t("docs.project.none")}</option>}
-            {projects.map((path) => (
-              <option key={path} value={path}>
-                {path.split(/[\\/]/).filter(Boolean).pop() ?? path}
-              </option>
-            ))}
-            <option value={CHOOSE}>{t("docs.project.choose")}</option>
-          </select>
           <span className="flex min-w-0 flex-1 items-center gap-1.5 truncate">
             {pending && <LoaderCircle size={12} className="shrink-0 animate-spin" />}
             {off

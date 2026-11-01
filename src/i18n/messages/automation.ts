@@ -55,10 +55,7 @@ export const ko = {
   "auto.off": "꺼져 있음",
   "auto.lastRun": "마지막 실행",
   "auto.neverRan": "아직 실행 안 함",
-  "auto.fromDoc": "문서 작성기에서 만듦",
-  "auto.openDoc": "문서 열기",
   "auto.runs": "실행 기록",
-  "auto.noRuns": "실행 기록이 없어요.",
   "auto.status.running": "실행 중",
   "auto.status.success": "성공",
   "auto.status.failed": "실패",
@@ -66,7 +63,6 @@ export const ko = {
   "auto.trigger.manual": "직접",
   "auto.trigger.mcp": "Claude Code",
   "auto.cost": "{cost} USD",
-  "auto.started": "실행을 시작했어요. 끝나면 알림이 와요.",
 
   "auto.schedule.daily": "매일 {time}",
   "auto.schedule.weekdays": "평일 {time}",
@@ -119,14 +115,6 @@ export const ko = {
   "auto.form.none": "없음",
   "auto.form.save": "저장",
   "auto.form.cancel": "취소",
-  "auto.form.saved": "자동화를 저장했어요.",
-
-  // Composer automation output
-  "composer.target.automation": "자동화",
-  "composer.automation.setUp": "자동화 설정",
-  "composer.automation.notSaved": "아직 저장 안 됨",
-  "composer.automation.hint":
-    "지침·규칙·skill은 추가 지침으로, 서브에이전트는 실행 때 쓸 서브에이전트로 들어가요.",
 };
 
 export const en: Messages<typeof ko> = {
@@ -180,10 +168,7 @@ export const en: Messages<typeof ko> = {
   "auto.off": "Off",
   "auto.lastRun": "Last run",
   "auto.neverRan": "Hasn't run yet",
-  "auto.fromDoc": "Made in the document composer",
-  "auto.openDoc": "Open document",
   "auto.runs": "Runs",
-  "auto.noRuns": "No runs yet.",
   "auto.status.running": "Running",
   "auto.status.success": "Done",
   "auto.status.failed": "Failed",
@@ -191,7 +176,6 @@ export const en: Messages<typeof ko> = {
   "auto.trigger.manual": "Manual",
   "auto.trigger.mcp": "Claude Code",
   "auto.cost": "{cost} USD",
-  "auto.started": "Started. You'll get a notification when it's done.",
 
   "auto.schedule.daily": "Daily at {time}",
   "auto.schedule.weekdays": "Weekdays at {time}",
@@ -246,11 +230,4 @@ export const en: Messages<typeof ko> = {
   "auto.form.none": "none",
   "auto.form.save": "Save",
   "auto.form.cancel": "Cancel",
-  "auto.form.saved": "Automation saved.",
-
-  "composer.target.automation": "Automation",
-  "composer.automation.setUp": "Set up automation",
-  "composer.automation.notSaved": "Not saved yet",
-  "composer.automation.hint":
-    "Instructions, rules and skills become extra instructions; subagents are available to each run.",
 };

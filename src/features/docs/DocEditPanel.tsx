@@ -4,7 +4,6 @@ import { Button } from "../../components/ui";
 import { useT } from "../../i18n";
 import { useProjectStore } from "../../store/project";
 import { type DocKind, useProjectDocsStore } from "../../store/projectDocs";
-import { useUiStore } from "../../store/ui";
 import { DocEditor } from "../../workspace/pages/ProjectDocsPage";
 import { DecisionsPanel } from "../suggest/DecisionsPanel";
 
@@ -25,8 +24,8 @@ export function DocEditPanel() {
     return (
       <div className="space-y-2">
         <p className="text-fs-12 text-text-muted">{t("docs.edit.noProject")}</p>
-        <Button size="sm" onClick={() => useUiStore.getState().setActiveTab("work")}>
-          {t("shell.tab.work")}
+        <Button size="sm" onClick={() => void useProjectStore.getState().choose()}>
+          {t("docs.project.choose")}
         </Button>
       </div>
     );

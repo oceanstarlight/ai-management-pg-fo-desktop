@@ -2,21 +2,24 @@
 // Encela cloud relay (written by the Encela app; safe to commit).
 //
 // In a cloud Claude Code session (claude.ai/code), sends each prompt
-// (UserPromptSubmit) and Claude's answer (Stop) to the Encela app on your
-// computer through Firestore, and adds what you chose in Encela to the next
-// prompt. It does nothing unless the session is remote and has the relay key
-// (written in below by Encela's setup script, or the environment's
-// ENCELA_RELAY), and it never blocks or fails the session.
+// (UserPromptSubmit), Claude's answer (Stop) and each tool call (PreToolUse,
+// PostToolUse: the tool, its file or command, lines changed; no file
+// contents) to the Encela app on your computer through the Firebase Realtime
+// Database, and adds what you chose in Encela to the next prompt. It does
+// nothing unless the session is remote and has the relay key (written in
+// below by Encela's setup script, or the environment's ENCELA_RELAY), and it
+// never blocks or fails the session: tool calls are sent in the background.
 
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const PROJECT = "__PROJECT__";
-const API_KEY = "__API_KEY__";
+const DATABASE = "__DATABASE__";
 const TIMEOUT_S = "4";
 const MAX_TEXT = 20000;
+const MAX_DETAIL = 300;
+const KINDS = ["prompt", "answer", "tool", "toolEnd"];
 
 function quit() {
   process.exit(0);
@@ -25,7 +28,7 @@ function quit() {
 const kind = process.argv[2];
 const token = process.env.ENCELA_RELAY || "__TOKEN__";
 if (process.env.CLAUDE_CODE_REMOTE !== "true" || !/^[0-9a-f]{64}$/.test(token)) quit();
-if (kind !== "prompt" && kind !== "answer") quit();
+if (!KINDS.includes(kind)) quit();
 
 // Installed both for the user and in the project: the project's copy reports.
 const own = join(process.env.CLAUDE_PROJECT_DIR ?? "", ".claude/hooks/encela-relay.mjs");
@@ -40,18 +43,29 @@ try {
   quit();
 }
 
-const base = `https://firestore.googleapis.com/v1/projects/${PROJECT}/databases/(default)/documents/relays/${token}`;
+const base = `${DATABASE}/relays/${token}`;
 
-function curl(args, body) {
+function curl(args) {
   try {
     return execFileSync("curl", ["-sS", "-m", TIMEOUT_S, ...args], {
-      input: body,
       encoding: "utf8",
-      stdio: ["pipe", "pipe", "ignore"],
+      stdio: ["ignore", "pipe", "ignore"],
     });
   } catch {
     return "";
   }
+}
+
+/** Sends an event; `wait` false leaves curl running after this hook exits. */
+function post(event, wait) {
+  const args = ["-X", "POST", "-H", "Content-Type: application/json", "--data-binary", JSON.stringify(event), `${base}/events.json`];
+  if (wait) {
+    curl(args);
+    return;
+  }
+  try {
+    spawn("curl", ["-sS", "-m", TIMEOUT_S, ...args], { detached: true, stdio: "ignore" }).unref();
+  } catch {}
 }
 
 /** `owner__repo` of the origin remote, the key the app files it under. */
@@ -107,32 +121,89 @@ function lastAnswer() {
   return texts.join("\n\n");
 }
 
+const str = (v) => (typeof v === "string" ? v : "");
+const cut = (s, n) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
+const count = (s) => (s ? s.split("\n").length : 0);
+
+/** The file or pattern a tool works on, and a line about what it does (as the mod's activity.ts). */
+function describe(tool, args) {
+  switch (tool) {
+    case "Read":
+    case "Edit":
+    case "MultiEdit":
+    case "Write":
+      return { target: str(args.file_path), detail: "" };
+    case "NotebookEdit":
+      return { target: str(args.notebook_path), detail: "" };
+    case "Grep":
+    case "Glob":
+      return { target: str(args.path), detail: str(args.pattern) };
+    case "Bash":
+      return { target: "", detail: str(args.command) };
+    case "Agent":
+    case "Task":
+      return { target: "", detail: str(args.description) || str(args.subagent_type) };
+    case "WebFetch":
+      return { target: "", detail: str(args.url) };
+    case "WebSearch":
+      return { target: "", detail: str(args.query) };
+    default:
+      return { target: "", detail: "" };
+  }
+}
+
+function size(tool, args) {
+  if (tool === "Edit") return { added: count(str(args.new_string)), removed: count(str(args.old_string)) };
+  if (tool === "MultiEdit" && Array.isArray(args.edits)) {
+    let added = 0;
+    let removed = 0;
+    for (const e of args.edits) {
+      added += count(str(e?.new_string));
+      removed += count(str(e?.old_string));
+    }
+    return { added, removed };
+  }
+  if (tool === "Write") return { added: count(str(args.content)), removed: 0 };
+  return { added: 0, removed: 0 };
+}
+
 const cwd = typeof input.cwd === "string" ? input.cwd : process.cwd();
 const repo = repoKey(cwd);
+const event = {
+  kind,
+  session: String(input.session_id ?? "").slice(0, 200),
+  repo,
+  at: Date.now(),
+};
+
+if (kind === "tool" || kind === "toolEnd") {
+  const tool = str(input.tool_name).slice(0, 200);
+  const args = input.tool_input && typeof input.tool_input === "object" ? input.tool_input : {};
+  event.tool = tool;
+  event.id = str(input.tool_use_id).slice(0, 200);
+  if (input.agent_id) event.agent = String(input.agent_id).slice(0, 200);
+  if (kind === "tool") {
+    const { target, detail } = describe(tool, args);
+    event.target = cut(target, 1000);
+    event.detail = cut(detail, MAX_DETAIL);
+  } else {
+    Object.assign(event, size(tool, args), { ok: true });
+  }
+  post(event, false);
+  quit();
+}
+
 const text = (kind === "prompt" ? String(input.prompt ?? "") : lastAnswer()).slice(0, MAX_TEXT);
 if (!text.trim()) quit();
-
-const str = (v) => ({ stringValue: v });
-curl(
-  ["-X", "POST", "-H", "Content-Type: application/json", "--data-binary", "@-", `${base}/events?key=${API_KEY}`],
-  JSON.stringify({
-    fields: {
-      kind: str(kind),
-      session: str(String(input.session_id ?? "").slice(0, 200)),
-      repo: str(repo),
-      text: str(text),
-      at: { integerValue: String(Date.now()) },
-    },
-  }),
-);
+post({ ...event, text }, true);
 
 // What the user chose in Encela and the project's decisions go into this prompt.
 if (kind === "prompt" && repo) {
   let context = "";
   try {
-    context = JSON.parse(curl([`${base}/context/${repo}?key=${API_KEY}`])).fields?.text?.stringValue ?? "";
+    context = JSON.parse(curl([`${base}/context/${repo}/text.json`])) ?? "";
   } catch {}
-  if (context.trim()) {
+  if (typeof context === "string" && context.trim()) {
     process.stdout.write(
       JSON.stringify({
         hookSpecificOutput: { hookEventName: "UserPromptSubmit", additionalContext: context },
