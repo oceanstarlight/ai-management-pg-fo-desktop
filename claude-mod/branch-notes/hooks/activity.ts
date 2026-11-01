@@ -12,6 +12,8 @@ export type Step = {
   tool?: string;
   target?: string;
   detail?: string;
+  /** The end of a main-loop turn: Claude's answer (the app masks and cuts it). */
+  answer?: string;
   added?: number;
   removed?: number;
   ok?: boolean;
@@ -25,6 +27,8 @@ export type Step = {
 export const MAX_BATCH = 100;
 /** Steps wait this long to go together. */
 export const FLUSH_MS = 400;
+/** An answer is cut to this before it goes to the app. */
+export const MAX_ANSWER = 8000;
 /** Commands and descriptions are cut to this before the app masks them. */
 const MAX_DETAIL = 300;
 

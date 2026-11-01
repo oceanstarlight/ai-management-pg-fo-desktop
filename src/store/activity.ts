@@ -26,6 +26,8 @@ export interface Step {
   category: Category | "";
   target: string;
   detail: string;
+  /** The end of a turn: Claude's answer. */
+  answer: string;
   added: number;
   removed: number;
   ok: boolean | null;
@@ -82,6 +84,8 @@ export interface Turn {
   at: number;
   calls: Call[];
   ended: boolean;
+  /** Claude's answer, once the turn ended with one. */
+  answer: string;
 }
 
 /** Groups a session's steps into turns of calls (oldest first). */
@@ -92,16 +96,24 @@ export function turnsOf(steps: Step[]): Turn[] {
   for (const step of steps) {
     if (step.kind === "turn" && !step.agent) {
       if (step.phase === "start") {
-        current = { id: step.id, prompt: step.detail, at: step.at, calls: [], ended: false };
+        current = {
+          id: step.id,
+          prompt: step.detail,
+          at: step.at,
+          calls: [],
+          ended: false,
+          answer: "",
+        };
         turns.push(current);
       } else if (current) {
         current.ended = true;
+        current.answer = step.answer ?? "";
       }
       continue;
     }
     if (step.kind === "tool") {
       if (!current) {
-        current = { id: "", prompt: "", at: step.at, calls: [], ended: false };
+        current = { id: "", prompt: "", at: step.at, calls: [], ended: false, answer: "" };
         turns.push(current);
       }
       const call = { start: step, end: null };

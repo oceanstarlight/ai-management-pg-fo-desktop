@@ -1,6 +1,14 @@
 import type { EngineInterface, Register } from "claude-code";
 import { atom, read, update } from "claude-code";
-import { describeTool, editSize, enqueue, FLUSH_MS, type Step, toolInput } from "./activity";
+import {
+  describeTool,
+  editSize,
+  enqueue,
+  FLUSH_MS,
+  MAX_ANSWER,
+  type Step,
+  toolInput,
+} from "./activity";
 import {
   applyLocally,
   bandText,
@@ -683,7 +691,13 @@ export const register: Register = (on) => {
   // The branch can change between turns (git switch in the session); the
   // app looks for decisions settled in the answer.
   on("turn.complete", async ($, e, next) => {
-    await track($, { kind: "turn", phase: "end", id: e.turnId, agent: e.agentId });
+    await track($, {
+      kind: "turn",
+      phase: "end",
+      id: e.turnId,
+      agent: e.agentId,
+      answer: e.agentId === undefined && e.reason === "answer" ? e.answer.slice(0, MAX_ANSWER) : "",
+    });
     await refresh($);
     if (e.agentId === undefined && e.reason === "answer" && lastPrompt && session) {
       await send($, {

@@ -461,6 +461,7 @@ fn handle(app: &AppHandle, event: &Value) {
         "answer" => {
             let turn = crate::activity::Step {
                 phase: "end".into(),
+                answer: s("text"),
                 ..step("turn")
             };
             crate::activity::record(app, &session, &project, true, vec![turn]);

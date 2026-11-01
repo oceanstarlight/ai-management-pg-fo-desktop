@@ -1,5 +1,5 @@
 import { Check, LoaderCircle, X } from "lucide-react";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { type MessageKey, useLocale, useT } from "../../i18n";
 import { type Call, type Session, turnsOf } from "../../store/activity";
 import { stateColor } from "./LiveStatus";
@@ -58,6 +58,7 @@ export function Timeline({ session, limit = 60 }: { session: Session; limit?: nu
                 </span>
               )}
             </div>
+            {turn.answer && <Answer text={turn.answer} />}
             {calls.length > 0 && (
               <ul className="mt-2 ml-[4.25rem] border-l border-border pl-4">
                 {calls.map((call, j) => (
@@ -75,6 +76,34 @@ export function Timeline({ session, limit = 60 }: { session: Session; limit?: nu
         );
       })}
     </ol>
+  );
+}
+
+/** Claude's answer under its prompt: the first lines, the rest on request. */
+function Answer({ text }: { text: string }) {
+  const t = useT();
+  const [open, setOpen] = useState(false);
+  const long = text.split("\n").length > 3 || text.length > 240;
+  return (
+    <div className="mt-2 ml-[4.25rem]">
+      <p
+        className={`selectable text-fs-13 leading-relaxed whitespace-pre-wrap text-text-muted ${
+          open ? "" : "line-clamp-3"
+        }`}
+      >
+        {text}
+      </p>
+      {long && (
+        <button
+          type="button"
+          aria-expanded={open}
+          onClick={() => setOpen(!open)}
+          className="mt-1 text-fs-12 text-text-subtle hover:text-text"
+        >
+          {t(open ? "live.answer.less" : "live.answer.more")}
+        </button>
+      )}
+    </div>
   );
 }
 

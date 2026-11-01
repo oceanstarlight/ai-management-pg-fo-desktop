@@ -26,6 +26,8 @@ const MAX_SESSIONS: usize = 8;
 const ENDED_TTL_MS: i64 = 30 * 60 * 1000;
 /// A command or description is cut to this many characters.
 const MAX_DETAIL: usize = 200;
+/// An answer is kept up to this many characters.
+const MAX_ANSWER: usize = 8000;
 /// Project files listed for the map, at most.
 const MAX_PROJECT_FILES: usize = 4000;
 
@@ -48,6 +50,8 @@ pub struct Step {
     pub target: String,
     /// A command, search or subagent task, masked and cut.
     pub detail: String,
+    /// The end of a main-loop turn: Claude's answer, masked and cut.
+    pub answer: String,
     pub added: u32,
     pub removed: u32,
     /// `toolEnd`: whether the tool succeeded.
@@ -152,6 +156,16 @@ fn clip(text: &str) -> String {
     out
 }
 
+fn answer_text(text: &str) -> String {
+    let text = crate::redact::mask(text.trim());
+    if text.chars().count() <= MAX_ANSWER {
+        return text;
+    }
+    let mut out: String = text.chars().take(MAX_ANSWER - 1).collect();
+    out.push('…');
+    out
+}
+
 /// A path the session reported, relative to the project when inside it, with
 /// `/` separators.
 fn relative(project: &str, target: &str) -> String {
@@ -185,6 +199,7 @@ fn apply_step(s: &mut Session, mut step: Step) {
                 s.state = "idle".into();
                 s.doing.clear();
             }
+            step.answer = answer_text(&step.answer);
         }
         "tool" => {
             step.category = category(&step.tool).into();
@@ -515,8 +530,18 @@ mod tests {
             "{}",
             s.steps[4].detail
         );
-        apply_step(&mut s, step("turn", "t1"));
+        apply_step(
+            &mut s,
+            Step {
+                answer: "Fixed.\n\n    code stays indented\napi_key = sk-abcdefghijklmnop1234"
+                    .into(),
+                ..step("turn", "t1")
+            },
+        );
         assert_eq!(s.state, "idle");
+        let answer = &s.steps.last().unwrap().answer;
+        assert!(answer.contains("\n    code stays indented"), "{answer}");
+        assert!(!answer.contains("sk-abcdefghijklmnop1234"), "{answer}");
     }
 
     #[test]

@@ -58,9 +58,14 @@ fn patterns() -> &'static Patterns {
 /// Trims, collapses runs of spaces and tabs (at most one blank line is kept),
 /// masks secrets and cuts to 500 characters.
 pub fn prompt_text(raw: &str) -> String {
+    cut(&mask(&tidy(raw)))
+}
+
+/// Masks secrets and keeps everything else as it is (line breaks and
+/// indentation too, for an answer's code blocks).
+pub fn mask(raw: &str) -> String {
     let p = patterns();
-    let tidy = tidy(raw);
-    let text = p.private_key.replace_all(&tidy, MASK);
+    let text = p.private_key.replace_all(raw, MASK);
     let text = p.jwt.replace_all(&text, MASK);
     let text = p.token.replace_all(&text, MASK);
     let text = p
@@ -89,7 +94,7 @@ pub fn prompt_text(raw: &str) -> String {
             run.to_string()
         }
     });
-    cut(&text)
+    text.into_owned()
 }
 
 /// `the token: how it works`: an unquoted `:` followed by a short lowercase

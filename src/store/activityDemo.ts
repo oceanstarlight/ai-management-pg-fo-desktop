@@ -38,7 +38,7 @@ export const DEMO_FILES = [
   "docs/api.md",
 ];
 
-const SCRIPT: Omit<Step, "at" | "id" | "phase" | "category" | "agent" | "ok">[] = [
+const SCRIPT: Omit<Step, "at" | "id" | "phase" | "category" | "agent" | "ok" | "answer">[] = [
   { kind: "tool", tool: "Read", target: "CLAUDE.md", detail: "", added: 0, removed: 0 },
   { kind: "tool", tool: "Grep", target: "src", detail: "saveNote", added: 0, removed: 0 },
   { kind: "tool", tool: "Read", target: "src/api/notes.ts", detail: "", added: 0, removed: 0 },
@@ -112,6 +112,7 @@ export function playDemo(apply: (session: Session) => void): () => void {
         category: "",
         target: "",
         detail: "메모 저장할 때 가끔 내용이 사라지는 문제 고치고 테스트 추가해줘",
+        answer: "",
         added: 0,
         removed: 0,
         ok: null,
@@ -169,6 +170,7 @@ export function playDemo(apply: (session: Session) => void): () => void {
         at,
         id: `c${i}`,
         phase: "",
+        answer: "",
         category: CATEGORY[s.tool] ?? "other",
         agent: null,
         ok: null,
@@ -200,7 +202,13 @@ export function playDemo(apply: (session: Session) => void): () => void {
     } else {
       next.state = "idle";
       next.doing = "";
-      next.steps.push({ ...(next.steps[0] as Step), at, phase: "end" });
+      next.steps.push({
+        ...(next.steps[0] as Step),
+        at,
+        phase: "end",
+        answer:
+          "저장 중에 같은 메모를 두 번 저장하면 늦게 끝난 요청이 새 내용을 덮어쓰고 있었어요.\n\n- `src/api/notes.ts`: 저장 요청마다 버전을 붙이고 오래된 응답은 무시\n- `server/routes/notes.ts`: 버전이 낮은 저장은 409로 거절\n- `tests/notes.test.ts`: 동시 저장 테스트 추가\n\n테스트는 하나 실패했다가 고친 뒤 모두 통과했어요.",
+      });
       clearInterval(timer);
     }
     next.usage.contextPercent = Math.min(90, (next.usage.contextPercent ?? 0) + 1.5);
