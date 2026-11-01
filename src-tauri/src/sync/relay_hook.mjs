@@ -147,6 +147,8 @@ function describe(tool, args) {
       return { target: "", detail: str(args.url) };
     case "WebSearch":
       return { target: "", detail: str(args.query) };
+    case "AskUserQuestion":
+      return { target: "", detail: Array.isArray(args.questions) ? str(args.questions[0]?.question) : "" };
     default:
       return { target: "", detail: "" };
   }

@@ -50,6 +50,7 @@
   --c-act-web: #6cc3c0;
   --c-act-plan: #d8b25a;
   --c-act-mcp: #9fb0c4;
+  --c-act-ask: #e8c547;
   --c-act-other: #8e8d88;
   --c-grid: rgb(255 255 255 / 0.035);
 }
@@ -92,6 +93,7 @@
   --c-act-web: #1d7f7c;
   --c-act-plan: #8a6a0b;
   --c-act-mcp: #4f6278;
+  --c-act-ask: #9a7400;
   --c-act-other: #6c6b65;
   --c-grid: rgb(20 20 18 / 0.04);
 }
@@ -158,6 +160,7 @@
   --color-act-web: var(--c-act-web);
   --color-act-plan: var(--c-act-plan);
   --color-act-mcp: var(--c-act-mcp);
+  --color-act-ask: var(--c-act-ask);
   --color-act-other: var(--c-act-other);
 }
 
@@ -269,11 +272,25 @@ body {
 .anim-cell-flash {
   animation: cell-flash 0.9s ease-out;
 }
+@keyframes node-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.97);
+  }
+}
+.anim-node-in {
+  animation: node-in 0.35s ease-out;
+}
+.anim-node-out {
+  opacity: 0;
+  transition: opacity 0.4s ease-in;
+}
 @media (prefers-reduced-motion: reduce) {
   .anim-pulse-ring,
   .anim-breathe,
   .anim-orbit,
   .anim-step-in,
+  .anim-node-in,
   .anim-cell-flash {
     animation: none;
   }

@@ -68,6 +68,8 @@ interface GitHubState {
   login: DeviceCode | null;
   /** Why the last sign-in did not finish. */
   loginError: string | null;
+  /** The sign-in ended without the user signing out (token expired or revoked). */
+  expired: boolean;
   project: string | null;
   /** `null` when the project is not on github.com (or not loaded yet). */
   view: RepoView | null;
@@ -106,6 +108,8 @@ export const useGitHubStore = create<GitHubState>((set, get) => {
   let listening = false;
   /** A sign-in request is on its way (a double click starts only one). */
   let starting = false;
+  /** The user asked to sign out: the signed-out event that follows is no news. */
+  let loggingOut = false;
 
   const refreshStatus = async () => {
     if (!isTauri()) return;
@@ -120,6 +124,7 @@ export const useGitHubStore = create<GitHubState>((set, get) => {
     status: null,
     login: null,
     loginError: null,
+    expired: false,
     project: null,
     view: null,
     loading: false,
@@ -129,12 +134,21 @@ export const useGitHubStore = create<GitHubState>((set, get) => {
       if (!isTauri()) return;
       if (!listening) {
         listening = true;
-        void listen<{ signedIn: boolean; message: string | null }>("github-auth", (event) => {
-          set({ login: null, loginError: event.payload.message });
-          void refreshStatus().then(() => {
-            if (event.payload.signedIn) void get().load(get().project);
-            else set({ view: null });
-          });
+        void listen<{ signedIn: boolean; message: string | null }>("github-auth", async (event) => {
+          const { signedIn, message } = event.payload;
+          const wasSignedIn = !!get().status?.account;
+          // The account first, then the end of the sign-in: whoever waits for
+          // the code to go away (account linking) then sees it signed in.
+          await refreshStatus();
+          set({ login: null, loginError: message });
+          if (signedIn) {
+            set({ expired: false });
+            void get().load(get().project);
+          } else {
+            // Signed out without the user asking: the token expired or was revoked.
+            set({ view: null, expired: wasSignedIn && !loggingOut });
+          }
+          loggingOut = false;
         });
       }
       await refreshStatus();
@@ -162,6 +176,8 @@ export const useGitHubStore = create<GitHubState>((set, get) => {
     },
 
     logout: async () => {
+      loggingOut = true;
+      set({ expired: false });
       try {
         await invoke("github_logout");
       } catch (e) {

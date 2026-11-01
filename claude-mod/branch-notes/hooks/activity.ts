@@ -12,10 +12,14 @@ export type Step = {
   tool?: string;
   target?: string;
   detail?: string;
+  /** The end of a main-loop turn: Claude's answer (the app masks and cuts it). */
+  answer?: string;
   added?: number;
   removed?: number;
   ok?: boolean;
   agent?: string;
+  /** An Agent call's task, so the app can tell which subagent it started. */
+  prompt?: string;
   contextPercent?: number;
   tokens?: number;
   costUsd?: number;
@@ -25,6 +29,8 @@ export type Step = {
 export const MAX_BATCH = 100;
 /** Steps wait this long to go together. */
 export const FLUSH_MS = 400;
+/** An answer is cut to this before it goes to the app. */
+export const MAX_ANSWER = 8000;
 /** Commands and descriptions are cut to this before the app masks them. */
 const MAX_DETAIL = 300;
 
@@ -36,7 +42,7 @@ const lines = (s: string) => (s ? s.split("\n").length : 0);
 export function describeTool(
   tool: string,
   input: Record<string, unknown>,
-): { target: string; detail: string } {
+): { target: string; detail: string; prompt?: string } {
   switch (tool) {
     case "Read":
     case "Edit":
@@ -58,7 +64,10 @@ export function describeTool(
       return {
         target: "",
         detail: cut(str(input.description) || str(input.subagent_type)),
+        prompt: str(input.prompt).slice(0, MAX_DETAIL),
       };
+    case "AskUserQuestion":
+      return { target: "", detail: cut(firstQuestion(input)) };
     case "WebFetch":
       return { target: "", detail: cut(str(input.url)) };
     case "WebSearch":
@@ -69,6 +78,14 @@ export function describeTool(
         detail: tool.startsWith("mcp__") ? tool.split("__").slice(1).join(" ") : "",
       };
   }
+}
+
+/** The first question AskUserQuestion asks. */
+function firstQuestion(input: Record<string, unknown>): string {
+  const qs = input.questions;
+  if (!Array.isArray(qs)) return "";
+  const q = qs[0] as Record<string, unknown> | undefined;
+  return str(q?.question);
 }
 
 /** Lines an edit adds and removes, from its input (before it runs). */

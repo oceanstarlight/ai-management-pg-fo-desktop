@@ -1,11 +1,9 @@
 import { isTauri } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ErrorBoundary } from "../components/ErrorBoundary";
 import { AccountDialog } from "../features/account/AccountDialog";
-import { SyncNotice } from "../features/sync/SyncNotice";
-import { UpdateNotice } from "../features/update/UpdateNotice";
 import { useGitHubSync } from "../features/work/useGitHubSync";
 import { useAccountStore } from "../store/account";
 import { useActivityStore } from "../store/activity";
@@ -16,7 +14,9 @@ import { restoreProject } from "../store/project";
 import { useSyncStore } from "../store/sync";
 import { startUpdateChecks } from "../store/updater";
 import { type Page, useWorkspaceStore } from "../store/workspace";
+import { CommandPalette, useCommandPaletteKey } from "./CommandPalette";
 import { saveBeforeLeaving } from "./leave";
+import { MainTitleBar } from "./MainTitleBar";
 import { NavSidebar } from "./NavSidebar";
 import { AutomationsPage } from "./pages/AutomationsPage";
 import { HomePage } from "./pages/HomePage";
@@ -38,6 +38,9 @@ export default function MainApp() {
   // PR and CI state for the open project, and notifications, whatever page is shown.
   useGitHubSync();
   const page = useWorkspaceStore((s) => s.page);
+  const [palette, setPalette] = useState(false);
+  const openPalette = useCallback(() => setPalette(true), []);
+  useCommandPaletteKey(openPalette);
 
   // The project selected last, and what Claude Code is doing.
   useEffect(() => {
@@ -80,15 +83,17 @@ export default function MainApp() {
   }, []);
 
   return (
-    <div className="flex h-full">
-      <NavSidebar />
-      <main
-        className={`min-w-0 flex-1 bg-surface ${page === "home" ? "overflow-hidden" : "overflow-y-auto"}`}
-      >
-        <ErrorBoundary resetKey={page}>{PAGES[page]()}</ErrorBoundary>
-      </main>
-      <SyncNotice />
-      <UpdateNotice />
+    <div className="flex h-full flex-col">
+      <MainTitleBar onSearch={openPalette} />
+      <div className="flex min-h-0 flex-1">
+        <NavSidebar />
+        <main
+          className={`min-w-0 flex-1 bg-surface ${page === "home" ? "overflow-hidden" : "overflow-y-auto"}`}
+        >
+          <ErrorBoundary resetKey={page}>{PAGES[page]()}</ErrorBoundary>
+        </main>
+      </div>
+      {palette && <CommandPalette onClose={() => setPalette(false)} />}
       <AccountDialog />
     </div>
   );

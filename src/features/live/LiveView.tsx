@@ -1,76 +1,170 @@
+import { ChevronDown } from "lucide-react";
 import { useEffect } from "react";
-import { useT } from "../../i18n";
-import { pickSession, type Session, useActivityStore } from "../../store/activity";
+import { timeAgo, useT } from "../../i18n";
+import { type LiveMode, pickSession, type Session, useActivityStore } from "../../store/activity";
 import { useProjectStore } from "../../store/project";
 import { ConnectHint } from "../suggest/ConnectHint";
-import { FileMap } from "./FileMap";
 import { LiveStatus, StatusOrb, stateColor } from "./LiveStatus";
 import { Timeline } from "./Timeline";
+import { WorkGraph } from "./WorkGraph";
 
 const folder = (path: string) => path.split(/[\\/]/).filter(Boolean).pop() ?? path;
 
-/** The session shown and the project its map draws (the open one without a session). */
+/** Same folder, whatever the slashes and (on Windows) the case. */
+export const samePath = (a: string, b: string) => {
+  const norm = (p: string) => p.replace(/\\/g, "/").replace(/\/+$/, "").toLowerCase();
+  return norm(a) === norm(b);
+};
+
+/** The newest session (by its last activity). */
+const newest = (pool: Session[]) =>
+  pool.reduce<Session | null>((a, b) => (!a || b.at > a.at ? b : a), null);
+
+/** Local: the open folder's sessions. Cloud: every cloud session, newest first. */
+function poolOf(sessions: Session[], mode: LiveMode, open: string | null): Session[] {
+  if (mode === "cloud") return sessions.filter((s) => s.cloud).sort((a, b) => b.at - a.at);
+  if (!open) return [];
+  return sessions
+    .filter((s) => !s.cloud && !!s.project && samePath(s.project, open))
+    .sort((a, b) => b.at - a.at);
+}
+
+/**
+ * The session shown and the project its map draws: in local mode the open
+ * folder's session (the busiest recent one unless one was picked), in cloud
+ * mode the picked cloud session, else the newest.
+ */
 export function useShownSession(): { session: Session | null; project: string | null } {
   const sessions = useActivityStore((s) => s.sessions);
   const chosen = useActivityStore((s) => s.chosen);
+  const mode = useActivityStore((s) => s.mode);
   const open = useProjectStore((s) => s.current);
-  const session = pickSession(sessions, chosen);
-  const project = session?.project && !session.cloud ? session.project : open;
-  return { session, project };
+  const pool = poolOf(sessions, mode, open);
+  const session =
+    mode === "cloud"
+      ? (pool.find((s) => s.session === chosen) ?? newest(pool))
+      : pickSession(pool, chosen);
+  return { session, project: mode === "local" ? open : null };
 }
 
-/** Which session is shown, when there is more than one. */
-export function SessionSwitcher() {
+/**
+ * Under the title: in cloud mode which session (the newest by default); in
+ * local mode tabs when the open folder has several, and a pointer to a
+ * folder where Claude runs when the open one is quiet. Local/cloud and the
+ * folder are chosen in the title bar.
+ */
+export function SourcePicker() {
   const t = useT();
   const sessions = useActivityStore((s) => s.sessions);
+  const mode = useActivityStore((s) => s.mode);
   const choose = useActivityStore((s) => s.choose);
+  const open = useProjectStore((s) => s.current);
   const { session: shown } = useShownSession();
-  if (sessions.length < 2) return null;
-  const sorted = [...sessions].sort((a, b) => b.at - a.at);
+
+  const local = sessions.filter((s) => !s.cloud && s.project);
+  const cloud = sessions.filter((s) => s.cloud).sort((a, b) => b.at - a.at);
+  const pool = poolOf(sessions, mode, open);
+  // Claude runs elsewhere while the open folder is quiet: offer to go there.
+  const elsewhere =
+    mode === "local" && pool.length === 0
+      ? newest(local.filter((s) => s.state !== "ended" && !(open && samePath(s.project, open))))
+      : null;
+
   return (
-    <div className="flex flex-wrap gap-1" role="tablist" aria-label={t("live.sessions")}>
-      {sorted.map((s) => {
-        const selected = s.session === shown?.session;
-        return (
+    <div className="space-y-2">
+      {mode === "cloud" && (
+        <div className="flex flex-wrap items-center gap-2">
+          {cloud.length > 0 ? (
+            <label className="relative flex min-w-0 items-center gap-1.5 rounded-md px-2 py-1 text-xs hover:bg-hover">
+              {shown && (
+                <span
+                  className="size-1.5 shrink-0 rounded-full"
+                  style={{ background: stateColor(shown.state) }}
+                />
+              )}
+              <span className="max-w-64 truncate font-medium">
+                {shown ? sessionLabel(shown) : t("live.pick.session")}
+              </span>
+              <ChevronDown size={12} className="shrink-0 text-text-subtle" />
+              <select
+                aria-label={t("live.pick.session")}
+                value={shown?.session ?? ""}
+                onChange={(e) => choose(e.target.value || null)}
+                className="absolute inset-0 cursor-pointer opacity-0"
+              >
+                {cloud.map((s, i) => (
+                  <option key={s.session} value={s.session}>
+                    {sessionLabel(s)} · {timeAgo(Math.floor(s.at / 1000))}
+                    {i === 0 ? ` (${t("live.pick.latest")})` : ""}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : (
+            <span className="text-xs text-text-subtle">{t("live.pick.noCloud")}</span>
+          )}
+        </div>
+      )}
+
+      {mode === "local" && pool.length > 1 && (
+        <div className="flex flex-wrap gap-1" role="tablist" aria-label={t("live.sessions")}>
+          {pool.map((s, i) => {
+            const selected = s.session === shown?.session;
+            return (
+              <button
+                key={s.session}
+                type="button"
+                role="tab"
+                aria-selected={selected}
+                onClick={() => choose(s.session)}
+                className={`flex items-center gap-2 rounded-md px-2.5 py-1 text-xs transition-colors ${
+                  selected
+                    ? "bg-active text-text"
+                    : "text-text-muted hover:bg-hover hover:text-text"
+                }`}
+              >
+                <span
+                  className="size-1.5 rounded-full"
+                  style={{ background: stateColor(s.state) }}
+                />
+                {t("live.pick.nth", { n: pool.length - i })}
+                <span className="text-text-subtle">{s.surface || t("live.surface.terminal")}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {elsewhere && (
+        <p className="text-xs text-text-muted">
+          {t("live.pick.elsewhere", { folder: folder(elsewhere.project) })}{" "}
           <button
-            key={s.session}
             type="button"
-            role="tab"
-            aria-selected={selected}
-            onClick={() => choose(s.session)}
-            className={`flex items-center gap-2 rounded-md px-2.5 py-1 text-xs transition-colors ${
-              selected ? "bg-active text-text" : "text-text-muted hover:bg-hover hover:text-text"
-            }`}
+            className="font-medium text-accent hover:underline"
+            onClick={() => void useProjectStore.getState().select(elsewhere.project)}
           >
-            <span className="size-1.5 rounded-full" style={{ background: stateColor(s.state) }} />
-            <span className="max-w-40 truncate">{folder(s.project) || s.session}</span>
-            <span className="text-text-subtle">
-              {s.cloud ? t("live.surface.cloud") : s.surface || t("live.surface.terminal")}
-            </span>
+            {t("live.pick.go")}
           </button>
-        );
-      })}
+        </p>
+      )}
     </div>
   );
 }
 
+/** A cloud session's name: its repository, else its id. */
+const sessionLabel = (s: Session) => folder(s.project) || s.session.slice(0, 12);
+
 /**
- * The centre of the home page: what Claude is doing, on a map of the
- * project's files, and the steps it took.
+ * The centre of the home page: what Claude is doing, the graph of Claude,
+ * its subagents and what they work on, and the steps it took.
  */
 export function LiveView({ compact = false }: { compact?: boolean }) {
   const t = useT();
-  const { session, project } = useShownSession();
-  const files = useActivityStore((s) => (project ? s.files[project] : undefined));
-  const loadFiles = useActivityStore((s) => s.loadFiles);
+  const { session } = useShownSession();
 
   useEffect(() => {
     useActivityStore.getState().init();
   }, []);
-
-  useEffect(() => {
-    if (project) void loadFiles(project);
-  }, [project, loadFiles]);
 
   if (!session) {
     return (
@@ -85,7 +179,6 @@ export function LiveView({ compact = false }: { compact?: boolean }) {
           </div>
         </div>
         <ConnectHint />
-        {!compact && project && <FileMap files={files ?? []} session={null} />}
       </div>
     );
   }
@@ -93,14 +186,8 @@ export function LiveView({ compact = false }: { compact?: boolean }) {
   return (
     <div className={compact ? "space-y-5" : "space-y-8"}>
       <LiveStatus session={session} compact={compact} />
-      {!session.cloud || Object.keys(session.files).length > 0 ? (
-        <FileMap
-          files={session.cloud ? [] : (files ?? [])}
-          session={session}
-          height={compact ? 150 : 300}
-        />
-      ) : null}
-      <Timeline session={session} limit={compact ? 25 : 60} />
+      {!compact && <WorkGraph session={session} />}
+      <Timeline session={session} limit={compact ? 3 : 6} />
     </div>
   );
 }

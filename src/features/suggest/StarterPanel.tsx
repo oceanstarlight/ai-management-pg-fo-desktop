@@ -1,4 +1,4 @@
-import { FilePen } from "lucide-react";
+import { ChevronDown, ChevronRight, FilePen } from "lucide-react";
 import { useEffect, useState } from "react";
 import {
   fillStarter,
@@ -34,35 +34,39 @@ export function useNewProject(): boolean {
 }
 
 /**
- * Beside the prompt box in a new project: a form's fields to fill in; "Apply"
- * puts the finished prompt in the box (only what was filled in, no hints).
+ * In the home page's side menu: the starter forms as a tree. Opening a form
+ * shows its fields; "Apply" puts the finished prompt in the box (only what
+ * was filled in, no hints). Open by default in a new project.
  */
-export function StarterPanel({ onApply }: { onApply: (text: string) => void }) {
+export function StarterPanel({
+  onApply,
+  fresh,
+}: {
+  onApply: (text: string) => void;
+  fresh: boolean;
+}) {
   const t = useT();
   const starters = useStarters();
   const goProject = useWorkspaceStore((s) => s.goProject);
+  const [open, setOpen] = useState<boolean | null>(null);
   const [picked, setPicked] = useState<string | null>(null);
-  const [values, setValues] = useState<Record<number, string>>({});
-  const [more, setMore] = useState(false);
-  const form = starters.find((s) => s.id === picked) ?? starters[0];
-  const fields = form ? starterFields(form.text) : [];
-  const missing = fields.filter((f) => f.required && !values[f.line]?.trim());
-
-  const choose = (id: string) => {
-    setPicked(id);
-    setValues({});
-    setMore(false);
-  };
-  const optional = fields.filter((f) => !f.required).length;
-  const shown = more ? fields : fields.filter((f) => f.required);
+  const expanded = open ?? fresh;
 
   return (
     <section>
-      <div className="mb-1.5 flex items-center gap-1.5">
-        <FilePen size={12} className="shrink-0 text-accent" />
-        <h2 className="min-w-0 flex-1 text-fs-11 font-medium tracking-wide text-text-subtle">
-          {t("suggest.starters.title")}
-        </h2>
+      <div className="mb-1 flex items-center gap-1">
+        <button
+          type="button"
+          aria-expanded={expanded}
+          onClick={() => setOpen(!expanded)}
+          className="flex min-w-0 flex-1 items-center gap-1.5 text-left text-text-subtle hover:text-text"
+        >
+          {expanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+          <FilePen size={12} className="shrink-0 text-accent" />
+          <h2 className="truncate text-fs-11 font-medium tracking-wide">
+            {t("suggest.starters.title")}
+          </h2>
+        </button>
         <button
           type="button"
           className="text-fs-11 text-text-subtle hover:text-text"
@@ -71,65 +75,89 @@ export function StarterPanel({ onApply }: { onApply: (text: string) => void }) {
           {t("suggest.starters.edit")}
         </button>
       </div>
-      <div>
-        <p className="text-fs-12 text-text-muted">{t("suggest.starters.description")}</p>
-        <div className="mt-2 flex flex-wrap gap-1">
-          {starters.map((s) => (
-            <button
-              key={s.id}
-              type="button"
-              aria-pressed={s.id === form?.id}
-              onClick={() => choose(s.id)}
-              className={`rounded-md px-2 py-1 text-fs-12 transition-colors ${
-                s.id === form?.id
-                  ? "bg-accent-soft font-medium text-text"
-                  : "text-text-muted hover:bg-hover hover:text-text"
-              }`}
-            >
-              {s.name}
-            </button>
-          ))}
+      {expanded && (
+        <div className="ml-1.5 border-l border-border pl-2.5">
+          <p className="py-1 text-fs-12 text-text-muted">{t("suggest.starters.description")}</p>
+          <ul>
+            {starters.map((s) => {
+              const on = s.id === picked;
+              return (
+                <li key={s.id}>
+                  <button
+                    type="button"
+                    aria-expanded={on}
+                    onClick={() => setPicked(on ? null : s.id)}
+                    className={`flex w-full items-center gap-1.5 rounded-md px-1.5 py-1 text-left text-fs-12 transition-colors ${
+                      on
+                        ? "font-medium text-text"
+                        : "text-text-muted hover:bg-hover hover:text-text"
+                    }`}
+                  >
+                    {on ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                    <span className="truncate">{s.name}</span>
+                  </button>
+                  {on && <StarterForm key={s.id} form={s} onApply={onApply} />}
+                </li>
+              );
+            })}
+          </ul>
         </div>
-        <div className="mt-3 space-y-2">
-          {shown.map((f) => (
-            <label key={`${form?.id}:${f.line}`} className="block">
-              <span className="text-fs-12 text-text-muted">
-                {f.label}
-                {f.required && <span className="ml-0.5 text-danger">*</span>}
-              </span>
-              <input
-                value={values[f.line] ?? ""}
-                placeholder={f.hint}
-                onChange={(e) => setValues({ ...values, [f.line]: e.target.value })}
-                className="mt-1 block w-full rounded-md bg-surface-raised px-2.5 py-1.5 text-fs-12 text-text ring-1 ring-transparent outline-none placeholder:text-text-subtle focus:ring-border-strong"
-              />
-            </label>
-          ))}
-        </div>
-        {optional > 0 && (
-          <button
-            type="button"
-            onClick={() => setMore(!more)}
-            className="mt-2 text-fs-12 text-text-subtle hover:text-text"
-          >
-            {t(more ? "suggest.starters.less" : "suggest.starters.more", { n: optional })}
-          </button>
-        )}
-        <div className="mt-3 flex items-center gap-2">
-          <span className="min-w-0 flex-1 truncate text-fs-11 text-text-subtle">
-            {missing.length > 0 &&
-              t("suggest.starters.missing", { names: missing.map((f) => f.label).join(", ") })}
-          </span>
-          <Button
-            size="sm"
-            variant="primary"
-            disabled={!form || missing.length > 0}
-            onClick={() => form && onApply(fillStarter(form.text, values))}
-          >
-            {t("suggest.starters.apply")}
-          </Button>
-        </div>
-      </div>
+      )}
     </section>
+  );
+}
+
+/** One form's fields, under its row in the tree. */
+function StarterForm({ form, onApply }: { form: Starter; onApply: (text: string) => void }) {
+  const t = useT();
+  const [values, setValues] = useState<Record<number, string>>({});
+  const [more, setMore] = useState(false);
+  const fields = starterFields(form.text);
+  const missing = fields.filter((f) => f.required && !values[f.line]?.trim());
+  const optional = fields.filter((f) => !f.required).length;
+  const shown = more ? fields : fields.filter((f) => f.required);
+
+  return (
+    <div className="mb-2 ml-3 border-l border-border pt-1 pl-3">
+      <div className="space-y-2">
+        {shown.map((f) => (
+          <label key={f.line} className="block">
+            <span className="text-fs-12 text-text-muted">
+              {f.label}
+              {f.required && <span className="ml-0.5 text-danger">*</span>}
+            </span>
+            <input
+              value={values[f.line] ?? ""}
+              placeholder={f.hint}
+              onChange={(e) => setValues({ ...values, [f.line]: e.target.value })}
+              className="mt-1 block w-full rounded-md bg-surface-raised px-2.5 py-1.5 text-fs-12 text-text ring-1 ring-transparent outline-none placeholder:text-text-subtle focus:ring-border-strong"
+            />
+          </label>
+        ))}
+      </div>
+      {optional > 0 && (
+        <button
+          type="button"
+          onClick={() => setMore(!more)}
+          className="mt-2 text-fs-12 text-text-subtle hover:text-text"
+        >
+          {t(more ? "suggest.starters.less" : "suggest.starters.more", { n: optional })}
+        </button>
+      )}
+      <div className="mt-2 flex items-center gap-2">
+        <span className="min-w-0 flex-1 truncate text-fs-11 text-text-subtle">
+          {missing.length > 0 &&
+            t("suggest.starters.missing", { names: missing.map((f) => f.label).join(", ") })}
+        </span>
+        <Button
+          size="sm"
+          variant="primary"
+          disabled={missing.length > 0}
+          onClick={() => onApply(fillStarter(form.text, values))}
+        >
+          {t("suggest.starters.apply")}
+        </Button>
+      </div>
+    </div>
   );
 }
