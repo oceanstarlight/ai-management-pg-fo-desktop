@@ -3,6 +3,7 @@ import { openUrl } from "@tauri-apps/plugin-opener";
 import { Check, Cloud, ExternalLink, Monitor } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
 import { Button, Switch } from "../../components/ui";
+import { CloudGuide } from "../../features/sync/CloudGuide";
 import { type MessageKey, timeAgo, useT } from "../../i18n";
 import { useAccountStore } from "../../store/account";
 import { modReady, OWN_MOD, useConnectionStore } from "../../store/connection";
@@ -10,7 +11,6 @@ import { AUTO_DOCK_PREF, useLiveStore, useSwitchPref } from "../../store/live";
 import { useProjectStore } from "../../store/project";
 
 const CLAUDE_CODE_DOCS = "https://docs.claude.com/en/docs/claude-code";
-const CLAUDE_CODE_WEB = "https://claude.ai/code";
 
 const base = (path: string) => path.split(/[\\/]/).filter(Boolean).pop() ?? path;
 
@@ -222,27 +222,23 @@ function CloudSection({ run }: { run: Run }) {
         done={!!received}
         title={t("connect.cloud.script")}
         description={t("connect.cloud.scriptHint")}
-      >
-        <div className="flex flex-col items-end gap-1.5">
-          <Button
-            size="sm"
-            variant="primary"
-            disabled={!on}
-            onClick={() =>
-              void run(async () => {
-                const script = await invoke<string>("relay_setup_script");
-                await navigator.clipboard.writeText(script);
-              }, t("connect.cloud.copied"))
-            }
-          >
-            {t("connect.cloud.copyScript")}
-          </Button>
-          <Button size="sm" variant="ghost" onClick={() => void openUrl(CLAUDE_CODE_WEB)}>
-            <ExternalLink size={13} />
-            {t("connect.cloud.openWeb")}
-          </Button>
-        </div>
-      </Step>
+        below={
+          <details open={!received}>
+            <summary className="cursor-pointer text-fs-12 font-medium text-accent">
+              {t("guide.toggle")}
+            </summary>
+            <CloudGuide
+              enabled={on}
+              onCopy={() =>
+                void run(async () => {
+                  const script = await invoke<string>("relay_setup_script");
+                  await navigator.clipboard.writeText(script);
+                }, t("connect.cloud.copied"))
+              }
+            />
+          </details>
+        }
+      />
       <Step
         n={4}
         done={!!received}
@@ -332,6 +328,7 @@ function Step({
   description,
   bad = false,
   children,
+  below,
 }: {
   n: number;
   done: boolean;
@@ -339,6 +336,8 @@ function Step({
   description: string;
   bad?: boolean;
   children?: ReactNode;
+  /** More under the description (a guide). */
+  below?: ReactNode;
 }) {
   return (
     <div className="flex items-start gap-3 px-4 py-3">
@@ -354,6 +353,7 @@ function Step({
         <p className={`selectable mt-0.5 text-fs-12 ${bad ? "text-danger" : "text-text-muted"}`}>
           {description}
         </p>
+        {below && <div className="mt-2">{below}</div>}
       </div>
       {children && <div className="flex shrink-0 items-center gap-1.5">{children}</div>}
     </div>

@@ -1,6 +1,26 @@
 import type { Messages } from "./types";
 
 export const ko = {
+  "notice.region": "알림",
+  "notice.count": "알림 {n}개",
+  "notice.dismiss.forever": "다시 보지 않기",
+  "notice.dismiss.close": "닫기",
+  "notice.open.settings": "설정 열기",
+  "notice.setup.title": "Claude Code와 아직 연결되지 않았어요",
+  "notice.setup.body":
+    "연결해야 Claude가 하는 일이 진행 상황에 보여요. 내 컴퓨터는 mod 설치, 클라우드는 설정 스크립트 하나면 돼요.",
+  "notice.setup.action": "연결 설정하기",
+  "notice.mod.title": "연결 mod 업데이트가 있어요",
+  "notice.mod.body": "업데이트한 뒤 Claude Code를 새로 열면 적용돼요.",
+  "notice.mod.action": "업데이트",
+  "notice.relay.signIn.title": "클라우드 연결이 멈췄어요",
+  "notice.relay.signIn.body":
+    "엔셀라 계정 로그인이 만료됐어요. 다시 로그인하면 클라우드 세션이 다시 보여요.",
+  "notice.relay.signIn.action": "다시 로그인",
+  "notice.relay.error.title": "클라우드 연결에 문제가 있어요",
+  "notice.github.title": "GitHub 로그인이 만료됐어요",
+  "notice.github.body": "PR·CI 상태를 보려면 GitHub에 다시 연결해 주세요.",
+  "notice.github.action": "다시 연결",
   // Main window navigation
   "shell.nav.live": "진행 상황",
   "shell.nav.project": "프로젝트",
@@ -43,6 +63,26 @@ export const ko = {
 } as const;
 
 export const en: Messages<typeof ko> = {
+  "notice.region": "Notices",
+  "notice.count": "{n} notices",
+  "notice.dismiss.forever": "Don't show again",
+  "notice.dismiss.close": "Close",
+  "notice.open.settings": "Open settings",
+  "notice.setup.title": "Not connected to Claude Code yet",
+  "notice.setup.body":
+    "Connect so what Claude does shows in Live. On this computer it's a mod; in the cloud, one setup script.",
+  "notice.setup.action": "Set up the connection",
+  "notice.mod.title": "The link mod has an update",
+  "notice.mod.body": "It applies to Claude Code sessions opened after updating.",
+  "notice.mod.action": "Update",
+  "notice.relay.signIn.title": "The cloud connection stopped",
+  "notice.relay.signIn.body":
+    "Your Encela sign-in expired. Sign in again and cloud sessions show up again.",
+  "notice.relay.signIn.action": "Sign in again",
+  "notice.relay.error.title": "The cloud connection has a problem",
+  "notice.github.title": "Your GitHub sign-in expired",
+  "notice.github.body": "Connect GitHub again to see PRs and CI.",
+  "notice.github.action": "Connect again",
   "shell.nav.live": "Live",
   "shell.nav.project": "Project",
   "shell.nav.toolbox": "Toolbox",

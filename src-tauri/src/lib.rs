@@ -114,6 +114,7 @@ pub fn run() {
             suggest::suggest_cloud_claim,
             suggest::suggest_cloud_items,
             sync::relay::relay_status,
+            sync::relay::relay_host,
             sync::relay::relay_set_enabled,
             sync::relay::relay_install_hook,
             sync::relay::relay_setup_script,

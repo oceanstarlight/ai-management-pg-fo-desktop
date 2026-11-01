@@ -5,6 +5,11 @@ Tauri 2 desktop app (a main window plus a sidebar that docks next to the user's 
 - Plan, decisions, roadmap: `docs/PLAN.md` (read before starting a phase)
 - Researched facts with sources (Claude Code and Codex config, Win32 docking, sync, GitHub): `docs/research.md`
 
+## Terms
+
+- "홈 화면" (home) = the 진행 상황 (Live) page: `src/workspace/pages/HomePage.tsx`, nav item `shell.nav.live`. Its right column is the "오른쪽 사이드 메뉴".
+- Notices (알림) go in the main menu's notice area above the account button (`src/features/notices/NoticeStack.tsx`), not in floating toasts.
+
 ## Layout
 
 - `src/`: React 19 + TypeScript frontend (Vite, Tailwind CSS v4, Zustand). `main.tsx` picks the UI by window label.

@@ -1,6 +1,7 @@
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { create } from "zustand";
+import { getPref, setPref } from "./prefs";
 
 // Mirrors src-tauri/src/activity.rs: what each Claude Code session is doing.
 
@@ -136,8 +137,14 @@ export function pickSession(sessions: Session[], chosen: string | null): Session
   return pool.reduce<Session | null>((a, b) => (!a || b.at > a.at ? b : a), null);
 }
 
+/** Which sessions the home page shows: this computer's, or the cloud's. */
+export type LiveMode = "local" | "cloud";
+const MODE_KEY = "live.mode";
+
 interface ActivityState {
   sessions: Session[];
+  mode: LiveMode;
+  setMode: (mode: LiveMode) => void;
   /** The session the user picked; `null` follows the latest. */
   chosen: string | null;
   /** Each project's files for the map. */
@@ -151,6 +158,11 @@ let started = false;
 
 export const useActivityStore = create<ActivityState>((set, get) => ({
   sessions: [],
+  mode: getPref(MODE_KEY) === "cloud" ? "cloud" : "local",
+  setMode: (mode) => {
+    setPref(MODE_KEY, mode);
+    set({ mode, chosen: null });
+  },
   chosen: null,
   files: {},
 

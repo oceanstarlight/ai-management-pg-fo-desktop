@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { Logo } from "../components/Logo";
 import { IconButton } from "../components/ui";
+import { NoticeStack } from "../features/notices/NoticeStack";
 import { UpdateIndicator } from "../features/update/UpdateIndicator";
 import { type MessageKey, useT } from "../i18n";
 import { useAccountStore } from "../store/account";
@@ -108,7 +109,7 @@ export function NavSidebar() {
 
       <ProjectPicker collapsed={collapsed} />
 
-      <nav className="flex-1 space-y-0.5 px-2">
+      <nav className="min-h-0 flex-1 space-y-0.5 overflow-y-auto px-2">
         {NAV.map((item) => (
           <NavButton
             key={item.page}
@@ -120,6 +121,8 @@ export function NavSidebar() {
           />
         ))}
       </nav>
+
+      <NoticeStack collapsed={collapsed} />
 
       <div className="space-y-0.5 p-2">
         <UpdateIndicator variant="nav" collapsed={collapsed} />

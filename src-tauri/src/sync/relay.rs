@@ -665,6 +665,17 @@ pub fn relay_setup_script(app: AppHandle) -> Result<String, String> {
     }
 }
 
+/// The database host a cloud environment's network access has to allow.
+#[tauri::command]
+pub fn relay_host() -> Option<String> {
+    database_url().map(|url| host_of(&url))
+}
+
+fn host_of(url: &str) -> String {
+    let rest = url.split_once("://").map_or(url, |(_, rest)| rest);
+    rest.split('/').next().unwrap_or(rest).to_string()
+}
+
 #[tauri::command]
 pub fn relay_status(app: AppHandle) -> Status {
     update_status(&app, |_| {})
@@ -761,6 +772,16 @@ pub async fn relay_install_hook(project: String) -> Result<Vec<String>, String> 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_host_is_the_urls_authority() {
+        assert_eq!(
+            host_of("https://p-default-rtdb.firebaseio.com"),
+            "p-default-rtdb.firebaseio.com"
+        );
+        assert_eq!(host_of("https://db.example.com/x/"), "db.example.com");
+        assert_eq!(host_of("db.example.com"), "db.example.com");
+    }
 
     #[test]
     fn remote_urls_become_the_hooks_key() {

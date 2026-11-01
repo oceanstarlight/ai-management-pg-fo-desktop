@@ -467,3 +467,10 @@ AGPL 프로젝트는 아이디어만 참고하고 코드는 가져오지 않는�
 - 출처: https://firebase.google.cn/docs/firestore/pricing , https://firebase.google.com/docs/firestore/enterprise/query-realtime-pricing-examples , https://firebase.google.com/pricing , https://firebase.google.cn/docs/reference/rest , https://firebase.blog/posts/2014/03/announcing-streaming-for-firebase-rest , https://developers.cloudflare.com/durable-objects/platform/pricing
 
 **진행 상황 시각화 참고** (개념만 참고, 코드는 가져오지 않음): 저장소를 treemap·지도로 그리고 에이전트가 건드린 파일을 빛나게 하는 방식(cosmtrek/mindwalk, zzzgydi/wake), 어두운 화면은 옅은 경계선(흰색 6~10%)과 크기·굵기로 위계를 주고 강조색은 아껴 씀(Raycast 디자인 분석 글).
+
+## 19. 클라우드 환경 편집 경로 (2026-11-01, code.claude.com/docs/en/cloud-environments · desktop · claude-code-on-the-web)
+
+- 환경 추가·편집은 claude.ai/code(또는 데스크톱 앱)의 새 세션 화면, 입력창 아래 첫 번째 컨트롤(환경 선택기)에서: Cloud 아래 환경에 마우스 → 톱니바퀴, 없으면 맨 아래 **New environment**. 열린 세션은 제목 옆 ▾ → **Edit cloud environment**.
+- 대화상자 행: **Network access**, **Setup script**, **Environment variables**, 저장은 **Save changes**(새 환경은 **Add environment**).
+- Network access 단계: None / Trusted(기본, 패키지 저장소 등 허용 목록) / Full / Custom(**Allowed domains** 한 줄에 하나, "Also include default list of common package managers" 체크로 기본 목록 유지). Firebase RTDB 호스트는 Trusted에 없으니 Full 또는 Custom 필요.
+- CLI는 환경을 만들거나 고칠 수 없음: `/remote-env`는 `claude --cloud`의 기본 환경만 고름(`remote.defaultEnvironmentId`), `/web-setup`은 GitHub 연결과 함께 Default 환경을 만듦.

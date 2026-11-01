@@ -2,6 +2,16 @@ import type { Messages } from "./types";
 
 export const ko = {
   "live.sessions": "세션",
+  "live.mode": "어디서 실행 중인 세션을 볼지",
+  "live.mode.local": "로컬 {n}",
+  "live.mode.cloud": "클라우드 {n}",
+  "live.pick.folder": "프로젝트 폴더 선택",
+  "live.pick.session": "세션 선택",
+  "live.pick.latest": "최근",
+  "live.pick.noCloud": "아직 받은 클라우드 세션이 없어요",
+  "live.pick.nth": "세션 {n}",
+  "live.pick.elsewhere": "Claude가 {folder}에서 실행 중이에요.",
+  "live.pick.go": "보기",
   "live.surface.cloud": "클라우드",
   "live.surface.terminal": "터미널",
   "live.none.title": "실행 중인 Claude Code가 없어요",
@@ -84,6 +94,16 @@ export const ko = {
 
 export const en: Messages<typeof ko> = {
   "live.sessions": "Sessions",
+  "live.mode": "Which sessions to show",
+  "live.mode.local": "Local {n}",
+  "live.mode.cloud": "Cloud {n}",
+  "live.pick.folder": "Choose a project folder",
+  "live.pick.session": "Choose a session",
+  "live.pick.latest": "latest",
+  "live.pick.noCloud": "No cloud sessions received yet",
+  "live.pick.nth": "Session {n}",
+  "live.pick.elsewhere": "Claude is running in {folder}.",
+  "live.pick.go": "Show",
   "live.surface.cloud": "cloud",
   "live.surface.terminal": "terminal",
   "live.none.title": "No Claude Code running",

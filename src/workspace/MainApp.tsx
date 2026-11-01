@@ -4,8 +4,6 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useEffect } from "react";
 import { ErrorBoundary } from "../components/ErrorBoundary";
 import { AccountDialog } from "../features/account/AccountDialog";
-import { SyncNotice } from "../features/sync/SyncNotice";
-import { UpdateNotice } from "../features/update/UpdateNotice";
 import { useGitHubSync } from "../features/work/useGitHubSync";
 import { useAccountStore } from "../store/account";
 import { useActivityStore } from "../store/activity";
@@ -87,8 +85,6 @@ export default function MainApp() {
       >
         <ErrorBoundary resetKey={page}>{PAGES[page]()}</ErrorBoundary>
       </main>
-      <SyncNotice />
-      <UpdateNotice />
       <AccountDialog />
     </div>
   );
