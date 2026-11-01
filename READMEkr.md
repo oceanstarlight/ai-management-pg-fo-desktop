@@ -10,7 +10,7 @@
 ![플랫폼](https://img.shields.io/badge/platform-Windows-0078d4)
 [![라이선스](https://img.shields.io/badge/license-Apache--2.0-green)](LICENSE)
 
-<img src="docs/images/live-ko.png" alt="진행 상황 화면: 위에 Claude, 그 아래 서브에이전트 5개, 각자 작업 중인 웹 페이지와 문서" width="900">
+<img src="docs/images/live-en.png" alt="진행 상황 화면: 위에 Claude, 그 아래 서브에이전트 5개, 각자 작업 중인 웹 페이지와 문서" width="900">
 
 </div>
 
@@ -68,7 +68,7 @@ Claude Code는 작업하면서 파일을 읽고, 고치고, 명령을 실행하�
 - **진행 기록**: Claude Code 앱처럼 프롬프트마다 도구 호출을 한 줄로 요약해요("파일 2개 읽음 · 웹 6번 · 에이전트 5개", 누르면 전부 펼쳐져요). 지금 실행 중인 것과 Claude의 답변도 같이 보여요. Claude가 질문하면 노란색 **질문 · 사용자에게 질문**으로 보여요.
 - **로컬 / 클라우드**: 타이틀바에서 골라요. 로컬은 열린 프로젝트 폴더를 따라가고(한 폴더에 세션이 여러 개면 탭이 생기고, 열린 폴더가 조용하면 Claude가 실행 중인 다른 폴더를 알려줘요), 클라우드는 클라우드 세션을 최신순으로 골라요. 이 기록은 저장·동기화하지 않고 앱이 켜져 있는 동안만 있어요.
 
-<img src="docs/images/question-ko.png" alt="Claude가 사용자에게 질문하는 화면: 그래프와 진행 기록에 노란색으로 표시" width="900">
+<img src="docs/images/question-en.png" alt="Claude가 사용자에게 질문하는 화면: 그래프와 진행 기록에 노란색으로 표시" width="900">
 
 ### 🔔 타이틀바 · 검색 · 알림
 
@@ -76,7 +76,7 @@ Claude Code는 작업하면서 파일을 읽고, 고치고, 명령을 실행하�
 - <kbd>Ctrl</kbd>+<kbd>K</kbd>로 페이지·프로젝트·할 일(Claude 연결, 사이드바로 전환, 업데이트 확인…)을 찾아요.
 - **알림**은 메뉴의 계정 버튼 위에 새것이 위로 쌓이고, 종 아이콘에서도 볼 수 있어요: Claude 미연결(연결될 때까지 남음), 클라우드 연결 재로그인 필요, GitHub 로그인 만료(알림 안에서 바로 코드 받아 다시 연결), mod·앱 업데이트, 동기화 충돌. 대부분 **다시 보지 않기**가 있어요.
 
-<img src="docs/images/notices-ko.png" alt="메뉴에 쌓인 알림: 클라우드 로그인 만료, 연결 mod 업데이트, GitHub 로그인 만료" width="900">
+<img src="docs/images/notices-en.png" alt="메뉴에 쌓인 알림: 클라우드 로그인 만료, 연결 mod 업데이트, GitHub 로그인 만료" width="900">
 
 ### ✨ 추천과 결정
 
@@ -91,7 +91,7 @@ Claude Code는 작업하면서 파일을 읽고, 고치고, 명령을 실행하�
 <details>
 <summary>설정 화면의 단계별 안내</summary>
 
-<img src="docs/images/cloud-guide-ko.png" alt="화면마다 그림이 있는 클라우드 설정 단계별 안내" width="620">
+<img src="docs/images/cloud-guide-en.png" alt="화면마다 그림이 있는 클라우드 설정 단계별 안내" width="620">
 
 </details>
 
