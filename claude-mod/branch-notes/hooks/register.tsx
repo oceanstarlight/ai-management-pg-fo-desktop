@@ -639,12 +639,18 @@ export const register: Register = (on) => {
   on("tool.call", async ($, e, next) => {
     const input = toolInput(e as unknown as Record<string, unknown>);
     const id = e.tool_use_id ?? `${e.tool}-${Math.random()}`;
-    const { target, detail } = describeTool(e.tool, input);
+    const { target, detail, prompt } = describeTool(e.tool, input);
     const size = editSize(e.tool, input);
     if (size.added || size.removed) edits.set(id, size);
-    await track($, { kind: "tool", id, tool: e.tool, target, detail, agent: e.agentId }).catch(
-      () => {},
-    );
+    await track($, {
+      kind: "tool",
+      id,
+      tool: e.tool,
+      target,
+      detail,
+      prompt,
+      agent: e.agentId,
+    }).catch(() => {});
     const result = await next(e);
     const done = edits.get(id);
     edits.delete(id);

@@ -13,6 +13,12 @@ describe("activity", () => {
       detail: "TODO",
     });
     expect(describeTool("Agent", { description: "Find the bug" }).detail).toBe("Find the bug");
+    expect(describeTool("Agent", { description: "d", prompt: "Look at src" }).prompt).toBe(
+      "Look at src",
+    );
+    expect(
+      describeTool("AskUserQuestion", { questions: [{ question: "Which one?" }] }).detail,
+    ).toBe("Which one?");
     expect(describeTool("mcp__github__get_issue", {}).detail).toBe("github get_issue");
     expect(describeTool("Bash", { command: "x".repeat(500) }).detail.length).toBe(300);
   });

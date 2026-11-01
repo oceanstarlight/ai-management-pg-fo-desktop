@@ -1,7 +1,6 @@
 import {
   Activity,
   AlarmClock,
-  ChevronsUpDown,
   CircleUserRound,
   FolderGit2,
   type LucideIcon,
@@ -17,7 +16,6 @@ import { NoticeStack } from "../features/notices/NoticeStack";
 import { UpdateIndicator } from "../features/update/UpdateIndicator";
 import { type MessageKey, useT } from "../i18n";
 import { useAccountStore } from "../store/account";
-import { useProjectStore } from "../store/project";
 import { type Page, useWorkspaceStore } from "../store/workspace";
 import { switchToSidebar } from "./leave";
 
@@ -31,47 +29,6 @@ const NAV: NavItem[] = [
   { page: "automations", label: "shell.nav.automations", icon: AlarmClock },
   { page: "memo", label: "shell.nav.memo", icon: NotebookPen },
 ];
-
-const CHOOSE = "\u0000choose";
-const folder = (path: string) => path.split(/[\\/]/).filter(Boolean).pop() ?? path;
-
-/** The open project, switchable from the top of the menu. */
-function ProjectPicker({ collapsed }: { collapsed: boolean }) {
-  const t = useT();
-  const project = useProjectStore((s) => s.current);
-  const recent = useProjectStore((s) => s.recent);
-  const projects = project && !recent.includes(project) ? [project, ...recent] : recent;
-  if (collapsed) return null;
-  return (
-    <label className="relative mx-2 mb-3 flex items-center rounded-md px-2 py-1.5 text-sm hover:bg-hover">
-      <span className="min-w-0 flex-1">
-        <span className="block text-fs-11 text-text-subtle">{t("shell.project")}</span>
-        <span className="block truncate font-medium" title={project ?? undefined}>
-          {project ? folder(project) : t("docs.project.none")}
-        </span>
-      </span>
-      <ChevronsUpDown size={14} className="shrink-0 text-text-subtle" />
-      <select
-        aria-label={t("docs.project.recent")}
-        value={project ?? ""}
-        onChange={(e) => {
-          const { select, choose } = useProjectStore.getState();
-          if (e.target.value === CHOOSE) void choose();
-          else if (e.target.value) void select(e.target.value);
-        }}
-        className="absolute inset-0 cursor-pointer opacity-0"
-      >
-        {!project && <option value="">{t("docs.project.none")}</option>}
-        {projects.map((path) => (
-          <option key={path} value={path}>
-            {folder(path)}
-          </option>
-        ))}
-        <option value={CHOOSE}>{t("docs.project.choose")}</option>
-      </select>
-    </label>
-  );
-}
 
 export function NavSidebar() {
   const { page, collapsed, go, toggleCollapsed } = useWorkspaceStore();
@@ -106,8 +63,6 @@ export function NavSidebar() {
           <PanelLeft size={16} />
         </IconButton>
       </div>
-
-      <ProjectPicker collapsed={collapsed} />
 
       <nav className="min-h-0 flex-1 space-y-0.5 overflow-y-auto px-2">
         {NAV.map((item) => (

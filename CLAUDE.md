@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Tauri 2 desktop app (a main window plus a sidebar that docks next to the user's terminal; one is shown at a time) that shows what Claude Code is doing live (file map, timeline), suggests skills/servers/decisions for prompts, and manages AI coding tool docs (Claude Code, Codex) and per-branch memos. Windows first, Linux later.
+Tauri 2 desktop app (a main window plus a sidebar that docks next to the user's terminal; one is shown at a time) that shows what Claude Code is doing live (work graph of Claude, its subagents and what they touch; timeline), suggests skills/servers/decisions for prompts, and manages AI coding tool docs (Claude Code, Codex) and per-branch memos. Windows first, Linux later.
 
 - Plan, decisions, roadmap: `docs/PLAN.md` (read before starting a phase)
 - Researched facts with sources (Claude Code and Codex config, Win32 docking, sync, GitHub): `docs/research.md`
@@ -8,7 +8,8 @@ Tauri 2 desktop app (a main window plus a sidebar that docks next to the user's 
 ## Terms
 
 - "홈 화면" (home) = the 진행 상황 (Live) page: `src/workspace/pages/HomePage.tsx`, nav item `shell.nav.live`. Its right column is the "오른쪽 사이드 메뉴".
-- Notices (알림) go in the main menu's notice area above the account button (`src/features/notices/NoticeStack.tsx`), not in floating toasts.
+- Notices (알림) go in the main menu's notice area above the account button (`src/features/notices/NoticeStack.tsx`), also listed under the title bar's bell; not in floating toasts.
+- The main window is undecorated: `src/workspace/MainTitleBar.tsx` draws the title bar (project, local/cloud, status, Ctrl+K search, notices, window buttons).
 
 ## Layout
 

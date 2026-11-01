@@ -5,7 +5,6 @@
 //! memory only: the home page draws it live and nothing is stored or synced.
 
 use std::collections::BTreeMap;
-use std::path::Path;
 use std::sync::Mutex;
 
 use serde::{Deserialize, Serialize};
@@ -28,8 +27,6 @@ const ENDED_TTL_MS: i64 = 30 * 60 * 1000;
 const MAX_DETAIL: usize = 200;
 /// An answer is kept up to this many characters.
 const MAX_ANSWER: usize = 8000;
-/// Project files listed for the map, at most.
-const MAX_PROJECT_FILES: usize = 4000;
 
 /// One thing a session did, as the mod or the relay reports it.
 #[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
@@ -44,7 +41,7 @@ pub struct Step {
     pub phase: String,
     pub tool: String,
     /// Set by the app from `tool`: read, search, edit, run, agent, plan, web,
-    /// mcp or other.
+    /// ask, mcp or other.
     pub category: String,
     /// The file (relative to the project) or pattern the tool works on.
     pub target: String,
@@ -58,6 +55,9 @@ pub struct Step {
     pub ok: Option<bool>,
     /// Set when a subagent made the call.
     pub agent: Option<String>,
+    /// An Agent call's task (start), masked and cut: matches the subagent's
+    /// first turn, which starts with it.
+    pub prompt: String,
     /// `usage`: the context window used, 0-100.
     pub context_percent: Option<f64>,
     pub tokens: Option<u64>,
@@ -141,6 +141,7 @@ pub fn category(tool: &str) -> &'static str {
         "Agent" | "Task" => "agent",
         "TodoWrite" | "TaskCreate" | "TaskUpdate" | "ExitPlanMode" | "EnterPlanMode" => "plan",
         "WebSearch" | "WebFetch" => "web",
+        "AskUserQuestion" => "ask",
         t if t.starts_with("mcp__") => "mcp",
         _ => "other",
     }
@@ -204,6 +205,7 @@ fn apply_step(s: &mut Session, mut step: Step) {
         "tool" => {
             step.category = category(&step.tool).into();
             step.detail = clip(&step.detail);
+            step.prompt = clip(&step.prompt);
             if !step.target.is_empty() {
                 step.target = relative(&s.project, &step.target);
             }
@@ -376,73 +378,6 @@ pub fn activity_sessions() -> Vec<Session> {
     SESSIONS.lock().unwrap_or_else(|e| e.into_inner()).clone()
 }
 
-/// The project's files for the map: what git tracks, or a walk of the folder
-/// without hidden and build folders. Relative paths with `/`.
-#[tauri::command]
-pub async fn activity_files(project: String) -> Result<Vec<String>, String> {
-    tauri::async_runtime::spawn_blocking(move || project_files(Path::new(&project)))
-        .await
-        .map_err(|e| e.to_string())?
-}
-
-fn project_files(root: &Path) -> Result<Vec<String>, String> {
-    if !root.is_dir() {
-        return Ok(Vec::new());
-    }
-    if let Ok(out) = crate::git::run(
-        root,
-        &["ls-files", "--cached", "--others", "--exclude-standard"],
-    ) {
-        let mut files: Vec<String> = out.lines().map(str::to_string).collect();
-        files.truncate(MAX_PROJECT_FILES);
-        return Ok(files);
-    }
-    let mut out = Vec::new();
-    walk(root, root, &mut out, 0);
-    Ok(out)
-}
-
-const SKIP: &[&str] = &[
-    "node_modules",
-    "target",
-    "dist",
-    "build",
-    "out",
-    "vendor",
-    "__pycache__",
-];
-
-fn walk(root: &Path, dir: &Path, out: &mut Vec<String>, depth: usize) {
-    if depth > 12 || out.len() >= MAX_PROJECT_FILES {
-        return;
-    }
-    let Ok(entries) = std::fs::read_dir(dir) else {
-        return;
-    };
-    let mut entries: Vec<_> = entries.flatten().collect();
-    entries.sort_by_key(|e| e.file_name());
-    for entry in entries {
-        let name = entry.file_name().to_string_lossy().into_owned();
-        if name.starts_with('.') || SKIP.contains(&name.as_str()) {
-            continue;
-        }
-        let path = entry.path();
-        let Ok(kind) = entry.file_type() else {
-            continue;
-        };
-        if kind.is_dir() {
-            walk(root, &path, out, depth + 1);
-        } else if kind.is_file()
-            && let Ok(rel) = path.strip_prefix(root)
-        {
-            out.push(rel.to_string_lossy().replace('\\', "/"));
-            if out.len() >= MAX_PROJECT_FILES {
-                return;
-            }
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -590,16 +525,18 @@ mod tests {
     }
 
     #[test]
-    fn the_walk_skips_hidden_and_build_folders() {
-        let dir = std::env::temp_dir().join(format!("aim-files-{}", uuid::Uuid::new_v4()));
-        std::fs::create_dir_all(dir.join("src")).unwrap();
-        std::fs::create_dir_all(dir.join("node_modules/x")).unwrap();
-        std::fs::create_dir_all(dir.join(".git")).unwrap();
-        std::fs::write(dir.join("src/a.ts"), "").unwrap();
-        std::fs::write(dir.join("node_modules/x/b.js"), "").unwrap();
-        let mut out = Vec::new();
-        walk(&dir, &dir, &mut out, 0);
-        assert_eq!(out, ["src/a.ts"]);
-        std::fs::remove_dir_all(dir).unwrap();
+    fn questions_and_agent_tasks_are_kept() {
+        assert_eq!(category("AskUserQuestion"), "ask");
+        let mut s = Session::default();
+        apply_step(
+            &mut s,
+            Step {
+                tool: "Agent".into(),
+                prompt: "Look into the cache".into(),
+                ..step("tool", "a")
+            },
+        );
+        assert_eq!(s.steps[0].category, "agent");
+        assert_eq!(s.steps[0].prompt, "Look into the cache");
     }
 }

@@ -13,6 +13,7 @@ export type Category =
   | "agent"
   | "web"
   | "plan"
+  | "ask"
   | "mcp"
   | "other";
 
@@ -33,6 +34,8 @@ export interface Step {
   removed: number;
   ok: boolean | null;
   agent: string | null;
+  /** An Agent call's task (to match its subagent). */
+  prompt?: string;
 }
 
 export interface FileStat {
@@ -147,11 +150,8 @@ interface ActivityState {
   setMode: (mode: LiveMode) => void;
   /** The session the user picked; `null` follows the latest. */
   chosen: string | null;
-  /** Each project's files for the map. */
-  files: Record<string, string[]>;
   init: () => void;
   choose: (session: string | null) => void;
-  loadFiles: (project: string, force?: boolean) => Promise<void>;
 }
 
 let started = false;
@@ -164,7 +164,6 @@ export const useActivityStore = create<ActivityState>((set, get) => ({
     set({ mode, chosen: null });
   },
   chosen: null,
-  files: {},
 
   init: () => {
     if (started) return;
@@ -172,8 +171,7 @@ export const useActivityStore = create<ActivityState>((set, get) => ({
     if (!isTauri()) {
       // The browser preview plays a made-up session.
       if (import.meta.env.DEV) {
-        void import("./activityDemo").then(({ playDemo, DEMO_FILES, DEMO_PROJECT }) => {
-          set({ files: { ...get().files, [DEMO_PROJECT]: DEMO_FILES } });
+        void import("./activityDemo").then(({ playDemo }) => {
           playDemo((session) => {
             const rest = get().sessions.filter((s) => s.session !== session.session);
             set({ sessions: [...rest, session] });
@@ -186,21 +184,6 @@ export const useActivityStore = create<ActivityState>((set, get) => ({
     void listen<Session>("session-activity", ({ payload }) => {
       const rest = get().sessions.filter((s) => s.session !== payload.session);
       set({ sessions: [...rest, payload] });
-      // A file the session made shows on the map.
-      const project = payload.project;
-      const last = payload.steps[payload.steps.length - 1];
-      if (
-        project &&
-        last?.kind === "toolEnd" &&
-        last.category === "edit" &&
-        last.target &&
-        get().files[project] &&
-        !get().files[project]?.includes(last.target)
-      ) {
-        set({
-          files: { ...get().files, [project]: [...(get().files[project] ?? []), last.target] },
-        });
-      }
     });
     void listen<{ session: string }>("session-activity-gone", ({ payload }) => {
       set({ sessions: get().sessions.filter((s) => s.session !== payload.session) });
@@ -208,14 +191,4 @@ export const useActivityStore = create<ActivityState>((set, get) => ({
   },
 
   choose: (chosen) => set({ chosen }),
-
-  loadFiles: async (project, force = false) => {
-    if (!isTauri() || (!force && get().files[project])) return;
-    try {
-      const list = await invoke<string[]>("activity_files", { project });
-      set({ files: { ...get().files, [project]: list } });
-    } catch {
-      set({ files: { ...get().files, [project]: [] } });
-    }
-  },
 }));

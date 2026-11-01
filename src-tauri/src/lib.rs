@@ -75,7 +75,6 @@ pub fn run() {
             library::library_forget,
             library::config_set_enabled,
             activity::activity_sessions,
-            activity::activity_files,
             catalog::catalog_list,
             catalog::catalog_refresh,
             memo::memo_context,

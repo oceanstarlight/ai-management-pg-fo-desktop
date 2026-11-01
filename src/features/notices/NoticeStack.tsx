@@ -13,7 +13,7 @@ import { open } from "../work/useGitHubSync";
 
 type Tone = "warning" | "danger" | "info";
 
-interface Notice {
+export interface Notice {
   /** Stable for the same news; a different id is new news ("don't show again" is per id). */
   id: string;
   tone: Tone;
@@ -33,7 +33,7 @@ interface Notice {
 const firstSeen = new Map<string, number>();
 
 /** Everything the app wants the user to know or do, from the stores' state. */
-function useNotices(): Notice[] {
+export function useNotices(): Notice[] {
   const t = useT();
   const mod = useConnectionStore((s) => s.mod);
   const relay = useConnectionStore((s) => s.relay);
@@ -190,7 +190,13 @@ function useNotices(): Notice[] {
   return shown.sort((a, b) => order(a) - order(b));
 }
 
-const TONE: Record<Tone, string> = {
+/** "Don't show again" (remembered) or the notice's own close. */
+export function dismissNotice(n: Notice, remember: (id: string) => void) {
+  if (n.onClose) n.onClose();
+  else if (n.dismiss === "forever") remember(n.id);
+}
+
+export const TONE: Record<Tone, string> = {
   info: "text-accent",
   warning: "text-warning",
   danger: "text-danger",
@@ -241,20 +247,13 @@ export function NoticeStack({ collapsed }: { collapsed: boolean }) {
       className="flex max-h-[45vh] flex-col justify-end gap-1.5 overflow-y-auto px-2 pb-1"
     >
       {notices.map((n) => (
-        <NoticeCard
-          key={n.id}
-          notice={n}
-          onDismiss={() => {
-            if (n.onClose) n.onClose();
-            else if (n.dismiss === "forever") dismiss(n.id);
-          }}
-        />
+        <NoticeCard key={n.id} notice={n} onDismiss={() => dismissNotice(n, dismiss)} />
       ))}
     </section>
   );
 }
 
-function NoticeCard({ notice, onDismiss }: { notice: Notice; onDismiss: () => void }) {
+export function NoticeCard({ notice, onDismiss }: { notice: Notice; onDismiss: () => void }) {
   const t = useT();
   const Icon = notice.icon;
   const dismissLabel: MessageKey =
