@@ -354,10 +354,7 @@ async function askHaiku($: EngineInterface, draft: string, list: Candidate[]) {
     {
       model: "haiku",
       system: AI_SYSTEM,
-      prompt: [
-        { text: catalog, cache: true },
-        { text: aiAsk(draft, decisionsFor(lastSuggest, projectDir)) },
-      ],
+      prompt: [{ text: catalog, cache: true }, { text: aiAsk(draft) }],
       maxTokens: 40,
       effort: "low",
       timeoutMs: 15000,

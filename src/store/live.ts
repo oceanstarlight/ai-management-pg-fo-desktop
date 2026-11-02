@@ -7,7 +7,6 @@ import {
   aiAsk,
   aiCatalog,
   type Candidate,
-  decisionsFor,
   keywordRank,
   label,
   MAX_ITEMS,
@@ -104,7 +103,7 @@ async function pickForCloud(session: string) {
         const reply = await invoke<string>("suggest_ai", {
           project: local,
           system: AI_SYSTEM,
-          prompt: `${aiCatalog(candidates)}\n\n${aiAsk(claim.draft, decisionsFor(catalog, claim.project))}`,
+          prompt: `${aiCatalog(candidates)}\n\n${aiAsk(claim.draft)}`,
         }).catch(() => null);
         if (reply !== null) {
           items = parseAiReply(reply, candidates);

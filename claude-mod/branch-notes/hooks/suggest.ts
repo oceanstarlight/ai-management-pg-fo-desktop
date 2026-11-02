@@ -448,7 +448,7 @@ export function keywordRank(
 }
 
 export const AI_SYSTEM =
-  "You pick which Claude Code skills, subagents, commands, instructions, rules, hooks, MCP servers, extensions or automations would clearly help with the task the user is typing. Suggest the new automation only when the user asks for something to happen repeatedly or on a schedule. Be strict: suggest nothing rather than something loosely related. Reply with a JSON array of entry numbers only, best first, for example [3,12] or [].";
+  'You pick which Claude Code skills, subagents, commands, instructions, rules, hooks, MCP servers, extensions or automations would clearly help with the task the user is typing. Judge only by what the prompt itself asks for, not by what the project might use. Suggest a language or framework guide (React, TypeScript, Rust, Python...) only when the prompt names that language or framework or asks to write code in it. A short follow-up, answer or acknowledgement without a concrete new task ("keep #1 as is", "yes, do it", "apply it there too") gets []. Suggest the new automation only when the user asks for something to happen repeatedly or on a schedule. Be strict: suggest nothing rather than something loosely related. Reply with a JSON array of entry numbers only, best first, for example [3,12] or [].';
 
 /** The numbered list Haiku picks from; the same for every draft, so it caches. */
 export function aiCatalog(candidates: Candidate[]): string {
@@ -467,11 +467,11 @@ export function aiCatalog(candidates: Candidate[]): string {
   return `Entries:\n${lines.join("\n")}`;
 }
 
-export function aiAsk(draft: string, decisions: string[] = []): string {
-  const settled = decisions.length
-    ? `Already settled for this project:\n${decisions.map((d) => `- ${d}`).join("\n")}\n`
-    : "";
-  return `${settled}The user is typing this prompt (any language):\n<<<\n${draft.slice(0, 2000)}\n>>>\nWhich entries would clearly help? At most ${MAX_ITEMS}. JSON array of numbers only.`;
+/** The question for one draft. The project's settled decisions are left
+ * out on purpose: they made every prompt look like a request for the
+ * project's languages and frameworks. */
+export function aiAsk(draft: string): string {
+  return `The user is typing this prompt (any language):\n<<<\n${draft.slice(0, 2000)}\n>>>\nWhich entries would this prompt itself clearly need? At most ${MAX_ITEMS}. JSON array of numbers only.`;
 }
 
 /** The project's decisions, found by its folder (case and slashes aside). */

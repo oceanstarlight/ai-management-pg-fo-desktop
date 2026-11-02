@@ -1,5 +1,7 @@
 import { describe, expect, test } from "claude-code/testing";
 import {
+  AI_SYSTEM,
+  aiAsk,
   aiCatalog,
   bandLabel,
   blockContext,
@@ -125,6 +127,13 @@ describe("keyword matching", () => {
 
 describe("Haiku", () => {
   const all = buildCandidates(installed, exp);
+
+  test("the question carries only the prompt, not the project's stack", () => {
+    const ask = aiAsk("1번은 그대로, 터미널 안 표시줄도 반영해줘.");
+    expect(ask).toContain("터미널 안 표시줄");
+    expect(ask).not.toContain("settled");
+    expect(AI_SYSTEM).toContain("only when the prompt names that language or framework");
+  });
 
   test("the catalog numbers every entry and says where it is", () => {
     const text = aiCatalog(all);

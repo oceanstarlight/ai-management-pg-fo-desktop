@@ -718,19 +718,28 @@ pub fn cloud_prompt(app: &AppHandle, session: &str, project: String, prompt: &st
     }
 }
 
-/// The labels allowed in the project's cloud sessions.
+/// The labels allowed for the project's next cloud prompt: from its newest
+/// cloud session only, so picks from older sessions never pile up.
 pub fn cloud_picks(project: &str) -> Vec<String> {
-    LIVE.lock()
-        .unwrap_or_else(|e| e.into_inner())
+    let live = LIVE.lock().unwrap_or_else(|e| e.into_inner());
+    newest_cloud_picks(&live, project)
+}
+
+fn newest_cloud_picks(live: &[Live], project: &str) -> Vec<String> {
+    let Some(l) = live
         .iter()
         .filter(|l| l.surface == CLOUD_SURFACE && l.project == project)
-        .flat_map(|l| {
-            l.items
-                .iter()
-                .filter(|i| l.picked.contains(&i.key))
-                .map(|i| i.label.clone())
-        })
-        .collect()
+        .max_by_key(|l| l.at)
+    else {
+        return Vec::new();
+    };
+    let mut out: Vec<String> = Vec::new();
+    for i in l.items.iter().filter(|i| l.picked.contains(&i.key)) {
+        if !out.contains(&i.label) {
+            out.push(i.label.clone());
+        }
+    }
+    out
 }
 
 // ---------------------------------------------------------------------------
@@ -1044,7 +1053,9 @@ pub fn suggest_cloud_claim(session: String) -> Option<CloudClaim> {
 }
 
 /// The suggestions picked for a cloud prompt (dropped if a newer one came).
-/// With automatic use on, they are all allowed at once.
+/// They are never allowed automatically: the prompt was already sent, so
+/// whatever is allowed goes into the *next* one, which may be about
+/// something else entirely. The user allows them one by one.
 #[tauri::command]
 pub fn suggest_cloud_items(
     app: AppHandle,
@@ -1062,13 +1073,8 @@ pub fn suggest_cloud_items(
     if !current {
         return;
     }
-    let all = auto(&app);
     with_live(&app, &session, |l| {
-        l.picked = if all {
-            items.iter().map(|i| i.key.clone()).collect()
-        } else {
-            Vec::new()
-        };
+        l.picked = Vec::new();
         l.items = items;
         l.by = by;
         l.pending = false;
@@ -1090,6 +1096,35 @@ pub async fn suggest_log_clear(app: AppHandle) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn cloud_picks_come_from_the_newest_session_only_and_once() {
+        let item = |key: &str| LiveItem {
+            key: key.into(),
+            name: key.into(),
+            kind: "rule".into(),
+            source: "catalog".into(),
+            label: format!("＋{key}"),
+            description: String::new(),
+        };
+        let live = |session: &str, at: i64, picked: &[&str]| Live {
+            session: session.into(),
+            project: "o/r".into(),
+            surface: CLOUD_SURFACE.into(),
+            draft: String::new(),
+            by: String::new(),
+            pending: false,
+            items: vec![item("react"), item("rust")],
+            picked: picked.iter().map(|k| k.to_string()).collect(),
+            at,
+        };
+        let sessions = vec![
+            live("cloud-old", 1, &["react"]),
+            live("cloud-new", 2, &["rust", "rust"]),
+        ];
+        assert_eq!(newest_cloud_picks(&sessions, "o/r"), ["＋rust"]);
+        assert!(newest_cloud_picks(&sessions, "other/repo").is_empty());
+    }
 
     fn entry(at: i64, items: &[&str], picked: &[&str]) -> LogEntry {
         LogEntry {
