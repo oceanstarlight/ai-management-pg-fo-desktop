@@ -10,9 +10,18 @@ import {
   Wrench,
 } from "lucide-react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { useT } from "../../i18n";
-import type { Session } from "../../store/activity";
-import { ALPHA_ALIVE, ALPHA_MIN, type Body, extent, type SimNode, seed, step } from "./forceLayout";
+import { type MessageKey, useT } from "../../i18n";
+import { type Category, type Session, turnsOf } from "../../store/activity";
+import {
+  ALPHA_ALIVE,
+  ALPHA_MIN,
+  type Body,
+  extent,
+  LEAN,
+  type SimNode,
+  seed,
+  step,
+} from "./forceLayout";
 import { type AgentNode, buildGraph, type ResourceKind, type ResourceNode } from "./graph";
 import {
   Blended,
@@ -33,6 +42,12 @@ const RES_W = 138;
 const RES_H = 30;
 /** Narrower than this and the graph lays out as if it had this much room. */
 const MIN_W = 360;
+/** The graph's own fixed height, so what is below it never moves (px). */
+const FRAME_H = 360;
+/** A tall graph shrinks to fit the frame, down to this; past it the frame scrolls. */
+const FIT_MIN = 0.7;
+/** The corners beside Claude are used once each has this much room (px). */
+const CORNER_MIN = 150;
 /** Fade-out of what leaves (ms). */
 const LEAVE_MS = 450;
 
@@ -286,17 +301,39 @@ export function WorkGraph({ session }: { session: Session }) {
     return () => cancelAnimationFrame(raf);
   }, [signature, room, running]);
 
-  if (!room) return <div ref={wrap} className="w-full" style={{ height: 120 }} />;
+  if (!room) return <div ref={wrap} className="w-full" style={{ height: FRAME_H }} />;
 
   const size = new Map(nodes.map((n) => [n.id, n]));
   const height = Math.max(extent(nodes, s.bodies), MAIN_H + 16);
   const time = s.t || performance.now();
+  // A fixed frame: the graph shrinks a little to fit, and scrolls past that.
+  const fit = height * scale > FRAME_H ? Math.max(FIT_MIN, FRAME_H / (height * scale)) : 1;
+  const zoom = scale * fit;
+  const left = (room - width * zoom) / 2;
+  const corner = (room - (MAIN_W + 2 * LEAN) * zoom) / 2 - 16;
 
   return (
-    <div ref={wrap} className="relative w-full" style={{ height: height * scale }}>
+    <div
+      ref={wrap}
+      className={`relative w-full ${height * zoom > FRAME_H ? "overflow-y-auto" : "overflow-hidden"}`}
+      style={{ height: FRAME_H }}
+    >
+      {corner >= CORNER_MIN && (
+        <>
+          <RequestCorner session={session} width={Math.min(corner, 280)} />
+          <LegendCorner graph={graph} width={Math.min(corner, 280)} />
+        </>
+      )}
+      <div style={{ height: height * zoom }} aria-hidden />
       <div
-        className="absolute top-0 left-0 origin-top-left"
-        style={{ width, height, transform: scale < 1 ? `scale(${scale})` : undefined }}
+        className="absolute top-0 origin-top-left"
+        style={{
+          left,
+          width,
+          height,
+          transform: zoom < 1 ? `scale(${zoom})` : undefined,
+          transition: "transform 0.5s cubic-bezier(0.4, 0, 0.2, 1), left 0.5s",
+        }}
       >
         <svg
           width={width}
@@ -383,6 +420,55 @@ export function WorkGraph({ session }: { session: Session }) {
           );
         })}
       </div>
+    </div>
+  );
+}
+
+/** Top left, beside Claude: what this turn was asked to do. */
+function RequestCorner({ session, width }: { session: Session; width: number }) {
+  const t = useT();
+  const prompt = useMemo(() => {
+    const turns = turnsOf(session.steps);
+    return turns[turns.length - 1]?.prompt.trim() ?? "";
+  }, [session.steps]);
+  if (!prompt) return null;
+  return (
+    <div className="absolute top-1 left-1 z-10" style={{ width }} title={prompt}>
+      <div className="text-fs-10.5 font-medium text-text-subtle">{t("live.graph.request")}</div>
+      <p
+        key={prompt}
+        className="anim-blend-in selectable mt-0.5 line-clamp-2 text-fs-12 text-text-muted"
+      >
+        {prompt}
+      </p>
+    </div>
+  );
+}
+
+/** Top right, beside Claude: what each colour on the graph means (only those on it). */
+function LegendCorner({ graph, width }: { graph: ReturnType<typeof buildGraph>; width: number }) {
+  const t = useT();
+  const counts = new Map<Category, number>();
+  if (graph.agents.length) counts.set("agent", graph.agents.length);
+  for (const r of graph.resources) counts.set(r.category, (counts.get(r.category) ?? 0) + 1);
+  if (!counts.size) return null;
+  return (
+    <div className="absolute top-1 right-1 z-10 text-right" style={{ width }}>
+      <div className="text-fs-10.5 font-medium text-text-subtle">{t("live.graph.legend")}</div>
+      <ul className="mt-1 flex max-h-10 flex-wrap justify-end gap-x-3 gap-y-1 overflow-hidden text-fs-11 text-text-muted">
+        {[...counts].map(([cat, n]) => (
+          <li key={cat} className="flex items-center gap-1.5">
+            <span className="size-1.5 rounded-full" style={{ background: stateColor(cat) }} />
+            {t(`live.verb.${cat}` as MessageKey)}
+            <span
+              key={n}
+              className="anim-tick inline-block font-mono tabular-nums text-text-subtle"
+            >
+              {n}
+            </span>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
