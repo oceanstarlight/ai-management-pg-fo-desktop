@@ -15,18 +15,44 @@ type Where = "app" | "cli";
  * sketch of the screen for each: in the desktop app or claude.ai/code, or from
  * the terminal (which can pick an environment but not edit one).
  */
-export function CloudGuide({ enabled, onCopy }: { enabled: boolean; onCopy: () => void }) {
+export function CloudGuide({ enabled, onCopy }: { enabled: boolean; onCopy: () => Promise<void> }) {
   const t = useT();
   const [where, setWhere] = useState<Where>("app");
   const host = useRelayHost();
+  // The result shows next to the button, not at the bottom of the page.
+  const [copy, setCopy] = useState<{ ok: boolean; text?: string } | null>(null);
+
+  useEffect(() => {
+    if (!copy?.ok) return;
+    const id = setTimeout(() => setCopy(null), 4000);
+    return () => clearTimeout(id);
+  }, [copy]);
+
+  const doCopy = () => {
+    setCopy(null);
+    onCopy().then(
+      () => setCopy({ ok: true }),
+      (e) => setCopy({ ok: false, text: String(e) }),
+    );
+  };
 
   const copyStep = (
     <GuideStep n={1} text={t("guide.copy")}>
-      <Button size="sm" variant="primary" disabled={!enabled} onClick={onCopy}>
-        <Copy size={13} />
-        {t("connect.cloud.copyScript")}
-      </Button>
-      {!enabled && <span className="text-fs-11 text-text-subtle">{t("guide.copyOff")}</span>}
+      <div className="flex flex-wrap items-center gap-2">
+        <Button size="sm" variant="primary" disabled={!enabled} onClick={doCopy}>
+          {copy?.ok ? <Check size={13} /> : <Copy size={13} />}
+          {t(copy?.ok ? "connect.cloud.copiedButton" : "connect.cloud.copyScript")}
+        </Button>
+        {!enabled && <span className="text-fs-11 text-text-subtle">{t("guide.copyOff")}</span>}
+        {copy && (
+          <span
+            role="status"
+            className={`selectable text-fs-11 ${copy.ok ? "text-success" : "text-danger"}`}
+          >
+            {copy.ok ? t("connect.cloud.copied") : copy.text}
+          </span>
+        )}
+      </div>
     </GuideStep>
   );
 
