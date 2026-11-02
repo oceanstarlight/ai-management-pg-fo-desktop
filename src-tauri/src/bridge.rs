@@ -120,6 +120,12 @@ pub enum Request {
         kind: crate::library::ItemKind,
         id: String,
     },
+    /// Add a catalog block to a project (the mod's prompt suggestions). A
+    /// hook is added only after the user confirms it in the app.
+    ApplyBlock {
+        project: String,
+        id: String,
+    },
     /// Install one of the extension library's entries (the mod's suggestions).
     InstallExtension {
         id: String,
@@ -276,6 +282,7 @@ pub fn apply(store: &Store, request: Request) -> Result<(String, String), String
         | Request::SetAutomationEnabled { .. }
         | Request::RunAutomation { .. }
         | Request::ApplyLibrary { .. }
+        | Request::ApplyBlock { .. }
         | Request::InstallExtension { .. }
         | Request::AddMcp { .. }
         | Request::DraftAutomation { .. }
@@ -364,7 +371,9 @@ pub fn manage(app: &AppHandle) {
                     }
                     if matches!(
                         request,
-                        Request::ApplyLibrary { .. } | Request::InstallExtension { .. }
+                        Request::ApplyLibrary { .. }
+                            | Request::ApplyBlock { .. }
+                            | Request::InstallExtension { .. }
                     ) {
                         apply_suggestion(&app, request);
                         continue;
@@ -427,6 +436,27 @@ fn apply_suggestion(app: &AppHandle, request: Request) {
                     result,
                 )
             }
+            Request::ApplyBlock { project, id } => {
+                let confirmed = match crate::catalog::hook_command(&app, &id) {
+                    Some((title, command)) => confirm_hook(&app, &title, &command),
+                    None => true,
+                };
+                if !confirmed {
+                    return;
+                }
+                let result = crate::catalog::apply_to(&app, Path::new(&project), &id, confirmed)
+                    .map(|applied| applied.path);
+                let body = match result {
+                    Ok(path) => crate::tr!(
+                        "{path}에 썼어요. 지침·규칙·hook은 Claude Code를 다시 시작하면 확실히 적용돼요.",
+                        "Written to {path}. Instructions, rules and hooks surely apply once Claude Code restarts."
+                    ),
+                    Err(e) => crate::tr!("실패했어요: {e}", "It failed: {e}"),
+                };
+                let title = crate::tr!("프로젝트에 추가: {id}", "Added to the project: {id}");
+                let _ = app.notification().builder().title(title).body(body).show();
+                return;
+            }
             Request::InstallExtension { id } => {
                 let result = crate::extensions::install(&id);
                 crate::extensions::check_later();
@@ -446,6 +476,24 @@ fn apply_suggestion(app: &AppHandle, request: Request) {
         };
         let _ = app.notification().builder().title(title).body(body).show();
     });
+}
+
+/// Asks the user, in the app, before a suggested hook is written: Claude
+/// Code runs its command by itself.
+fn confirm_hook(app: &AppHandle, title: &str, command: &str) -> bool {
+    use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
+    app.dialog()
+        .message(crate::tr!(
+            "'{title}' hook을 이 프로젝트의 .claude/settings.local.json에 추가할까요?\n\nClaude Code가 때마다 이 명령을 직접 실행해요:\n\n{command}",
+            "Add the '{title}' hook to this project's .claude/settings.local.json?\n\nClaude Code runs this command by itself each time:\n\n{command}"
+        ))
+        .title(crate::tr!("hook 추가", "Add a hook"))
+        .kind(MessageDialogKind::Warning)
+        .buttons(MessageDialogButtons::OkCancelCustom(
+            crate::tr!("추가", "Add"),
+            crate::tr!("취소", "Cancel"),
+        ))
+        .blocking_show()
 }
 
 /// The work panel's latest PR and CI for the project's branch.
@@ -508,6 +556,16 @@ mod tests {
                 project: "/p".into(),
                 kind: crate::library::ItemKind::Skill,
                 id: "review".into()
+            }
+        );
+        let r: Request =
+            serde_json::from_str(r#"{"op":"applyBlock","project":"/p","id":"builtin:rust"}"#)
+                .unwrap();
+        assert_eq!(
+            r,
+            Request::ApplyBlock {
+                project: "/p".into(),
+                id: "builtin:rust".into()
             }
         );
         let r: Request = serde_json::from_str(r#"{"op":"installExtension","id":"rea"}"#).unwrap();

@@ -1,22 +1,39 @@
 // Prompt suggestions without the engine: the candidates (what is installed,
-// the app's library, extensions, MCP servers, automations), keyword
+// the app's library and block catalog, extensions, MCP servers, automations), keyword
 // matching, and the Haiku request and its reply. The app's own prompt box
 // (src/features/suggest) imports this file too, so it has no engine imports.
 // Kept in sync with src-tauri/src/suggest (the export's `suggest` section
 // and the requests the mod sends).
 
-export type CandidateKind = "skill" | "agent" | "command" | "extension" | "mcp" | "automation";
+export type CandidateKind =
+  | "skill"
+  | "agent"
+  | "command"
+  | "instruction"
+  | "rule"
+  | "hook"
+  | "extension"
+  | "mcp"
+  | "automation";
 
 /**
  * `installed`: usable now. `library`: in the app's library, added to the
- * project on pick. `extension`: a GitHub extension to install. `recommended`:
+ * project on pick. `catalog`: one of the app's ready-made blocks (instruction,
+ * rule, skill, subagent, hook), written into the project on pick (for the
+ * user only). `extension`: a GitHub extension to install. `recommended`:
  * an MCP server to add. `automation`: one of the app's automations, or a new one.
  */
-export type CandidateSource = "installed" | "library" | "extension" | "recommended" | "automation";
+export type CandidateSource =
+  | "installed"
+  | "library"
+  | "catalog"
+  | "extension"
+  | "recommended"
+  | "automation";
 
 /** Something the prompt suggestions can offer. */
 export type Candidate = {
-  /** Unique: `i:skill:review`, `l:agent:debugger`, `e:rea`, `m:github`, `a:new`. */
+  /** Unique: `i:skill:review`, `l:agent:debugger`, `b:builtin:rust`, `e:rea`, `m:github`, `a:new`. */
   key: string;
   kind: CandidateKind;
   source: CandidateSource;
@@ -26,6 +43,12 @@ export type Candidate = {
   keywords?: string[];
   libraryKind?: "skill" | "agent";
   libraryId?: string;
+  /** A catalog block's id (`builtin:rust`). */
+  blockId?: string;
+  /** Instructions and rules: the text sent with the prompt it is picked for. */
+  context?: string;
+  /** Hooks: the command it runs, shown before it is added. */
+  command?: string;
   extensionId?: string;
   mcpId?: string;
   automationId?: string;
@@ -53,6 +76,18 @@ export type SuggestExport = {
   /** Each project's settled decisions (`topic: value`), by project folder. */
   decisions?: Record<string, string[]>;
   library: { kind: "skill" | "agent"; id: string; name: string; description: string }[];
+  /** The app's catalog blocks; titles and summaries in the UI language. */
+  blocks?: {
+    id: string;
+    kind: "instruction" | "rule" | "skill" | "agent" | "hook";
+    name: string;
+    title: string;
+    summary: string;
+    category: string;
+    description: string;
+    context?: string;
+    command?: string;
+  }[];
   extensions: {
     id: string;
     name: string;
@@ -177,8 +212,9 @@ export function installedCandidate(
 
 /**
  * Everything that can be suggested: installed items first, then library
- * items not installed under the same name, then extensions not known to be
- * installed.
+ * items not installed under the same name, then catalog blocks (skills and
+ * subagents only when neither installed nor in the library under the same
+ * name), then extensions not known to be installed.
  */
 export function buildCandidates(installed: Candidate[], exp?: SuggestExport | null): Candidate[] {
   const seen = new Set<string>();
@@ -199,6 +235,26 @@ export function buildCandidates(installed: Candidate[], exp?: SuggestExport | nu
       description: clip(item.description ?? ""),
       libraryKind: item.kind,
       libraryId: item.id,
+    });
+    names.add(`${item.kind}:${(item.name || item.id).toLowerCase()}`);
+  }
+  for (const b of exp?.blocks ?? []) {
+    if (
+      (b.kind === "skill" || b.kind === "agent") &&
+      names.has(`${b.kind}:${b.name.toLowerCase()}`)
+    )
+      continue;
+    const about = [b.summary, b.description].filter(Boolean).join(" ");
+    out.push({
+      key: `b:${b.id}`,
+      kind: b.kind,
+      source: "catalog",
+      name: b.name,
+      description: clip(`${b.title}${about ? ` - ${about}` : ""}`),
+      keywords: tokens(`${b.title} ${b.category}`),
+      blockId: b.id,
+      context: b.context,
+      command: b.command,
     });
   }
   for (const ext of exp?.extensions ?? []) {
@@ -375,7 +431,14 @@ export function keywordRank(
 ): Candidate[] {
   const words = tokens(draft);
   if (!words.length) return [];
-  const order = { installed: 0, library: 1, recommended: 2, extension: 3, automation: 4 } as const;
+  const order = {
+    installed: 0,
+    library: 1,
+    catalog: 2,
+    recommended: 3,
+    extension: 4,
+    automation: 5,
+  } as const;
   return candidates
     .map((c) => ({ c, s: score(words, c) }))
     .filter((x) => x.s >= 2)
@@ -385,13 +448,14 @@ export function keywordRank(
 }
 
 export const AI_SYSTEM =
-  "You pick which Claude Code skills, subagents, commands, MCP servers, extensions or automations would clearly help with the task the user is typing. Suggest the new automation only when the user asks for something to happen repeatedly or on a schedule. Be strict: suggest nothing rather than something loosely related. Reply with a JSON array of entry numbers only, best first, for example [3,12] or [].";
+  "You pick which Claude Code skills, subagents, commands, instructions, rules, hooks, MCP servers, extensions or automations would clearly help with the task the user is typing. Suggest the new automation only when the user asks for something to happen repeatedly or on a schedule. Be strict: suggest nothing rather than something loosely related. Reply with a JSON array of entry numbers only, best first, for example [3,12] or [].";
 
 /** The numbered list Haiku picks from; the same for every draft, so it caches. */
 export function aiCatalog(candidates: Candidate[]): string {
   const where = {
     installed: "ready",
     library: "in the user's library",
+    catalog: "from the app's catalog",
     extension: "to install",
     recommended: "to add",
     automation: "the app's scheduler",
@@ -469,6 +533,46 @@ export function autoContext(items: Candidate[]): string | null {
   return `The user's tools suggest these for this request; use them where they help:\n${lines.join("\n")}`;
 }
 
+/** What the model reads beside a prompt: the instructions and rules picked
+ * from the catalog for it (their files are read only when a session starts). */
+export function blockContext(items: Candidate[]): string | null {
+  const parts = items
+    .filter((c) => c.source === "catalog" && c.context)
+    .map((c) => `## ${c.name} (${c.kind})\n${c.context}`);
+  if (!parts.length) return null;
+  return `The user added these ${parts.length > 1 ? "guidelines" : "guideline"} to the project for this request; follow them:\n\n${parts.join("\n\n")}`;
+}
+
+/** Where a picked catalog block is written in the project (for the user only). */
+export function blockPath(c: Candidate): string | null {
+  switch (c.kind) {
+    case "skill":
+      return `.claude/skills/${c.name}/SKILL.md`;
+    case "agent":
+      return `.claude/agents/${c.name}.md`;
+    case "rule":
+      return `.claude/rules/${c.name}.md`;
+    case "instruction":
+      return "CLAUDE.local.md";
+    case "hook":
+      return ".claude/settings.local.json";
+    default:
+      return null;
+  }
+}
+
+/** The app's prompt box: the draft after an instruction or rule was added,
+ * asking Claude to follow it now (the file loads with the next session). */
+export function draftWithBlock(draft: string, c: Candidate, locale: "ko" | "en"): string {
+  const path = blockPath(c);
+  if (!path || (c.kind !== "instruction" && c.kind !== "rule")) return draft;
+  const ask =
+    locale === "ko"
+      ? `(${path}에 추가한 ${c.name} ${c.kind === "rule" ? "규칙" : "지침"}을 읽고 따라 줘)`
+      : `(read and follow the ${c.name} ${c.kind} added in ${path})`;
+  return draft.includes(ask) ? draft : `${draft.trimEnd()} ${ask}`;
+}
+
 /** The candidates Haiku's reply names, in its order. */
 export function parseAiReply(text: string, candidates: Candidate[]): Candidate[] {
   const m = /\[[\d\s,]*\]/.exec(text);
@@ -493,7 +597,7 @@ export function parseAiReply(text: string, candidates: Candidate[]): Candidate[]
 export function label(c: Candidate, locale: "ko" | "en" = "en"): string {
   if (c.key === NEW_AUTOMATION) return locale === "ko" ? "⏰자동화로 만들기" : "⏰Automate it";
   if (c.source === "automation") return `⏰${c.name}`;
-  if (c.source === "library") return `＋${c.name}`;
+  if (c.source === "library" || c.source === "catalog") return `＋${c.name}`;
   if (c.source === "extension" || c.source === "recommended") return `⬇${c.name}`;
   if (c.kind === "mcp") return `🔌${c.name}`;
   return c.kind === "agent" ? `@${c.name}` : `/${c.name}`;

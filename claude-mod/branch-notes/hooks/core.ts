@@ -124,6 +124,9 @@ const WORDS = {
     runningAutomation: (name: string) => `앱이 '${name}' 자동화를 지금 실행해요.`,
     picking: "고르는 중…",
     adding: (name: string) => `앱이 ${name}을(를) 프로젝트에 추가해요. 끝나면 알림이 와요.`,
+    addingGuide: (name: string) =>
+      `앱이 ${name}을(를) 프로젝트에 추가해요. 이번 프롬프트에도 내용을 같이 보내요.`,
+    addingHook: (name: string) => `앱에서 ${name} hook의 명령을 확인하고 추가하세요.`,
     installing: (name: string) =>
       `앱이 ${name}을(를) 설치해요. 끝나면 알림이 오고, Claude Code를 다시 시작하면 써요.`,
     noAppForSuggest: "Encela 앱이 켜져 있어야 추가·설치할 수 있어요.",
@@ -167,6 +170,9 @@ const WORDS = {
     picking: "picking…",
     adding: (name: string) =>
       `The app is adding ${name} to the project. You'll get a notification.`,
+    addingGuide: (name: string) =>
+      `The app is adding ${name} to the project; it also goes with this prompt.`,
+    addingHook: (name: string) => `Check the ${name} hook's command in the app to add it.`,
     installing: (name: string) =>
       `The app is installing ${name}. You'll get a notification; restart Claude Code to use it.`,
     noAppForSuggest: "The Encela app must be running to add or install it.",
@@ -256,6 +262,7 @@ export type Request =
   | { op: "deleteTodo"; id: string }
   | { op: "appendNote"; repoKey: string; branch: string; text: string }
   | { op: "applyLibrary"; project: string; kind: "skill" | "agent"; id: string }
+  | { op: "applyBlock"; project: string; id: string }
   | { op: "installExtension"; id: string }
   | { op: "addMcp"; id: string; project: string }
   | { op: "runAutomation"; id: string }

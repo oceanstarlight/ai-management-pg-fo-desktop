@@ -229,12 +229,10 @@ function CloudSection({ run }: { run: Run }) {
             </summary>
             <CloudGuide
               enabled={on}
-              onCopy={() =>
-                void run(async () => {
-                  const script = await invoke<string>("relay_setup_script");
-                  await navigator.clipboard.writeText(script);
-                }, t("connect.cloud.copied"))
-              }
+              onCopy={async () => {
+                const script = await invoke<string>("relay_setup_script");
+                await navigator.clipboard.writeText(script);
+              }}
             />
           </details>
         }

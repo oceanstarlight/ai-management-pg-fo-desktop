@@ -61,6 +61,8 @@ pub struct Catalog {
     /// Suggestions are used without asking.
     auto: bool,
     library: Vec<LibraryEntry>,
+    /// The app's catalog blocks (instructions, rules, skills, subagents, hooks).
+    blocks: Vec<BlockEntry>,
     extensions: Vec<crate::extensions::SuggestEntry>,
     mcp: Vec<McpEntry>,
     automations: Vec<AutomationEntry>,
@@ -79,6 +81,59 @@ struct LibraryEntry {
     id: String,
     name: String,
     description: String,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct BlockEntry {
+    id: String,
+    kind: crate::catalog::BlockKind,
+    /// How Claude Code calls a skill or subagent; the file name otherwise.
+    name: String,
+    /// Title and summary in the UI language.
+    title: String,
+    summary: String,
+    category: String,
+    /// The skill's or subagent's `description`, for matching.
+    description: String,
+    /// Instructions and rules: the text sent along with the prompt it was
+    /// picked for (written files are read only when a session starts).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    context: Option<String>,
+    /// Hooks: the command, shown before it is added.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    command: Option<String>,
+}
+
+/// Instruction and rule text sent with a prompt is cut to this.
+const MAX_BLOCK_CONTEXT: usize = 4000;
+
+fn block_entries(blocks: Vec<crate::catalog::Block>) -> Vec<BlockEntry> {
+    use crate::catalog::BlockKind;
+    let english = crate::i18n::english();
+    blocks
+        .into_iter()
+        .map(|b| {
+            let (title, summary, category) = match &b.en {
+                Some(en) if english => (en.title.clone(), en.summary.clone(), en.category.clone()),
+                _ => (b.title.clone(), b.summary.clone(), b.category.clone()),
+            };
+            let context = matches!(b.kind, BlockKind::Instruction | BlockKind::Rule)
+                .then(|| clip(&b.body, MAX_BLOCK_CONTEXT));
+            let command = (b.kind == BlockKind::Hook).then(|| b.body.trim().to_string());
+            BlockEntry {
+                description: clip(b.description.as_deref().unwrap_or_default(), 200),
+                id: b.id,
+                kind: b.kind,
+                name: b.name,
+                title,
+                summary,
+                category,
+                context,
+                command,
+            }
+        })
+        .collect()
 }
 
 #[derive(Serialize, Clone, Debug, PartialEq)]
@@ -215,6 +270,7 @@ pub fn catalog(app: &AppHandle) -> Catalog {
         mode,
         auto: auto(app),
         library,
+        blocks: block_entries(crate::catalog::suggestible(app)),
         extensions: crate::extensions::suggest_entries(),
         mcp: mcp_entries(installed.as_deref()),
         automations,
