@@ -20,16 +20,36 @@ export function scrollToSection(id: string) {
   setTimeout(() => document.getElementById(id)?.scrollIntoView({ block: "start" }), 60);
 }
 
-/** The first page: the connection settings when asked or on first launch, else home. */
-function firstPage(): Page {
-  const connect = getPref(OPEN_PAGE_KEY) === "connect" || getPref(CONNECT_SEEN_KEY) === null;
+const PAGES: Page[] = ["home", "tools", "project", "automations", "memo", "settings"];
+const PROJECT_TABS: ProjectTab[] = ["docs", "map", "decisions", "starters"];
+
+/**
+ * The first page: the connection settings when asked or on first launch, a
+ * page the sidebar asked for (`settings`, `project:starters`...), else home.
+ */
+function firstPage(): { page: Page; projectTab: ProjectTab } {
+  const asked = getPref(OPEN_PAGE_KEY);
+  const connect = asked === "connect" || getPref(CONNECT_SEEN_KEY) === null;
   setPref(OPEN_PAGE_KEY, null);
   setPref(CONNECT_SEEN_KEY, "1");
   if (connect) {
     scrollToSection(CONNECT_SECTION);
-    return "settings";
+    return { page: "settings", projectTab: "docs" };
   }
-  return "home";
+  const [page, tab] = (asked ?? "").split(":") as [Page, ProjectTab | undefined];
+  return {
+    page: PAGES.includes(page) ? page : "home",
+    projectTab: tab && PROJECT_TABS.includes(tab) ? tab : "docs",
+  };
+}
+
+const inSidebar = () => isTauri() && getCurrentWebviewWindow().label === "sidebar";
+
+/** From the sidebar: opens the main window on `page` (made anew, it reads this when it starts). */
+async function openInMain(page: string) {
+  await invoke("prefs_set", { key: OPEN_PAGE_KEY, value: page }).catch(() => {});
+  setPref(OPEN_PAGE_KEY, page);
+  await switchView("main");
 }
 
 function readCollapsed(): boolean {
@@ -56,14 +76,22 @@ interface WorkspaceState {
   toggleCollapsed: () => void;
 }
 
+const first = firstPage();
+
 export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
-  page: firstPage(),
+  page: first.page,
   toolsTab: "library",
-  projectTab: "docs",
+  projectTab: first.projectTab,
   setToolsTab: (toolsTab) => set({ toolsTab }),
-  goProject: (projectTab) => set({ page: "project", projectTab }),
+  goProject: (projectTab) => {
+    if (inSidebar()) void openInMain(`project:${projectTab}`);
+    else set({ page: "project", projectTab });
+  },
   collapsed: readCollapsed(),
-  go: (page) => set({ page }),
+  go: (page) => {
+    if (inSidebar()) void openInMain(page);
+    else set({ page });
+  },
   toggleCollapsed: () => {
     const collapsed = !get().collapsed;
     setPref(COLLAPSED_KEY, collapsed ? "1" : "0");
@@ -73,14 +101,10 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
 
 /** Opens the Claude connection page, switching from the sidebar if need be. */
 export async function openConnect() {
-  const label = isTauri() ? getCurrentWebviewWindow().label : "main";
-  if (label !== "sidebar") {
+  if (!inSidebar()) {
     useWorkspaceStore.getState().go("settings");
     scrollToSection(CONNECT_SECTION);
     return;
   }
-  // The main window is made anew and reads this when it starts.
-  await invoke("prefs_set", { key: OPEN_PAGE_KEY, value: "connect" }).catch(() => {});
-  setPref(OPEN_PAGE_KEY, "connect");
-  await switchView("main");
+  await openInMain("connect");
 }

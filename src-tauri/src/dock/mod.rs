@@ -20,8 +20,12 @@ use tauri::{AppHandle, Emitter, Manager, State};
 pub use layout::Side;
 
 pub const SIDEBAR_LABEL: &str = "sidebar";
-/// Sidebar size in logical pixels.
+/// Sidebar width in logical pixels: compact (the default) and wide.
 pub const SIDEBAR_WIDTH: f64 = 360.0;
+pub const SIDEBAR_WIDE_WIDTH: f64 = 560.0;
+/// `on` opens the sidebar wide (work graph and prompt suggestions shown).
+/// Device-local: it depends on the screen.
+pub const WIDE_PREF: &str = "sidebarWide";
 #[cfg_attr(not(windows), allow(dead_code))]
 pub const SIDEBAR_MIN_HEIGHT: f64 = 400.0;
 pub const STATUS_EVENT: &str = "dock-status";
@@ -84,6 +88,8 @@ impl Magnet {
 pub struct DockStatus {
     pub magnet: Magnet,
     pub pinned: bool,
+    /// Wide layout (work graph and prompt suggestions) instead of compact.
+    pub wide: bool,
     pub visible: bool,
     pub mode: DockMode,
     pub target: Option<TargetApp>,
@@ -95,6 +101,18 @@ pub struct Settings {
     pub magnet: Magnet,
     pub pinned: bool,
     pub visible: bool,
+    pub wide: bool,
+}
+
+impl Settings {
+    /// Sidebar width in logical pixels for the current layout.
+    pub fn width(&self) -> f64 {
+        if self.wide {
+            SIDEBAR_WIDE_WIDTH
+        } else {
+            SIDEBAR_WIDTH
+        }
+    }
 }
 
 pub struct Dock {
@@ -113,12 +131,14 @@ impl Dock {
             magnet: Magnet::Auto,
             pinned: false,
             visible: false,
+            wide: false,
         };
         app.manage(Dock {
             settings: Mutex::new(settings),
             status: Mutex::new(DockStatus {
                 magnet: settings.magnet,
                 pinned: settings.pinned,
+                wide: settings.wide,
                 visible: settings.visible,
                 mode: DockMode::Floating,
                 target: None,
@@ -131,6 +151,8 @@ impl Dock {
 
     /// Starts following target windows and publishing status.
     pub fn start(app: &AppHandle) -> tauri::Result<()> {
+        let wide = crate::prefs::get(app, WIDE_PREF).as_deref() == Some("on");
+        app.state::<Dock>().update(|s| s.wide = wide);
         #[cfg(windows)]
         {
             let window = app
@@ -165,6 +187,15 @@ impl Dock {
     /// applies placement right after (switching to the sidebar view).
     pub fn reset_magnet(&self, magnet: Magnet) {
         self.update(|s| s.magnet = magnet);
+    }
+
+    /// Switches between the compact and the wide layout.
+    pub fn set_wide(&self, app: &AppHandle, wide: bool) {
+        if self.settings().wide == wide {
+            return;
+        }
+        self.update(|s| s.wide = wide);
+        self.apply(app, false);
     }
 
     pub fn set_pinned(&self, app: &AppHandle, pinned: bool) {
@@ -245,6 +276,13 @@ pub fn dock_set_pinned(app: AppHandle, dock: State<'_, Dock>, pinned: bool) {
 #[tauri::command]
 pub fn dock_cycle_magnet(app: AppHandle, dock: State<'_, Dock>) {
     dock.set_magnet(&app, dock.settings().magnet.next());
+}
+
+/// The title-bar button: compact ↔ wide, until the app restarts or the
+/// default in Settings changes.
+#[tauri::command]
+pub fn dock_set_wide(app: AppHandle, dock: State<'_, Dock>, wide: bool) {
+    dock.set_wide(&app, wide);
 }
 
 #[tauri::command]

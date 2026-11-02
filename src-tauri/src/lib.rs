@@ -52,6 +52,7 @@ pub fn run() {
             dock::dock_status,
             dock::dock_cycle_magnet,
             dock::dock_set_pinned,
+            dock::dock_set_wide,
             dock::sidebar_hide,
             tools::config_scan,
             tools::tool_detect,

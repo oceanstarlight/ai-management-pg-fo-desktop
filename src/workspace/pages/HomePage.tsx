@@ -41,7 +41,16 @@ export function HomePage() {
         </header>
         <LiveView />
       </section>
+      {/* Below xl the side menu drops under the work graph: a labelled rule marks where it starts. */}
       <aside className="min-w-0 space-y-10 overflow-y-auto border-border px-7 pt-8 pb-16 xl:border-l">
+        <div
+          aria-hidden
+          className="-mt-2 flex items-center gap-3 text-fs-11 font-medium tracking-wide text-text-subtle xl:hidden"
+        >
+          <span className="h-px flex-1 bg-border" />
+          {t("home.sideMenu")}
+          <span className="h-px flex-1 bg-border" />
+        </div>
         <SuggestBox />
         <StarterPanel onApply={setDraft} fresh={fresh} />
         <LivePanel />

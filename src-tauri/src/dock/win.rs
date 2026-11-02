@@ -18,7 +18,8 @@ use windows::Win32::Graphics::Dwm::{
     DWMWA_CLOAKED, DWMWA_EXTENDED_FRAME_BOUNDS, DwmGetWindowAttribute,
 };
 use windows::Win32::Graphics::Gdi::{
-    GetMonitorInfoW, HMONITOR, MONITOR_DEFAULTTONEAREST, MONITORINFO, MonitorFromWindow,
+    ClientToScreen, GetMonitorInfoW, HMONITOR, MONITOR_DEFAULTTONEAREST, MONITORINFO,
+    MonitorFromWindow,
 };
 use windows::Win32::System::Threading::{
     GetCurrentProcessId, GetCurrentThreadId, OpenProcess, PROCESS_NAME_WIN32,
@@ -31,10 +32,10 @@ use windows::Win32::UI::WindowsAndMessaging::{
     CHILDID_SELF, DispatchMessageW, EVENT_OBJECT_CLOAKED, EVENT_OBJECT_DESTROY,
     EVENT_OBJECT_LOCATIONCHANGE, EVENT_OBJECT_UNCLOAKED, EVENT_SYSTEM_FOREGROUND,
     EVENT_SYSTEM_MINIMIZEEND, EVENT_SYSTEM_MINIMIZESTART, EnumWindows, GA_ROOT, GWL_EXSTYLE,
-    GetAncestor, GetClassNameW, GetForegroundWindow, GetMessageW, GetWindowLongPtrW, GetWindowRect,
-    GetWindowTextLengthW, GetWindowTextW, GetWindowThreadProcessId, HWND_NOTOPMOST, HWND_TOPMOST,
-    IsIconic, IsWindow, IsWindowVisible, KillTimer, MSG, OBJID_WINDOW, PM_NOREMOVE, PeekMessageW,
-    PostThreadMessageW, STYLESTRUCT, SW_HIDE, SW_SHOWNOACTIVATE, SWP_ASYNCWINDOWPOS,
+    GetAncestor, GetClassNameW, GetClientRect, GetForegroundWindow, GetMessageW, GetWindowLongPtrW,
+    GetWindowRect, GetWindowTextLengthW, GetWindowTextW, GetWindowThreadProcessId, HWND_NOTOPMOST,
+    HWND_TOPMOST, IsIconic, IsWindow, IsWindowVisible, KillTimer, MSG, OBJID_WINDOW, PM_NOREMOVE,
+    PeekMessageW, PostThreadMessageW, STYLESTRUCT, SW_HIDE, SW_SHOWNOACTIVATE, SWP_ASYNCWINDOWPOS,
     SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER, SetTimer, SetWindowLongPtrW,
     SetWindowPos, ShowWindow, ShowWindowAsync, TranslateMessage, WINEVENT_OUTOFCONTEXT,
     WINEVENT_SKIPOWNPROCESS, WM_APP, WM_STYLECHANGING, WM_TIMER, WM_USER, WS_EX_APPWINDOW,
@@ -43,9 +44,7 @@ use windows::Win32::UI::WindowsAndMessaging::{
 use windows::core::{BOOL, PWSTR};
 
 use super::layout::{self, Rect, Side};
-use super::{
-    Dock, DockMode, DockStatus, Magnet, SIDEBAR_MIN_HEIGHT, SIDEBAR_WIDTH, Settings, TargetApp,
-};
+use super::{Dock, DockMode, DockStatus, Magnet, SIDEBAR_MIN_HEIGHT, Settings, TargetApp};
 
 const WM_DOCK_REFRESH: u32 = WM_APP + 1;
 const REFRESH_USER_SHOW: usize = 1;
@@ -415,14 +414,25 @@ impl Tracker {
     }
 
     fn place_beside(&mut self, target: HWND) -> Option<Side> {
-        let bounds = visible_bounds(target)?;
+        let mut bounds = visible_bounds(target)?;
+        // Electron apps (Claude, Codex) draw their own frame: what shows can
+        // reach past the DWM frame bounds at the top or bottom.
+        if self
+            .target
+            .as_ref()
+            .is_some_and(|t| matches!(t.app, TargetApp::ClaudeDesktop | TargetApp::CodexDesktop))
+            && let Some(client) = client_bounds(target)
+        {
+            bounds.top = bounds.top.min(client.top);
+            bounds.bottom = bounds.bottom.max(client.bottom);
+        }
         let monitor = unsafe { MonitorFromWindow(target, MONITOR_DEFAULTTONEAREST) };
         let work = work_area(monitor)?;
         let scale = monitor_scale(monitor);
         let placement = layout::place_beside(
             bounds,
             work,
-            layout::to_physical(SIDEBAR_WIDTH, scale),
+            layout::to_physical(self.settings().width(), scale),
             layout::to_physical(SIDEBAR_MIN_HEIGHT, scale),
         );
         self.move_to(placement.rect, monitor);
@@ -434,7 +444,7 @@ impl Tracker {
         let Some(work) = work_area(monitor) else {
             return;
         };
-        let width = layout::to_physical(SIDEBAR_WIDTH, monitor_scale(monitor));
+        let width = layout::to_physical(self.settings().width(), monitor_scale(monitor));
         self.move_to(layout::place_at_edge(work, width), monitor);
     }
 
@@ -444,14 +454,18 @@ impl Tracker {
         }
         self.last_rect = Some(rect);
         let current = unsafe { MonitorFromWindow(self.sidebar, MONITOR_DEFAULTTONEAREST) };
+        // `rect` is what should show; the window reaches past that by the
+        // invisible borders the webview does not paint (the undecorated
+        // window keeps resize borders for its shadow), so grow it by those.
+        let outer = layout::grow(rect, frame_margins(self.sidebar));
         unsafe {
             let _ = SetWindowPos(
                 self.sidebar,
                 None,
-                rect.left,
-                rect.top,
-                rect.width(),
-                rect.height(),
+                outer.left,
+                outer.top,
+                outer.width(),
+                outer.height(),
                 SWP_NOZORDER | SWP_NOACTIVATE | SWP_ASYNCWINDOWPOS,
             );
         }
@@ -523,6 +537,7 @@ impl Tracker {
         let status = DockStatus {
             magnet: settings.magnet,
             pinned: settings.pinned,
+            wide: settings.wide,
             visible: settings.visible,
             mode,
             target: self.target.as_ref().map(|t| t.app),
@@ -633,6 +648,40 @@ fn visible_bounds(hwnd: HWND) -> Option<Rect> {
     .is_ok()
         || unsafe { GetWindowRect(hwnd, &mut rect) }.is_ok();
     ok.then_some(to_rect(rect))
+}
+
+/// The client area (what the window paints) in screen coordinates.
+fn client_bounds(hwnd: HWND) -> Option<Rect> {
+    let mut rect = RECT::default();
+    unsafe { GetClientRect(hwnd, &mut rect) }.ok()?;
+    let mut origin = windows::Win32::Foundation::POINT::default();
+    unsafe { ClientToScreen(hwnd, &mut origin) }
+        .as_bool()
+        .then_some(())?;
+    let client = Rect {
+        left: origin.x,
+        top: origin.y,
+        right: origin.x + rect.right,
+        bottom: origin.y + rect.bottom,
+    };
+    (client.width() > 0 && client.height() > 0).then_some(client)
+}
+
+/// How far the window rect reaches past its client area on each side.
+fn frame_margins(hwnd: HWND) -> Rect {
+    let mut window = RECT::default();
+    let (Some(client), true) = (
+        client_bounds(hwnd),
+        unsafe { GetWindowRect(hwnd, &mut window) }.is_ok(),
+    ) else {
+        return Rect {
+            left: 0,
+            top: 0,
+            right: 0,
+            bottom: 0,
+        };
+    };
+    layout::margins(to_rect(window), client)
 }
 
 fn work_area(monitor: HMONITOR) -> Option<Rect> {

@@ -1,4 +1,4 @@
-import { AppWindow, EyeOff, Lock, Magnet, Pin } from "lucide-react";
+import { AppWindow, EyeOff, Lock, Magnet, Maximize2, Minimize2, Pin } from "lucide-react";
 import { Logo } from "../components/Logo";
 import { type MessageKey, useT } from "../i18n";
 import { type Magnet as MagnetMode, useDockStore } from "../store/dock";
@@ -15,11 +15,13 @@ export function TitleBar() {
   const status = useDockStore((s) => s.status);
   const cycleMagnet = useDockStore((s) => s.cycleMagnet);
   const setPinned = useDockStore((s) => s.setPinned);
+  const setWide = useDockStore((s) => s.setWide);
   const hide = useDockStore((s) => s.hide);
   const t = useT();
 
   const magnet = status?.magnet ?? "auto";
   const pinned = status?.pinned ?? false;
+  const wide = status?.wide ?? false;
 
   return (
     <header
@@ -36,6 +38,13 @@ export function TitleBar() {
       <div className="flex h-full">
         <TitleButton label={t("shell.title.toMain")} onClick={() => void switchView("main")}>
           <AppWindow size={14} />
+        </TitleButton>
+        <TitleButton
+          label={wide ? t("shell.title.compact") : t("shell.title.wide")}
+          onClick={() => void setWide(!wide)}
+          active={wide}
+        >
+          {wide ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
         </TitleButton>
         <TitleButton
           label={t(MAGNET_LABEL[magnet])}

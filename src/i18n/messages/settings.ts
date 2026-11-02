@@ -95,6 +95,9 @@ export const ko = {
   "settings.fontSize.lg": "큼",
   "settings.fontSize.xl": "매우 큼",
   "settings.sidebar": "사이드바",
+  "settings.sidebarWide": "확장 보기로 열기",
+  "settings.sidebarWideHint":
+    "사이드바를 넓게(560px) 열어 작업 그래프와 추천 프롬프트까지 보여줘요. 사이드바 위쪽 버튼으로 언제든 바꿀 수 있어요.",
   "settings.dock": "자석 (터미널 옆에 붙이기)",
   "settings.dockHint":
     "사이드바로 전환하면 Windows Terminal · VS Code · Claude 데스크탑 · Codex 중 앞에 있는 창 옆에 자동으로 붙어요. 사이드바 위쪽 자석 버튼을 누를 때마다 자동 감지 → 지금 창에 고정 → 해제 순서로 바뀌어요.",
@@ -253,6 +256,9 @@ export const en: Messages<typeof ko> = {
   "settings.fontSize.lg": "Large",
   "settings.fontSize.xl": "Extra large",
   "settings.sidebar": "Sidebar",
+  "settings.sidebarWide": "Open in wide view",
+  "settings.sidebarWideHint":
+    "Opens the sidebar wide (560px) with the work graph and prompt suggestions. Switch any time with the button at the top of the sidebar.",
   "settings.dock": "Magnet (dock next to terminal)",
   "settings.dockHint":
     "Switching to the sidebar docks it next to the window in front: Windows Terminal, VS Code, Claude desktop or Codex. Each click on the magnet button in the sidebar goes from following the window in front, to staying with the current window, to off.",

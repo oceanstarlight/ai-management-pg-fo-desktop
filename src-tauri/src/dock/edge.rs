@@ -4,7 +4,7 @@
 use tauri::{AppHandle, Manager, PhysicalPosition, PhysicalSize};
 
 use super::layout::{self, Rect};
-use super::{Dock, DockMode, DockStatus, SIDEBAR_LABEL, SIDEBAR_WIDTH};
+use super::{Dock, DockMode, DockStatus, SIDEBAR_LABEL};
 
 pub fn apply(app: &AppHandle, dock: &Dock) {
     let settings = dock.settings();
@@ -23,7 +23,7 @@ pub fn apply(app: &AppHandle, dock: &Dock) {
             right: area.position.x + area.size.width as i32,
             bottom: area.position.y + area.size.height as i32,
         };
-        let width = layout::to_physical(SIDEBAR_WIDTH, monitor.scale_factor());
+        let width = layout::to_physical(settings.width(), monitor.scale_factor());
         let rect = layout::place_at_edge(work, width);
         // GTK will not shrink a non-resizable window below its default size; the
         // window is undecorated, so the user still cannot resize it by hand.
@@ -37,6 +37,7 @@ pub fn apply(app: &AppHandle, dock: &Dock) {
         DockStatus {
             magnet: settings.magnet,
             pinned: settings.pinned,
+            wide: settings.wide,
             visible: settings.visible,
             mode: if settings.magnet.on() {
                 DockMode::Edge

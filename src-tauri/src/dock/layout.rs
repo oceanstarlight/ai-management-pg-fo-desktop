@@ -81,6 +81,28 @@ pub fn place_at_edge(work: Rect, width: i32) -> Rect {
     }
 }
 
+/// How far `outer` reaches past `inner` on each side, never negative and at
+/// most 32 px (anything larger is not a frame, so it is ignored).
+pub fn margins(outer: Rect, inner: Rect) -> Rect {
+    let side = |d: i32| if (0..=32).contains(&d) { d } else { 0 };
+    Rect {
+        left: side(inner.left - outer.left),
+        top: side(inner.top - outer.top),
+        right: side(outer.right - inner.right),
+        bottom: side(outer.bottom - inner.bottom),
+    }
+}
+
+/// `rect` grown on each side by `margins`.
+pub fn grow(rect: Rect, margins: Rect) -> Rect {
+    Rect {
+        left: rect.left - margins.left,
+        top: rect.top - margins.top,
+        right: rect.right + margins.right,
+        bottom: rect.bottom + margins.bottom,
+    }
+}
+
 /// Converts a logical size to physical pixels for the given scale factor.
 pub fn to_physical(logical: f64, scale: f64) -> i32 {
     (logical * scale).round() as i32
@@ -169,6 +191,24 @@ mod tests {
     #[test]
     fn edge_placement_uses_full_work_height() {
         assert_eq!(place_at_edge(WORK, 360), rect(1560, 0, 1920, 1040));
+    }
+
+    #[test]
+    fn grows_by_the_invisible_frame() {
+        let window = rect(92, 100, 468, 908);
+        let client = rect(100, 100, 460, 900);
+        let m = margins(window, client);
+        assert_eq!(m, rect(8, 0, 8, 8));
+        assert_eq!(
+            grow(rect(1200, 100, 1560, 900), m),
+            rect(1192, 100, 1568, 908)
+        );
+    }
+
+    #[test]
+    fn ignores_margins_that_are_not_a_frame() {
+        let m = margins(rect(0, 0, 500, 500), rect(100, -10, 400, 400));
+        assert_eq!(m, rect(0, 0, 0, 0));
     }
 
     #[test]
