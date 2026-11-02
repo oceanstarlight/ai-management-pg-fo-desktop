@@ -1,8 +1,10 @@
 import { invoke, isTauri } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { Check, Copy, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Button } from "../../components/ui";
-import { type MessageKey, useLocale, useT } from "../../i18n";
+import { Button, Switch } from "../../components/ui";
+import { type MessageKey, timeAgo, useLocale, useT } from "../../i18n";
+import { setPref } from "../../store/prefs";
 import { open } from "../work/useGitHubSync";
 
 // Mirrors `Block` in src-tauri/src/catalog/blocks.rs (the fields shown here).
@@ -18,13 +20,40 @@ interface Block {
   en?: { title: string; summary: string; category: string; detail?: string };
   body: string;
   origin: { repo: string; commit: string; path: string; license: string } | null;
+  /** Taken in from "새로 발견" rather than bundled. */
+  found: boolean;
 }
 
-interface RefreshResult {
-  updated: string[];
-  unchanged: number;
-  failed: [string, string][];
+// Mirrors `CheckResult` and `Discovered` in src-tauri/src/catalog/mod.rs.
+interface CheckResult {
+  refresh: { updated: string[]; unchanged: number; failed: [string, string][] };
+  discover: { added: number; waiting: number; failed: [string, string][] };
 }
+
+interface Candidate {
+  id: string;
+  kind: Kind;
+  name: string;
+  description: string;
+  repo: string;
+  commit: string;
+  path: string;
+  license: string;
+  category: string;
+  categoryEn: string;
+  warnings: string[];
+  size: number;
+}
+
+interface Discovered {
+  checkedAt: number;
+  candidates: Candidate[];
+  failed: [string, string][];
+  auto: boolean;
+}
+
+/** Same key as `catalog::AUTO_PREF`. */
+const AUTO_PREF = "catalogAutoCheck";
 
 const KINDS: Kind[] = ["instruction", "rule", "skill", "agent", "hook"];
 
@@ -44,13 +73,54 @@ export function CatalogPanel() {
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
 
+  const [found, setFound] = useState<Discovered | null>(null);
+
   const load = useCallback(async () => {
     if (!isTauri()) return;
-    setBlocks(await invoke<Block[]>("catalog_list").catch(() => []));
+    const [list, discovered] = await Promise.all([
+      invoke<Block[]>("catalog_list").catch(() => []),
+      invoke<Discovered>("catalog_discovered").catch(() => null),
+    ]);
+    setBlocks(list);
+    setFound(discovered);
   }, []);
   useEffect(() => {
     void load();
+    if (!isTauri()) return;
+    // The daily check ran in the background.
+    const off = listen("catalog-changed", () => void load());
+    return () => void off.then((f) => f());
   }, [load]);
+
+  const check = async () => {
+    setBusy(true);
+    setNote(null);
+    try {
+      const r = await invoke<CheckResult>("catalog_refresh");
+      setNote(
+        t("catalog.refreshed", {
+          updated: r.refresh.updated.length,
+          added: r.discover.added,
+          failed: r.refresh.failed.length + r.discover.failed.length,
+        }),
+      );
+      await load();
+    } catch (e) {
+      setNote(String(e));
+    }
+    setBusy(false);
+  };
+
+  const act = async (command: string, id: string) => {
+    setBusy(true);
+    try {
+      await invoke(command, { id });
+      await load();
+    } catch (e) {
+      setNote(String(e));
+    }
+    setBusy(false);
+  };
 
   const text = (b: Block) => (locale === "en" && b.en ? b.en : b);
   const list = useMemo(() => {
@@ -94,29 +164,38 @@ export function CatalogPanel() {
           variant="ghost"
           className="ml-auto"
           disabled={busy}
-          onClick={async () => {
-            setBusy(true);
-            setNote(null);
-            try {
-              const r = await invoke<RefreshResult>("catalog_refresh");
-              setNote(
-                t("catalog.refreshed", {
-                  updated: r.updated.length,
-                  failed: r.failed.length,
-                }),
-              );
-              await load();
-            } catch (e) {
-              setNote(String(e));
-            }
-            setBusy(false);
-          }}
+          onClick={() => void check()}
         >
           <RefreshCw size={13} className={busy ? "animate-spin" : ""} />
           {t("catalog.refresh")}
         </Button>
       </div>
+      <div className="mb-4 flex flex-wrap items-center gap-2 text-xs text-text-muted">
+        <Switch
+          checked={found?.auto ?? true}
+          label={t("catalog.auto")}
+          onChange={(on) => {
+            setPref(AUTO_PREF, on ? null : "off");
+            setFound((f) => (f ? { ...f, auto: on } : f));
+          }}
+        />
+        <span>{t("catalog.auto")}</span>
+        <span className="text-text-subtle">
+          ·{" "}
+          {found?.checkedAt
+            ? t("catalog.checkedAt", { when: timeAgo(found.checkedAt / 1000) })
+            : t("catalog.neverChecked")}
+        </span>
+      </div>
       {note && <p className="mb-4 text-xs text-text-muted">{note}</p>}
+      {found && found.candidates.length > 0 && (
+        <FoundList
+          items={found.candidates.filter((c) => kind === "all" || c.kind === kind)}
+          busy={busy}
+          onAccept={(id) => act("catalog_accept", id)}
+          onDismiss={(id) => act("catalog_dismiss", id)}
+        />
+      )}
       <ul className="space-y-1">
         {list.map((b) => {
           const x = text(b);
@@ -157,6 +236,16 @@ export function CatalogPanel() {
                       {copied === b.id ? <Check size={13} /> : <Copy size={13} />}
                       {t(copied === b.id ? "suggest.copied" : "catalog.copy")}
                     </Button>
+                    {b.found && (
+                      <button
+                        type="button"
+                        disabled={busy}
+                        className="text-fs-11 text-text-subtle hover:text-text"
+                        onClick={() => act("catalog_remove_found", b.id.replace(/^found:/, ""))}
+                      >
+                        {t("catalog.found.remove")}
+                      </button>
+                    )}
                     {b.origin && (
                       <button
                         type="button"
@@ -179,5 +268,114 @@ export function CatalogPanel() {
         {list.length === 0 && <p className="py-6 text-xs text-text-subtle">{t("catalog.none")}</p>}
       </ul>
     </div>
+  );
+}
+
+/** Skills and subagents that appeared upstream next to bundled ones, waiting to be read. */
+function FoundList({
+  items,
+  busy,
+  onAccept,
+  onDismiss,
+}: {
+  items: Candidate[];
+  busy: boolean;
+  onAccept: (id: string) => void;
+  onDismiss: (id: string) => void;
+}) {
+  const t = useT();
+  const locale = useLocale();
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [text, setText] = useState<string | null>(null);
+
+  const toggle = async (id: string) => {
+    if (openId === id) {
+      setOpenId(null);
+      return;
+    }
+    setOpenId(id);
+    setText(null);
+    setText(await invoke<string>("catalog_candidate_text", { id }).catch((e) => String(e)));
+  };
+
+  if (items.length === 0) return null;
+  return (
+    <section className="mb-8">
+      <h3 className="mb-1 text-xs font-semibold">
+        {t("catalog.found.title")}{" "}
+        <span className="font-normal text-text-muted">· {items.length}</span>
+      </h3>
+      <p className="mb-2 text-fs-11 text-text-subtle">{t("catalog.found.hint")}</p>
+      <ul className="space-y-1">
+        {items.map((c) => {
+          const expanded = openId === c.id;
+          return (
+            <li key={c.id}>
+              <button
+                type="button"
+                aria-expanded={expanded}
+                onClick={() => void toggle(c.id)}
+                className="flex w-full items-baseline gap-3 rounded-md px-2 py-2 text-left hover:bg-hover"
+              >
+                <span className="w-16 shrink-0 text-fs-11 text-text-subtle">
+                  {t(`catalog.kind.${c.kind}` as MessageKey)}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="text-sm font-medium">{c.name}</span>
+                  <span className="ml-2 line-clamp-1 text-xs text-text-muted">{c.description}</span>
+                </span>
+                {c.warnings.length > 0 && (
+                  <span className="shrink-0 text-fs-11 text-warning">
+                    {t("catalog.found.warnings", { n: c.warnings.length })}
+                  </span>
+                )}
+                <span className="shrink-0 text-fs-11 text-text-subtle">
+                  {locale === "en" && c.categoryEn ? c.categoryEn : c.category}
+                </span>
+              </button>
+              {expanded && (
+                <div className="mb-3 ml-[5.25rem] space-y-2">
+                  {c.warnings.map((w) => (
+                    <p key={w} className="text-xs text-warning">
+                      {w}
+                    </p>
+                  ))}
+                  <pre className="selectable max-h-80 overflow-auto rounded-md bg-sunken p-3 font-mono text-fs-12 leading-relaxed whitespace-pre-wrap text-text-muted">
+                    {text ?? "…"}
+                  </pre>
+                  <div className="flex items-center gap-3">
+                    <Button
+                      size="sm"
+                      variant="primary"
+                      disabled={busy}
+                      onClick={() => onAccept(c.id)}
+                    >
+                      {t("catalog.found.accept")}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      disabled={busy}
+                      onClick={() => onDismiss(c.id)}
+                    >
+                      {t("catalog.found.dismiss")}
+                    </Button>
+                    <button
+                      type="button"
+                      className="text-fs-11 text-text-subtle hover:text-text"
+                      onClick={() =>
+                        open(`https://github.com/${c.repo}/blob/${c.commit}/${c.path}`)
+                      }
+                    >
+                      {c.repo} · {c.license}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
 }

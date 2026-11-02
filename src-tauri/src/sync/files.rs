@@ -1,5 +1,5 @@
-//! Syncing the composer's documents and the library (skills and subagents)
-//! across devices, next to the memos. Each one is a single Firestore
+//! Syncing the composer's documents, the library (skills and subagents) and
+//! the catalog blocks taken in from "새로 발견" across devices, next to the memos. Each one is a single Firestore
 //! document in `users/{uid}/files/{id}`: its text (a skill's text files as
 //! one JSON map), a content hash, when it was last edited, and a deleted
 //! flag.
@@ -47,6 +47,8 @@ pub enum Kind {
     Doc,
     Skill,
     Agent,
+    /// A catalog block taken in from "새로 발견" (`catalog/discover.rs`).
+    Block,
 }
 
 impl Kind {
@@ -55,6 +57,7 @@ impl Kind {
             Kind::Doc => "doc",
             Kind::Skill => "skill",
             Kind::Agent => "agent",
+            Kind::Block => "block",
         }
     }
 
@@ -63,6 +66,7 @@ impl Kind {
             "doc" => Some(Kind::Doc),
             "skill" => Some(Kind::Skill),
             "agent" => Some(Kind::Agent),
+            "block" => Some(Kind::Block),
             _ => None,
         }
     }
@@ -155,6 +159,8 @@ pub struct Roots {
     pub docs: PathBuf,
     /// The library folder (`skills/`, `agents/`).
     pub library: PathBuf,
+    /// `<app data>/catalog-cache/found`
+    pub found: PathBuf,
 }
 
 // ---------------------------------------------------------------------------
@@ -263,6 +269,7 @@ fn path_of(roots: &Roots, kind: Kind, key: &str) -> PathBuf {
         Kind::Doc => roots.docs.join(format!("{key}.json")),
         Kind::Skill => roots.library.join("skills").join(key),
         Kind::Agent => roots.library.join("agents").join(format!("{key}.md")),
+        Kind::Block => roots.found.join(format!("{key}.md")),
     }
 }
 
@@ -311,7 +318,7 @@ fn read_item(roots: &Roots, kind: Kind, key: &str, device: &str) -> Read {
             let name = value["name"].as_str().unwrap_or(key).to_string();
             item(name, data, updated_at)
         }
-        Kind::Agent => {
+        Kind::Agent | Kind::Block => {
             let Ok(data) = fs::read_to_string(&path) else {
                 return Read::Held(key.to_string());
             };
@@ -366,6 +373,7 @@ pub fn scan(roots: &Roots, device: &str) -> Scan {
         (Kind::Doc, roots.docs.clone(), ".json"),
         (Kind::Skill, roots.library.join("skills"), ""),
         (Kind::Agent, roots.library.join("agents"), ".md"),
+        (Kind::Block, roots.found.clone(), ".md"),
     ];
     for (kind, dir, ext) in sources {
         let Some(entries) = list_dir(&dir) else {
@@ -384,6 +392,7 @@ pub fn scan(roots: &Roots, device: &str) -> Scan {
             };
             let valid = match kind {
                 Kind::Doc => valid_doc_id(key),
+                Kind::Block => crate::catalog::discover::split_id(key).is_some(),
                 _ => safe_segment(key),
             };
             if !valid {
@@ -414,6 +423,7 @@ fn check_key(kind: Kind, key: &str) -> std::result::Result<(), String> {
     let ok = match kind {
         Kind::Doc => valid_doc_id(key),
         Kind::Skill | Kind::Agent => safe_segment(key),
+        Kind::Block => crate::catalog::discover::split_id(key).is_some(),
     };
     if ok {
         Ok(())
@@ -453,6 +463,7 @@ pub fn apply(roots: &Roots, item: &Item) -> std::result::Result<Option<String>, 
     let path = path_of(roots, item.kind, &item.key);
     let root = match item.kind {
         Kind::Doc => roots.docs.clone(),
+        Kind::Block => roots.found.clone(),
         _ => roots.library.clone(),
     };
     no_links(&root, &path)?;
@@ -475,6 +486,22 @@ pub fn apply(roots: &Roots, item: &Item) -> std::result::Result<Option<String>, 
                 return ops::remove_path(&path).map(|_| None);
             }
             fs::create_dir_all(roots.library.join("agents")).map_err(|e| e.to_string())?;
+            ops::write_atomic(&path, &item.data).map(|_| None)
+        }
+        Kind::Block => {
+            if item.deleted {
+                return ops::remove_path(&path).map(|_| None);
+            }
+            // Only what the catalog would take in itself: its provenance and
+            // a license it accepts.
+            if !crate::catalog::discover::valid_found(&item.key, &item.data) {
+                return Err(crate::tr!(
+                    "카탈로그 블록 형식이 올바르지 않아요: {}",
+                    "Not a valid catalog block: {}",
+                    item.key
+                ));
+            }
+            fs::create_dir_all(&roots.found).map_err(|e| e.to_string())?;
             ops::write_atomic(&path, &item.data).map(|_| None)
         }
         Kind::Skill => {
@@ -540,6 +567,10 @@ pub fn keep_copy(
     label: &str,
     stamp: i64,
 ) -> std::result::Result<String, String> {
+    // Found blocks are copies of an upstream file: the later one simply wins.
+    if item.kind == Kind::Block {
+        return Ok(item.name.clone());
+    }
     // A fresh key that isn't taken (never derived by cutting the original).
     let mut n = stamp;
     let key = loop {
@@ -704,7 +735,9 @@ pub fn exchange(
     }
     let library_dir = roots.library.display().to_string();
     if state.library_dir.as_deref() != Some(library_dir.as_str()) {
-        state.bases.retain(|_, b| b.kind == Kind::Doc);
+        state
+            .bases
+            .retain(|_, b| matches!(b.kind, Kind::Doc | Kind::Block));
         state.library_dir = Some(library_dir);
         state.cursor = None;
     }
@@ -1022,6 +1055,7 @@ mod tests {
         let roots = Roots {
             docs: tmp.path().join("compositions"),
             library: tmp.path().join("library"),
+            found: tmp.path().join("found"),
         };
         let doc = item(
             Kind::Doc,
@@ -1106,6 +1140,7 @@ mod tests {
         let roots = Roots {
             docs: tmp.path().join("compositions"),
             library: tmp.path().join("library"),
+            found: tmp.path().join("found"),
         };
         fs::create_dir_all(&roots.docs).unwrap();
         fs::write(roots.docs.join("dbroken.json"), "{ not json").unwrap();
@@ -1178,6 +1213,7 @@ mod tests {
         let roots = Roots {
             docs: tmp.path().join("c"),
             library: tmp.path().join("l"),
+            found: tmp.path().join("found"),
         };
         fs::create_dir_all(roots.library.join("skills")).unwrap();
         std::os::unix::fs::symlink(&outside, roots.library.join("skills/s")).unwrap();
@@ -1198,6 +1234,7 @@ mod tests {
         let roots = Roots {
             docs: tmp.path().join("c"),
             library: tmp.path().join("l"),
+            found: tmp.path().join("found"),
         };
         let evil: BTreeMap<String, String> = [
             ("SKILL.md".to_string(), "x".to_string()),
@@ -1239,6 +1276,7 @@ mod tests {
         let roots = Roots {
             docs: tmp.path().join("compositions"),
             library: tmp.path().join("library"),
+            found: tmp.path().join("found"),
         };
         let state_path = tmp.path().join("sync-files.json");
         let v1 = r#"{"id":"dabc","name":"Plan","updatedAt":1,"nodes":[1]}"#;

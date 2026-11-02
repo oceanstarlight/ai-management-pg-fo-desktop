@@ -7,14 +7,12 @@
 //! the app's cache folder and replace the bundled text in the catalog.
 
 use std::collections::HashMap;
-use std::path::Path;
-use std::time::Duration;
+use std::path::{Path, PathBuf};
 
 use serde::Serialize;
-use ureq::Agent;
-use ureq::tls::{RootCerts, TlsConfig};
 
 use super::blocks::{self as catalog, Block};
+use super::fetch::{agent, get, latest_commit};
 use crate::library::ops;
 
 #[derive(Debug, Default, Serialize)]
@@ -27,61 +25,16 @@ pub struct RefreshResult {
     pub failed: Vec<(String, String)>,
 }
 
-/// What one bundled block points at upstream.
-struct Upstream<'a> {
-    source: &'a str,
-    stem: &'a str,
+/// What one bundled or found block points at upstream.
+struct Upstream {
+    source: String,
+    stem: String,
     block: Block,
     license_path: String,
-}
-
-fn agent() -> Agent {
-    Agent::config_builder()
-        .timeout_global(Some(Duration::from_secs(20)))
-        // The OS certificate store, so corporate proxies with their own CA work.
-        .tls_config(
-            TlsConfig::builder()
-                .root_certs(RootCerts::PlatformVerifier)
-                .build(),
-        )
-        .user_agent(concat!("ai-management/", env!("CARGO_PKG_VERSION")))
-        .build()
-        .into()
-}
-
-fn get(agent: &Agent, url: &str, accept: &str) -> Result<String, String> {
-    agent
-        .get(url)
-        .header("Accept", accept)
-        .call()
-        .map_err(|e| crate::tr!("받아오지 못했어요 ({e})", "Couldn't download ({e})"))?
-        .body_mut()
-        .with_config()
-        .limit(2 * 1024 * 1024)
-        .read_to_string()
-        .map_err(|e| crate::tr!("읽지 못했어요 ({e})", "Couldn't read the response ({e})"))
-}
-
-/// The repository's HEAD commit from git's smart-HTTP ref advertisement (what
-/// `git ls-remote` reads): no API token or API rate limit involved.
-fn latest_commit(agent: &Agent, repo: &str) -> Result<String, String> {
-    let url = format!("https://github.com/{repo}.git/info/refs?service=git-upload-pack");
-    let refs = get(agent, &url, "*/*")?;
-    head_commit(&refs).ok_or_else(|| {
-        crate::tr!(
-            "최신 커밋을 알 수 없어요",
-            "Couldn't find the latest commit"
-        )
-    })
-}
-
-/// Finds `<sha> HEAD` in a pkt-line ref advertisement.
-pub(super) fn head_commit(refs: &str) -> Option<String> {
-    let at = refs.find(" HEAD")?;
-    let sha = refs.get(at.checked_sub(40)?..at)?;
-    sha.chars()
-        .all(|c| c.is_ascii_hexdigit())
-        .then(|| sha.to_ascii_lowercase())
+    /// Where the fresh copy goes.
+    dest: PathBuf,
+    /// Found blocks keep how their body is adapted in their own frontmatter.
+    adapt: Option<String>,
 }
 
 /// Whether a license file still grants the license the block was bundled under.
@@ -164,7 +117,7 @@ pub fn refresh(cache: &Path) -> RefreshResult {
         .map(|b| (b.id.clone(), b))
         .collect();
 
-    let items: Vec<Upstream> = catalog::bundled_external()
+    let mut items: Vec<Upstream> = catalog::bundled_external()
         .iter()
         .filter_map(|(source, stem, text)| {
             let block = catalog::parse_external(source, stem, text)?;
@@ -175,13 +128,31 @@ pub fn refresh(cache: &Path) -> RefreshResult {
                 return None;
             }
             Some(Upstream {
-                source,
-                stem,
+                source: source.to_string(),
+                stem: stem.to_string(),
                 license_path: fm.get("license_path")?.clone(),
+                dest: catalog::cache_path(cache, source, stem),
+                adapt: None,
                 block,
             })
         })
         .collect();
+    // Blocks the user took in from "새로 발견" follow their upstream file too.
+    items.extend(super::discover::found_files(cache).into_iter().filter_map(
+        |(path, source, stem, text)| {
+            let mut block = catalog::parse_external(&source, &stem, &text)?;
+            block.id = format!("found:{source}__{stem}");
+            let (fm, _) = catalog::split(&text);
+            Some(Upstream {
+                license_path: fm.get("license_path")?.clone(),
+                adapt: fm.get("adapt").cloned(),
+                source,
+                stem,
+                dest: path,
+                block,
+            })
+        },
+    ));
 
     let agent = agent();
     let mut commits: HashMap<String, Result<String, String>> = HashMap::new();
@@ -254,7 +225,13 @@ pub fn refresh(cache: &Path) -> RefreshResult {
                 continue;
             }
         };
-        let Some(text) = cached_text(&item.block, &item.license_path, &upstream, &commit) else {
+        let text = cached_text(&item.block, &item.license_path, &upstream, &commit).map(|t| {
+            match &item.adapt {
+                Some(adapt) => t.replacen("---\n", &format!("---\nadapt: {adapt}\n"), 1),
+                None => t,
+            }
+        });
+        let Some(text) = text else {
             result.failed.push((
                 title,
                 crate::tr!(
@@ -264,7 +241,7 @@ pub fn refresh(cache: &Path) -> RefreshResult {
             ));
             continue;
         };
-        let Some(fresh) = catalog::parse_external(item.source, item.stem, &text) else {
+        let Some(fresh) = catalog::parse_external(&item.source, &item.stem, &text) else {
             result.failed.push((
                 title,
                 crate::tr!(
@@ -276,7 +253,7 @@ pub fn refresh(cache: &Path) -> RefreshResult {
         };
         let changed =
             now.is_none_or(|b| b.body != fresh.body || b.description != fresh.description);
-        match ops::write_atomic(&catalog::cache_path(cache, item.source, item.stem), &text) {
+        match ops::write_atomic(&item.dest, &text) {
             Ok(()) if changed => result.updated.push(title),
             Ok(()) => result.unchanged += 1,
             Err(e) => result.failed.push((title, e)),
@@ -288,17 +265,6 @@ pub fn refresh(cache: &Path) -> RefreshResult {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn reads_head_from_a_ref_advertisement() {
-        let sha = "bb92a77741419a4ab5f06e711a283343f1ada0c3";
-        let refs = format!(
-            "001e# service=git-upload-pack\n00000155{sha} HEAD\0multi_ack thin-pack symref=HEAD:refs/heads/main\n003f{sha} refs/heads/main\n0000"
-        );
-        assert_eq!(head_commit(&refs).as_deref(), Some(sha));
-        assert_eq!(head_commit("0000"), None);
-        assert_eq!(head_commit("0008zz HEAD"), None);
-    }
 
     #[test]
     fn recognizes_the_bundled_licenses_only() {
