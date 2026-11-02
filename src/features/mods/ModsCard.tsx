@@ -102,6 +102,81 @@ function SuggestRow() {
   );
 }
 
+/** Mirrors `KeyStatus` in src-tauri/src/anthropic_api.rs. */
+interface KeyStatus {
+  set: boolean;
+  hint: string | null;
+}
+
+/**
+ * The user's own Anthropic API key: with one, the app's Haiku calls skip the
+ * Claude Code login. It is checked with a tiny request before it is saved.
+ */
+function ApiKeyRow() {
+  const t = useT();
+  const [status, setStatus] = useState<KeyStatus | null>(null);
+  const [draft, setDraft] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isTauri()) return;
+    void invoke<KeyStatus>("anthropic_key_status")
+      .then(setStatus)
+      .catch(() => {});
+  }, []);
+
+  const save = async (key: string | null) => {
+    setBusy(true);
+    setError(null);
+    try {
+      setStatus(await invoke<KeyStatus>("anthropic_key_set", { key }));
+      setDraft("");
+    } catch (e) {
+      setError(String(e));
+    }
+    setBusy(false);
+  };
+
+  return (
+    <Row title={t("mods.apiKey.title")} description={t("mods.apiKey.description")}>
+      <div className="flex flex-col items-end gap-1">
+        {status?.set ? (
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-fs-12 text-text-muted">
+              {t("mods.apiKey.saved", { hint: status.hint ?? "" })}
+            </span>
+            <Button size="sm" variant="ghost" disabled={busy} onClick={() => void save(null)}>
+              {t("mods.apiKey.remove")}
+            </Button>
+          </div>
+        ) : (
+          <form
+            className="flex items-center gap-1.5"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void save(draft);
+            }}
+          >
+            <input
+              type="password"
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              placeholder="sk-ant-…"
+              autoComplete="off"
+              className="w-44 rounded-md bg-sunken px-2.5 py-1 text-xs ring-1 ring-transparent outline-none placeholder:text-text-subtle focus:ring-border-strong"
+            />
+            <Button size="sm" type="submit" disabled={busy || !draft.trim()}>
+              {busy ? t("mods.apiKey.checking") : t("mods.apiKey.save")}
+            </Button>
+          </form>
+        )}
+        {error && <span className="max-w-72 text-right text-fs-11 text-danger">{error}</span>}
+      </div>
+    </Row>
+  );
+}
+
 export function ModsCard() {
   const t = useT();
   const [status, setStatus] = useState<ModStatus | null>(null);
@@ -201,6 +276,7 @@ export function ModsCard() {
         </div>
       </Row>
       <SuggestRow />
+      <ApiKeyRow />
       <AutoRows />
       <Row
         title={

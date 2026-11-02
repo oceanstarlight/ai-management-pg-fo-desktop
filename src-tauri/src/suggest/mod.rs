@@ -913,9 +913,13 @@ pub async fn suggest_candidates(app: AppHandle, project: Option<String>) -> Resu
     .await
 }
 
-/// Asks Haiku through the user's own `claude -p` (no tools, no MCP servers,
-/// nothing saved) and returns its reply text.
+/// Asks Haiku and returns its reply text: with the user's own Anthropic API
+/// key when one is saved (`anthropic_api`), otherwise through the user's own
+/// `claude -p` (no tools, no MCP servers, nothing saved).
 pub fn haiku(dir: &Path, system: &str, prompt: String) -> Result<String> {
+    if let Some(reply) = crate::anthropic_api::complete(system, &prompt) {
+        return reply;
+    }
     let args = [
         "-p",
         "--model",

@@ -11,6 +11,7 @@ import {
 } from "../../store/live";
 import { useProjectStore } from "../../store/project";
 import { ConnectHint } from "./ConnectHint";
+import { KindBadge, SuggestLegend } from "./KindBadge";
 
 const base = (path: string) => path.split(/[\\/]/).filter(Boolean).pop() ?? path;
 const same = (a: string, b: string | null) =>
@@ -126,6 +127,11 @@ function SessionCard({ live, auto }: { live: Live; auto: boolean }) {
             : live.items.length > 0
               ? t(live.by === "ai" ? "suggest.byAi" : "suggest.byKeyword")
               : null}
+          {live.items.length > 0 && (
+            <span className="ml-auto">
+              <SuggestLegend />
+            </span>
+          )}
         </div>
       )}
 
@@ -136,7 +142,10 @@ function SessionCard({ live, auto }: { live: Live; auto: boolean }) {
             return (
               <li key={item.key} className="flex items-start gap-2">
                 <div className="min-w-0 flex-1">
-                  <div className="truncate font-mono text-fs-12 font-medium">{item.label}</div>
+                  <div className="flex min-w-0 items-center gap-1.5">
+                    <span className="truncate font-mono text-fs-12 font-medium">{item.label}</span>
+                    <KindBadge kind={item.kind} />
+                  </div>
                   {item.description && (
                     <div className="line-clamp-1 text-fs-11 text-text-muted">
                       {item.description}

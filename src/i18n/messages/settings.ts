@@ -42,6 +42,13 @@ export const ko = {
   "mods.suggest.description":
     "Claude Code 입력창에 글을 쓰면 맞는 skill·서브에이전트·확장을 입력창 위에 추천해요. 에이전트는 내 Claude Code로 Haiku에 물어봐서 정확도가 높지만 매우 적은 토큰을 잠깐 써요(입력을 멈추면 한 번). 키워드는 토큰을 쓰지 않지만 이름·설명만 맞춰 봐서 정확도가 낮아요.",
   "mods.suggest.ai": "에이전트 (Haiku)",
+  "mods.apiKey.title": "Anthropic API 키 (선택)",
+  "mods.apiKey.description":
+    "넣으면 앱의 추천 에이전트·결정 기록이 Claude Code 로그인 대신 이 키로 Haiku를 불러요. 로그인이 만료돼도 계속 동작하고, 비용은 구독이 아니라 이 키의 API 사용량으로 청구돼요. 키는 OS 자격 증명 저장소에만 저장되고, 저장 전에 짧은 요청으로 확인해요. Claude Code 안의 추천은 그대로 Claude Code를 써요.",
+  "mods.apiKey.saved": "저장됨 ····{hint}",
+  "mods.apiKey.remove": "지우기",
+  "mods.apiKey.save": "확인 후 저장",
+  "mods.apiKey.checking": "확인 중…",
   "mods.suggest.keyword": "키워드",
   "mods.suggest.off": "끄기",
   "mods.suggest.auto": "추천 자동 적용",
@@ -207,6 +214,13 @@ export const en: Messages<typeof ko> = {
   "mods.suggest.description":
     "As you type in Claude Code, suggests matching skills, subagents and extensions above the prompt. AI asks Haiku through your Claude Code (once you stop typing; counts toward your usage). Keyword matches names and descriptions only.",
   "mods.suggest.ai": "Agent (Haiku)",
+  "mods.apiKey.title": "Anthropic API key (optional)",
+  "mods.apiKey.description":
+    "With a key, the app's suggestion agent and decision notes call Haiku with it instead of your Claude Code sign-in. It keeps working when the sign-in expires, and usage is billed to this key's API account, not your subscription. The key is kept only in the OS credential store and checked with a tiny request before saving. Suggestions inside Claude Code still use Claude Code.",
+  "mods.apiKey.saved": "saved ····{hint}",
+  "mods.apiKey.remove": "Remove",
+  "mods.apiKey.save": "Check and save",
+  "mods.apiKey.checking": "Checking…",
   "mods.suggest.keyword": "Keyword",
   "mods.suggest.off": "Off",
   "mods.suggest.auto": "Apply suggestions automatically",

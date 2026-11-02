@@ -9,8 +9,11 @@ import {
 } from "../../../claude-mod/branch-notes/hooks/suggest";
 import { Button } from "../../components/ui";
 import { type MessageKey, useLocale, useT } from "../../i18n";
+import { useActivityStore } from "../../store/activity";
 import { useAutomationStore } from "../../store/automation";
+import { useProjectStore } from "../../store/project";
 import { useSuggestStore } from "../../store/suggest";
+import { KindBadge } from "./KindBadge";
 
 function actionLabel(c: Candidate): MessageKey {
   if (c.key === NEW_AUTOMATION) return "suggest.act.automate";
@@ -77,16 +80,21 @@ export function SuggestionCard({
   const locale = useLocale();
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<{ text: string; bad?: boolean } | null>(null);
+  /** No project to add to: why, and for a local one a way to pick a folder. */
+  const [needs, setNeeds] = useState<"folder" | "cloud" | null>(null);
+  const mode = useActivityStore((s) => s.mode);
 
   const act = async () => {
     if (c.source === "installed") return onInsert?.(c);
     if (c.key === NEW_AUTOMATION) return onAutomate?.();
     if ((c.source === "library" || c.source === "catalog") && !project) {
-      setNotice({ text: t("suggest.needProject"), bad: true });
+      setNotice(null);
+      setNeeds(mode === "cloud" ? "cloud" : "folder");
       return;
     }
     setBusy(true);
     setNotice(null);
+    setNeeds(null);
     try {
       if (c.source === "catalog") {
         let confirmed = false;
@@ -140,12 +148,33 @@ export function SuggestionCard({
           <span className="truncate font-mono text-fs-13 font-medium text-text">
             {label(c, locale)}
           </span>
+          <KindBadge kind={c.kind} />
           <span className="shrink-0 rounded-full bg-sunken px-1.5 py-px text-fs-10 text-text-subtle">
             {t(`suggest.source.${c.source}` as MessageKey)}
           </span>
         </div>
         {c.description && (
           <p className="mt-0.5 line-clamp-2 text-fs-12 text-text-muted">{c.description}</p>
+        )}
+        {needs === "folder" && (
+          <div className="mt-1 flex flex-wrap items-center gap-2 text-fs-12 text-warning">
+            <span>{t("suggest.needFolder")}</span>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() =>
+                void useProjectStore
+                  .getState()
+                  .choose()
+                  .then(() => setNeeds(null))
+              }
+            >
+              {t("suggest.chooseFolder")}
+            </Button>
+          </div>
+        )}
+        {needs === "cloud" && (
+          <p className="mt-1 text-fs-12 text-warning">{t("suggest.needCloud")}</p>
         )}
         {notice && (
           <p

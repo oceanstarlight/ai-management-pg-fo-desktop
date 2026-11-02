@@ -35,15 +35,16 @@ use windows::Win32::UI::Shell::{
 use windows::Win32::UI::WindowsAndMessaging::{
     CHILDID_SELF, DispatchMessageW, EVENT_OBJECT_CLOAKED, EVENT_OBJECT_DESTROY,
     EVENT_OBJECT_LOCATIONCHANGE, EVENT_OBJECT_UNCLOAKED, EVENT_SYSTEM_FOREGROUND,
-    EVENT_SYSTEM_MINIMIZEEND, EVENT_SYSTEM_MINIMIZESTART, EnumWindows, GA_ROOT, GWL_EXSTYLE,
-    GetAncestor, GetClassNameW, GetClientRect, GetForegroundWindow, GetMessageW, GetWindowLongPtrW,
-    GetWindowRect, GetWindowTextLengthW, GetWindowTextW, GetWindowThreadProcessId, HWND_NOTOPMOST,
-    HWND_TOPMOST, IsIconic, IsWindow, IsWindowVisible, IsZoomed, KillTimer, MSG, OBJID_WINDOW,
-    PM_NOREMOVE, PeekMessageW, PostThreadMessageW, STYLESTRUCT, SW_HIDE, SW_SHOWNOACTIVATE,
-    SWP_ASYNCWINDOWPOS, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER, SetTimer,
-    SetWindowLongPtrW, SetWindowPos, ShowWindow, ShowWindowAsync, TranslateMessage,
-    WINEVENT_OUTOFCONTEXT, WINEVENT_SKIPOWNPROCESS, WM_APP, WM_NCDESTROY, WM_STYLECHANGING,
-    WM_TIMER, WM_USER, WS_EX_APPWINDOW, WS_EX_TOOLWINDOW, WS_EX_TOPMOST,
+    EVENT_SYSTEM_MINIMIZEEND, EVENT_SYSTEM_MINIMIZESTART, EVENT_SYSTEM_MOVESIZEEND,
+    EVENT_SYSTEM_MOVESIZESTART, EnumWindows, GA_ROOT, GWL_EXSTYLE, GetAncestor, GetClassNameW,
+    GetClientRect, GetForegroundWindow, GetMessageW, GetWindowLongPtrW, GetWindowRect,
+    GetWindowTextLengthW, GetWindowTextW, GetWindowThreadProcessId, HWND_NOTOPMOST, HWND_TOPMOST,
+    IsIconic, IsWindow, IsWindowVisible, IsZoomed, KillTimer, MSG, OBJID_WINDOW, PM_NOREMOVE,
+    PeekMessageW, PostThreadMessageW, STYLESTRUCT, SW_HIDE, SW_SHOWNOACTIVATE, SWP_ASYNCWINDOWPOS,
+    SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER, SetTimer, SetWindowLongPtrW,
+    SetWindowPos, ShowWindow, ShowWindowAsync, TranslateMessage, WINEVENT_OUTOFCONTEXT,
+    WINEVENT_SKIPOWNPROCESS, WM_APP, WM_EXITSIZEMOVE, WM_NCDESTROY, WM_STYLECHANGING, WM_TIMER,
+    WM_USER, WS_EX_APPWINDOW, WS_EX_TOOLWINDOW, WS_EX_TOPMOST,
 };
 use windows::core::{BOOL, PWSTR};
 
@@ -59,6 +60,8 @@ const REFRESH_USER_SHOW: usize = 1;
 const DPI_SETTLE_MS: u32 = 150;
 /// Windows smaller than this (physical pixels) are never docking targets.
 const MIN_TARGET_WIDTH: i32 = 320;
+/// Narrowest a target is made to leave room for the sidebar (logical pixels).
+const MIN_SQUEEZED_WIDTH: f64 = 480.0;
 const MIN_TARGET_HEIGHT: i32 = 240;
 
 /// The tracker thread, for the sidebar's window procedure to ask for a refresh.
@@ -95,6 +98,12 @@ unsafe extern "system" fn keep_tool_window(
     match msg {
         // The taskbar or another app bar moved: claim the strip again.
         WM_APPBAR if wparam.0 as u32 == ABN_POSCHANGED => {
+            post_refresh(TRACKER_THREAD.load(Ordering::Relaxed), false);
+        }
+        // The user let go of the sidebar after dragging it. While docked it
+        // goes straight back beside its window: left out of line, the next
+        // move of that window would fight the dragged position.
+        WM_EXITSIZEMOVE => {
             post_refresh(TRACKER_THREAD.load(Ordering::Relaxed), false);
         }
         // Give the screen space back even if the tracker never got to.
@@ -264,6 +273,12 @@ struct Tracker {
     settle_timer: usize,
     /// The screen strip held as an app bar while the target is maximized.
     appbar: Option<AppBar>,
+    /// The user is moving or resizing the target: it is left alone until
+    /// they let go.
+    target_moving: bool,
+    /// The last rect the target was asked to take to leave room, so a window
+    /// that won't take it isn't asked again and again.
+    squeezed: Option<Rect>,
 }
 
 struct AppBar {
@@ -288,6 +303,8 @@ impl Tracker {
             last_rect: None,
             settle_timer: 0,
             appbar: None,
+            target_moving: false,
+            squeezed: None,
         }
     }
 
@@ -305,6 +322,13 @@ impl Tracker {
         }
         if event == EVENT_OBJECT_DESTROY {
             self.detach();
+        }
+        if event == EVENT_SYSTEM_MOVESIZESTART {
+            self.target_moving = true;
+        } else if event == EVENT_SYSTEM_MOVESIZEEND {
+            self.target_moving = false;
+            self.squeezed = None;
+            self.last_rect = None;
         }
         // Minimize, restore, show/hide, cloak (virtual desktops) and moves all
         // resolve the same way: re-read the target's state.
@@ -433,6 +457,7 @@ impl Tracker {
                 [
                     hook(EVENT_OBJECT_DESTROY, EVENT_OBJECT_LOCATIONCHANGE, pid),
                     hook(EVENT_OBJECT_CLOAKED, EVENT_OBJECT_UNCLOAKED, pid),
+                    hook(EVENT_SYSTEM_MOVESIZESTART, EVENT_SYSTEM_MOVESIZEEND, pid),
                 ]
                 .into_iter()
                 .flatten(),
@@ -441,6 +466,8 @@ impl Tracker {
         }
         self.target = Some(Target { hwnd, app });
         self.last_rect = None;
+        self.target_moving = false;
+        self.squeezed = None;
     }
 
     fn detach(&mut self) {
@@ -480,12 +507,26 @@ impl Tracker {
         }
         let work = work_area(monitor)?;
         let scale = monitor_scale(monitor);
-        let placement = layout::place_beside(
-            bounds,
-            work,
-            layout::to_physical(self.settings().width(), scale),
-            layout::to_physical(SIDEBAR_MIN_HEIGHT, scale),
-        );
+        let width = layout::to_physical(self.settings().width(), scale);
+        let min_height = layout::to_physical(SIDEBAR_MIN_HEIGHT, scale);
+        let mut placement = layout::place_beside(bounds, work, width, min_height);
+        // No room on either side: rather than cover the target, make room by
+        // narrowing it, once the user isn't dragging it.
+        if placement.side == Side::Inside
+            && !self.target_moving
+            && !unsafe { IsZoomed(target) }.as_bool()
+            && let Some(room) = layout::make_room(
+                bounds,
+                work,
+                width,
+                layout::to_physical(MIN_SQUEEZED_WIDTH, scale),
+            )
+            && self.squeezed != Some(room)
+            && fit_target(target, room)
+        {
+            self.squeezed = Some(room);
+            placement = layout::place_beside(room, work, width, min_height);
+        }
         self.move_to(placement.rect, monitor);
         Some(placement.side)
     }
@@ -736,6 +777,39 @@ fn is_cloaked(hwnd: HWND) -> bool {
     }
     .is_ok()
         && cloaked != 0
+}
+
+/// Moves and sizes the target so its visible frame takes `rect` horizontally
+/// (its own top and bottom are kept). Fails for windows of elevated apps.
+fn fit_target(target: HWND, rect: Rect) -> bool {
+    let (Some(visible), Some(window)) = (visible_bounds(target), window_rect(target)) else {
+        return false;
+    };
+    let rect = Rect {
+        top: visible.top,
+        bottom: visible.bottom,
+        ..rect
+    };
+    let outer = layout::grow(rect, layout::margins(window, visible));
+    unsafe {
+        SetWindowPos(
+            target,
+            None,
+            outer.left,
+            outer.top,
+            outer.width(),
+            outer.height(),
+            SWP_NOZORDER | SWP_NOACTIVATE | SWP_ASYNCWINDOWPOS,
+        )
+    }
+    .is_ok()
+}
+
+fn window_rect(hwnd: HWND) -> Option<Rect> {
+    let mut rect = RECT::default();
+    unsafe { GetWindowRect(hwnd, &mut rect) }
+        .is_ok()
+        .then(|| to_rect(rect))
 }
 
 /// Visible frame bounds, without the invisible resize borders of Windows 10/11.

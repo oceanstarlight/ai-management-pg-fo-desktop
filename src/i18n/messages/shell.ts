@@ -37,7 +37,7 @@ export const ko = {
   "notice.relay.error.title": "클라우드 연결에 문제가 있어요",
   "notice.claudeLogin.title": "Claude Code 로그인이 만료됐어요",
   "notice.claudeLogin.body":
-    "Haiku 추천·AI로 스킬 만들기·자동화가 멈췄어요. 아래 버튼으로 터미널에서 claude를 연 뒤 /login을 입력해 다시 로그인해 주세요. 다음 호출이 성공하면 이 알림은 사라져요.",
+    "Haiku 추천·AI로 스킬 만들기·자동화가 멈췄어요. 아래 버튼으로 터미널에서 claude를 연 뒤 /login을 입력해 다시 로그인해 주세요. 다음 호출이 성공하면 이 알림은 사라져요. 로그인 없이 쓰려면 설정 › Claude Code 연동에서 Anthropic API 키를 넣어도 돼요.",
   "notice.claudeLogin.action": "터미널에서 claude 열기",
   "notice.github.title": "GitHub 로그인이 만료됐어요",
   "notice.github.body": "PR·CI 상태를 보려면 GitHub에 다시 연결해 주세요.",
@@ -123,7 +123,7 @@ export const en: Messages<typeof ko> = {
   "notice.relay.error.title": "The cloud connection has a problem",
   "notice.claudeLogin.title": "Your Claude Code sign-in expired",
   "notice.claudeLogin.body":
-    "Haiku suggestions, skill generation and automations stopped. Open claude in a terminal with the button below and type /login to sign in again. This notice goes away once the next call works.",
+    "Haiku suggestions, skill generation and automations stopped. Open claude in a terminal with the button below and type /login to sign in again. This notice goes away once the next call works. To skip the sign-in, add an Anthropic API key under Settings › Claude Code.",
   "notice.claudeLogin.action": "Open claude in a terminal",
   "notice.github.title": "Your GitHub sign-in expired",
   "notice.github.body": "Connect GitHub again to see PRs and CI.",

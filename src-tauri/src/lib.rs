@@ -1,4 +1,5 @@
 mod activity;
+mod anthropic_api;
 mod automation;
 mod bridge;
 mod catalog;
@@ -87,6 +88,8 @@ pub fn run() {
             catalog::catalog_list,
             catalog::catalog_apply,
             catalog::catalog_refresh,
+            anthropic_api::anthropic_key_status,
+            anthropic_api::anthropic_key_set,
             claude_auth::claude_auth_expired,
             claude_auth::claude_open_login,
             catalog::catalog_discovered,

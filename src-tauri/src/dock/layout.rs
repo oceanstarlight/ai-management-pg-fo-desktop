@@ -71,6 +71,29 @@ pub fn place_beside(target: Rect, work: Rect, width: i32, min_height: i32) -> Pl
     }
 }
 
+/// Where to put `target` so a sidebar of `width` fits to its right, inside
+/// `work`, without overlapping it: its right edge pulled in, and its left
+/// edge too if it would be narrower than `min_width`. `None` when the screen
+/// can't hold both, or nothing needs to move.
+pub fn make_room(target: Rect, work: Rect, width: i32, min_width: i32) -> Option<Rect> {
+    let room_right = work.right - width;
+    if room_right - work.left < min_width {
+        return None;
+    }
+    let right = target.right.min(room_right);
+    let mut left = target.left.max(work.left);
+    if right - left < min_width {
+        left = right - min_width;
+    }
+    let moved = Rect {
+        left,
+        top: target.top,
+        right,
+        bottom: target.bottom,
+    };
+    (moved != target).then_some(moved)
+}
+
 /// Full-height placement at the right edge of the monitor work area.
 pub fn place_at_edge(work: Rect, width: i32) -> Rect {
     let width = width.clamp(1, work.width().max(1));
@@ -187,6 +210,37 @@ mod tests {
         let p = place_beside(rect(-2400, 100, -1000, 1300), work, 540, 450);
         assert_eq!(p.side, Side::Right);
         assert_eq!(p.rect, rect(-1000, 100, -460, 1300));
+    }
+
+    #[test]
+    fn makes_room_by_pulling_the_right_edge_in() {
+        // Too wide for a sidebar on either side.
+        let target = rect(100, 100, 1800, 900);
+        assert_eq!(place_beside(target, WORK, 360, 300).side, Side::Inside);
+        let moved = make_room(target, WORK, 360, 320).unwrap();
+        assert_eq!(moved, rect(100, 100, 1560, 900));
+        // Afterwards the sidebar fits beside it, inside the screen.
+        let p = place_beside(moved, WORK, 360, 300);
+        assert_eq!(p.side, Side::Right);
+        assert_eq!(p.rect, rect(1560, 100, 1920, 900));
+    }
+
+    #[test]
+    fn making_room_keeps_a_usable_width_and_stays_on_screen() {
+        // Pushed against the right edge: it moves left instead of shrinking away.
+        let moved = make_room(rect(1500, 0, 2100, 900), WORK, 360, 320).unwrap();
+        assert_eq!(moved, rect(1240, 0, 1560, 900));
+        // Hanging off the left edge comes back on screen.
+        let moved = make_room(rect(-300, 0, 1900, 900), WORK, 360, 320).unwrap();
+        assert_eq!(moved.left, 0);
+        assert_eq!(moved.right, 1560);
+        // A screen too small for both: nothing to do.
+        assert_eq!(
+            make_room(rect(0, 0, 600, 600), rect(0, 0, 600, 600), 360, 320),
+            None
+        );
+        // Already fine: nothing to move.
+        assert_eq!(make_room(rect(0, 0, 1000, 600), WORK, 360, 320), None);
     }
 
     #[test]
