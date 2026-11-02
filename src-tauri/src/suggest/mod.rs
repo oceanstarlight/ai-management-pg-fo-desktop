@@ -521,7 +521,7 @@ pub struct LiveItem {
     pub description: String,
 }
 
-#[derive(Clone, Debug, Serialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct Live {
     pub session: String,
@@ -577,6 +577,25 @@ fn with_live(app: &AppHandle, session: &str, f: impl FnOnce(&mut Live)) {
         live.clone()
     };
     let _ = app.emit(LIVE_EVENT, list);
+}
+
+/// The prompts being written, for `activity::save`.
+pub fn live_snapshot() -> Vec<Live> {
+    LIVE.lock().unwrap_or_else(|e| e.into_inner()).clone()
+}
+
+/// Brings back the prompts saved before a restart (none is picking any more).
+pub fn live_restore(saved: Vec<Live>) {
+    let mut live = LIVE.lock().unwrap_or_else(|e| e.into_inner());
+    let now = now_ms();
+    for mut l in saved {
+        if now - l.at >= LIVE_TTL_MS || live.iter().any(|x| x.session == l.session) {
+            continue;
+        }
+        l.pending = false;
+        live.push(l);
+    }
+    live.sort_by_key(|l| std::cmp::Reverse(l.at));
 }
 
 fn end_live(app: &AppHandle, session: &str) {

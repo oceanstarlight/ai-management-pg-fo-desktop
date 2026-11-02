@@ -8,15 +8,18 @@ import { RepoLine } from "../features/live/RepoLine";
 import { MemoPanel } from "../features/memo/MemoPanel";
 import { DecisionsPanel } from "../features/suggest/DecisionsPanel";
 import { LivePanel } from "../features/suggest/LivePanel";
+import { StarterPanel, useNewProject } from "../features/suggest/StarterPanel";
+import { SuggestBox } from "../features/suggest/SuggestBox";
 import { SuggestFeed } from "../features/suggest/SuggestFeed";
 import { SyncNotice } from "../features/sync/SyncNotice";
 import { UpdateNotice } from "../features/update/UpdateNotice";
 import { useGitHubSync } from "../features/work/useGitHubSync";
 import { useActivityStore } from "../store/activity";
-import { subscribeDockStatus } from "../store/dock";
+import { subscribeDockStatus, useDockStore } from "../store/dock";
 import { useLibraryStore } from "../store/library";
 import { useLiveStore } from "../store/live";
 import { restoreProject, useProjectStore } from "../store/project";
+import { useSuggestStore } from "../store/suggest";
 import { useSyncStore } from "../store/sync";
 import { useUiStore } from "../store/ui";
 import { startUpdateChecks } from "../store/updater";
@@ -29,6 +32,11 @@ export default function SidebarApp() {
   // PR and CI state for the open project, and notifications, whatever page is shown.
   useGitHubSync();
   const activeTab = useUiStore((s) => s.activeTab);
+  // Compact (360px) shows the essentials; wide (560px) adds the work graph
+  // and the prompt box with its suggestions and starter forms.
+  const wide = useDockStore((s) => s.status?.wide ?? false);
+  const fresh = useNewProject();
+  const setDraft = useSuggestStore((s) => s.setDraft);
 
   useEffect(() => {
     const unsubscribe = subscribeDockStatus();
@@ -67,10 +75,16 @@ export default function SidebarApp() {
           {activeTab === "live" ? (
             <div className="space-y-5">
               <RepoLine />
-              <LiveView compact />
+              <LiveView compact={!wide} />
             </div>
           ) : activeTab === "suggest" ? (
             <div className="space-y-8">
+              {wide && (
+                <>
+                  <SuggestBox />
+                  <StarterPanel onApply={setDraft} fresh={fresh} />
+                </>
+              )}
               <LivePanel />
               <DecisionsPanel compact />
               <SuggestFeed compact />

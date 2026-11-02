@@ -71,8 +71,16 @@ export interface Session {
   turn: Counters;
   steps: Step[];
   files: Record<string, FileStat>;
-  usage: { contextPercent: number | null; tokens: number | null; costUsd: number | null };
+  usage: {
+    contextPercent: number | null;
+    tokens: number | null;
+    costUsd: number | null;
+    /** The cost is estimated from token counts (the host keeps no ledger). */
+    costEstimated?: boolean;
+  };
   at: number;
+  /** The last main turn was interrupted, or Claude Code went quiet mid-turn. */
+  stoppedAt?: number | null;
 }
 
 /** One tool call: its start, and how it ended once it did. */

@@ -40,6 +40,7 @@ export const ko = {
   "notice.github.action": "다시 연결",
   // Main window navigation
   "shell.nav.live": "진행 상황",
+  "home.sideMenu": "프롬프트 · 추천 · 결정 · 메모",
   "shell.nav.project": "프로젝트",
   "shell.nav.toolbox": "도구함",
   "shell.project": "프로젝트",
@@ -57,6 +58,8 @@ export const ko = {
 
   // Sidebar window: title bar
   "shell.title.toMain": "메인 창으로 전환",
+  "shell.title.wide": "확장 보기 (작업 그래프, 추천 프롬프트)",
+  "shell.title.compact": "축소 보기",
   "shell.title.magnet.auto": "자석: 앞에 있는 창 자동 감지 (누르면 이 창에 고정)",
   "shell.title.magnet.locked": "자석: 이 창에 고정 (누르면 자석 해제)",
   "shell.title.magnet.off": "자석 해제됨 (누르면 자동 감지)",
@@ -118,6 +121,7 @@ export const en: Messages<typeof ko> = {
   "notice.github.body": "Connect GitHub again to see PRs and CI.",
   "notice.github.action": "Connect again",
   "shell.nav.live": "Live",
+  "home.sideMenu": "Prompt · suggestions · decisions · notes",
   "shell.nav.project": "Project",
   "shell.nav.toolbox": "Toolbox",
   "shell.project": "Project",
@@ -133,6 +137,8 @@ export const en: Messages<typeof ko> = {
   "shell.tab.memo": "Notes",
 
   "shell.title.toMain": "Switch to main window",
+  "shell.title.wide": "Wide view (work graph, prompt suggestions)",
+  "shell.title.compact": "Compact view",
   "shell.title.magnet.auto": "Magnet: follows the window in front (click to stay with this one)",
   "shell.title.magnet.locked": "Magnet: stays with this window (click to turn off)",
   "shell.title.magnet.off": "Magnet off (click to follow the window in front)",

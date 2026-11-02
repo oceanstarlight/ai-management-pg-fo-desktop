@@ -5,8 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Button, Card, Row, Segmented, Switch } from "../../components/ui";
 import { type MessageKey, useT } from "../../i18n";
 import { type ModStatus, OWN_MOD } from "../../store/connection";
-import { AUTO_DOCK_PREF, AUTO_PREF, useSwitchPref } from "../../store/live";
-import { getPref, onPrefChanged, setPref } from "../../store/prefs";
+import { AUTO_DOCK_PREF, AUTO_PREF, useSuggestMode, useSwitchPref } from "../../store/live";
 
 const OWN = OWN_MOD;
 
@@ -66,13 +65,6 @@ const open = (url: string) => {
 };
 
 /** Settings card: the app's own Claude Code mod and recommended ones. */
-const SUGGEST_PREF = "promptSuggest";
-type SuggestMode = "ai" | "keyword" | "off";
-
-function readSuggestMode(): SuggestMode {
-  const v = getPref(SUGGEST_PREF);
-  return v === "keyword" || v === "off" ? v : "ai";
-}
 
 /** How the mod suggests skills and extensions while the user types a prompt. */
 function AutoRows() {
@@ -93,8 +85,7 @@ function AutoRows() {
 
 function SuggestRow() {
   const t = useT();
-  const [mode, setMode] = useState<SuggestMode>(readSuggestMode);
-  useEffect(() => onPrefChanged(SUGGEST_PREF, () => setMode(readSuggestMode())), []);
+  const [mode, setMode] = useSuggestMode();
   return (
     <Row title={t("mods.suggest.title")} description={t("mods.suggest.description")}>
       <Segmented
@@ -105,10 +96,7 @@ function SuggestRow() {
           { value: "keyword", label: t("mods.suggest.keyword") },
           { value: "off", label: t("mods.suggest.off") },
         ]}
-        onChange={(v) => {
-          setMode(v);
-          setPref(SUGGEST_PREF, v);
-        }}
+        onChange={setMode}
       />
     </Row>
   );

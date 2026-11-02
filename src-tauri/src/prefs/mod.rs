@@ -116,6 +116,11 @@ pub async fn prefs_set(app: AppHandle, key: String, value: Option<String>) -> Re
         {
             crate::bridge::changed();
         }
+        if key == crate::dock::WIDE_PREF {
+            // The default in Settings also applies to the sidebar now.
+            let dock = app.state::<crate::dock::Dock>();
+            dock.set_wide(&app, value.as_deref() == Some("on"));
+        }
         if is_synced(&key) {
             crate::sync::changed(&app);
         }

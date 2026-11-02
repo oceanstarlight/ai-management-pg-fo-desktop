@@ -12,17 +12,24 @@ export type Magnet = "auto" | "locked" | "off";
 export interface DockStatus {
   magnet: Magnet;
   pinned: boolean;
+  /** Wide layout (work graph and prompt suggestions) instead of compact. */
+  wide: boolean;
   visible: boolean;
   mode: DockMode;
   target: TargetApp | null;
   side: DockSide | null;
 }
 
+/** `on` opens the sidebar wide. Mirrors `WIDE_PREF` in src-tauri/src/dock/mod.rs. */
+export const SIDEBAR_WIDE_PREF = "sidebarWide";
+
 interface DockState {
   status: DockStatus | null;
   /** auto → locked → off → auto */
   cycleMagnet: () => Promise<void>;
   setPinned: (pinned: boolean) => Promise<void>;
+  /** Compact ↔ wide until the app restarts (the default is `SIDEBAR_WIDE_PREF`). */
+  setWide: (wide: boolean) => Promise<void>;
   hide: () => Promise<void>;
 }
 
@@ -30,6 +37,7 @@ export const useDockStore = create<DockState>(() => ({
   status: null,
   cycleMagnet: () => call("dock_cycle_magnet"),
   setPinned: (pinned) => call("dock_set_pinned", { pinned }),
+  setWide: (wide) => call("dock_set_wide", { wide }),
   hide: () => call("sidebar_hide"),
 }));
 

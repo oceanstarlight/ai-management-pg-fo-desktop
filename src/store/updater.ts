@@ -1,4 +1,4 @@
-import { isTauri } from "@tauri-apps/api/core";
+import { invoke, isTauri } from "@tauri-apps/api/core";
 import { relaunch } from "@tauri-apps/plugin-process";
 import { check, type Update } from "@tauri-apps/plugin-updater";
 import { create } from "zustand";
@@ -66,6 +66,8 @@ export const useUpdaterStore = create<UpdaterState>((set, get) => ({
     let got = 0;
     set({ status: "downloading", progress: null, error: null });
     try {
+      // The home page and the prompts being written survive the restart.
+      await invoke("activity_save").catch(() => {});
       await update.downloadAndInstall((event) => {
         if (event.event === "Started") total = event.data.contentLength ?? 0;
         else if (event.event === "Progress") {

@@ -6,9 +6,10 @@ import { Button, Card, PageHeader, Row, Segmented, Switch } from "../../componen
 import { ModsCard } from "../../features/mods/ModsCard";
 import { type LocalePref, timeAgo, useLocaleStore, useT } from "../../i18n";
 import { useAccountStore } from "../../store/account";
-import { useDockStore } from "../../store/dock";
+import { SIDEBAR_WIDE_PREF, useDockStore } from "../../store/dock";
 import { FONT_SIZES, useFontSizeStore } from "../../store/fontSize";
 import { useLibraryStore } from "../../store/library";
+import { useSwitchPref } from "../../store/live";
 import { useNotifyStore } from "../../store/notify";
 import { useProjectStore } from "../../store/project";
 import { useSyncStore } from "../../store/sync";
@@ -31,6 +32,7 @@ export function SettingsPage() {
     { value: "en", label: "English" },
   ];
   const { status, setPinned } = useDockStore();
+  const [wide, setWide] = useSwitchPref(SIDEBAR_WIDE_PREF, false);
   const fontSize = useFontSizeStore((s) => s.size);
   const setFontSize = useFontSizeStore((s) => s.setSize);
   const { overview, busy, load, chooseDir } = useLibraryStore();
@@ -98,6 +100,9 @@ export function SettingsPage() {
       <Card title={t("settings.sidebar")}>
         <Row title={t("settings.dock")} description={t("settings.dockHint")}>
           <Magnet size={16} className="shrink-0 text-text-muted" />
+        </Row>
+        <Row title={t("settings.sidebarWide")} description={t("settings.sidebarWideHint")}>
+          <Switch label={t("settings.sidebarWide")} checked={wide} onChange={setWide} />
         </Row>
         <Row title={t("settings.pin")} description={t("settings.pinHint")}>
           <Switch
