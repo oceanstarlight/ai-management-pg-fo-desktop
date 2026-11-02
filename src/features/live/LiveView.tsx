@@ -1,10 +1,17 @@
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Pin } from "lucide-react";
 import { useEffect } from "react";
 import { timeAgo, useT } from "../../i18n";
-import { type LiveMode, pickSession, type Session, useActivityStore } from "../../store/activity";
+import {
+  type LiveMode,
+  pickSession,
+  type Session,
+  stickySession,
+  useActivityStore,
+} from "../../store/activity";
 import { useProjectStore } from "../../store/project";
 import { ConnectHint } from "../suggest/ConnectHint";
 import { LiveStatus, StatusOrb, stateColor } from "./LiveStatus";
+import { BranchTag, Renamable, sessionName } from "./SessionPicker";
 import { Timeline } from "./Timeline";
 import { WorkGraph } from "./WorkGraph";
 
@@ -14,6 +21,17 @@ const folder = (path: string) => path.split(/[\\/]/).filter(Boolean).pop() ?? pa
 export const samePath = (a: string, b: string) => {
   const norm = (p: string) => p.replace(/\\/g, "/").replace(/\/+$/, "").toLowerCase();
   return norm(a) === norm(b);
+};
+
+/** When each session was first seen: tabs keep this order while sessions take turns. */
+const firstSeen = new Map<string, number>();
+const seenAt = (id: string) => {
+  let at = firstSeen.get(id);
+  if (at == null) {
+    at = firstSeen.size;
+    firstSeen.set(id, at);
+  }
+  return at;
 };
 
 /** The newest session (by its last activity). */
@@ -32,19 +50,49 @@ function poolOf(sessions: Session[], mode: LiveMode, open: string | null): Sessi
 /**
  * The session shown and the project its map draws: in local mode the open
  * folder's session (the busiest recent one unless one was picked), in cloud
- * mode the picked cloud session, else the newest.
+ * mode the picked cloud session, else the newest. With "stay on one session"
+ * on, the one shown is pinned so other sessions taking turns don't swap it.
  */
 export function useShownSession(): { session: Session | null; project: string | null } {
   const sessions = useActivityStore((s) => s.sessions);
   const chosen = useActivityStore((s) => s.chosen);
   const mode = useActivityStore((s) => s.mode);
+  const stick = useActivityStore((s) => s.stick);
   const open = useProjectStore((s) => s.current);
   const pool = poolOf(sessions, mode, open);
-  const session =
-    mode === "cloud"
+  const fallback = mode === "cloud" ? newest : (p: Session[]) => pickSession(p, null);
+  const session = stick
+    ? stickySession(pool, chosen, fallback)
+    : mode === "cloud"
       ? (pool.find((s) => s.session === chosen) ?? newest(pool))
       : pickSession(pool, chosen);
+  const id = session?.session ?? null;
+  useEffect(() => {
+    if (stick && id && id !== useActivityStore.getState().chosen)
+      useActivityStore.getState().choose(id);
+  }, [stick, id]);
   return { session, project: mode === "local" ? open : null };
+}
+
+/** Turns "stay on one session" on and off (also in Settings). */
+function StickToggle() {
+  const t = useT();
+  const stick = useActivityStore((s) => s.stick);
+  const setStick = useActivityStore((s) => s.setStick);
+  return (
+    <button
+      type="button"
+      aria-pressed={stick}
+      title={t(stick ? "live.stick.on" : "live.stick.off")}
+      onClick={() => setStick(!stick)}
+      className={`flex items-center gap-1 rounded-md px-2 py-1 text-xs transition-colors ${
+        stick ? "text-accent hover:bg-hover" : "text-text-subtle hover:bg-hover hover:text-text"
+      }`}
+    >
+      <Pin size={12} className={stick ? "" : "rotate-45"} />
+      {t("live.stick.label")}
+    </button>
+  );
 }
 
 /**
@@ -58,12 +106,17 @@ export function SourcePicker() {
   const sessions = useActivityStore((s) => s.sessions);
   const mode = useActivityStore((s) => s.mode);
   const choose = useActivityStore((s) => s.choose);
+  const names = useActivityStore((s) => s.names);
   const open = useProjectStore((s) => s.current);
   const { session: shown } = useShownSession();
+  const nth = (s: Session) =>
+    t("live.pick.nth", { n: tabs.findIndex((p) => p.session === s.session) + 1 });
 
   const local = sessions.filter((s) => !s.cloud && s.project);
   const cloud = sessions.filter((s) => s.cloud).sort((a, b) => b.at - a.at);
   const pool = poolOf(sessions, mode, open);
+  // Tabs in the order the sessions appeared, so they don't swap places.
+  const tabs = [...pool].sort((a, b) => seenAt(a.session) - seenAt(b.session));
   // Claude runs elsewhere while the open folder is quiet: offer to go there.
   const elsewhere =
     mode === "local" && pool.length === 0
@@ -75,40 +128,64 @@ export function SourcePicker() {
       {mode === "cloud" && (
         <div className="flex flex-wrap items-center gap-2">
           {cloud.length > 0 ? (
-            <label className="relative flex min-w-0 items-center gap-1.5 rounded-md px-2 py-1 text-xs hover:bg-hover">
-              {shown && (
-                <span
-                  className="size-1.5 shrink-0 rounded-full"
-                  style={{ background: stateColor(shown.state) }}
-                />
-              )}
-              <span className="max-w-64 truncate font-medium">
-                {shown ? sessionLabel(shown) : t("live.pick.session")}
-              </span>
-              <ChevronDown size={12} className="shrink-0 text-text-subtle" />
-              <select
-                aria-label={t("live.pick.session")}
-                value={shown?.session ?? ""}
-                onChange={(e) => choose(e.target.value || null)}
-                className="absolute inset-0 cursor-pointer opacity-0"
-              >
-                {cloud.map((s, i) => (
-                  <option key={s.session} value={s.session}>
-                    {sessionLabel(s)} · {timeAgo(Math.floor(s.at / 1000))}
-                    {i === 0 ? ` (${t("live.pick.latest")})` : ""}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <Renamable session={shown ?? cloud[0]} name={sessionName(shown ?? cloud[0], names)}>
+              <label className="relative flex min-w-0 items-center gap-1.5 rounded-md px-2 py-1 text-xs hover:bg-hover">
+                {shown && (
+                  <span
+                    className="size-1.5 shrink-0 rounded-full"
+                    style={{ background: stateColor(shown.state) }}
+                  />
+                )}
+                <span className="max-w-64 truncate font-medium">
+                  {shown ? sessionName(shown, names) : t("live.pick.session")}
+                </span>
+                <ChevronDown size={12} className="shrink-0 text-text-subtle" />
+                <select
+                  aria-label={t("live.pick.session")}
+                  value={shown?.session ?? ""}
+                  onChange={(e) => choose(e.target.value || null)}
+                  className="absolute inset-0 cursor-pointer opacity-0"
+                >
+                  {cloud.map((s, i) => (
+                    <option key={s.session} value={s.session}>
+                      {sessionName(s, names)}
+                      {s.branch ? ` · ${s.branch}` : ""} · {timeAgo(Math.floor(s.at / 1000))}
+                      {i === 0 ? ` (${t("live.pick.latest")})` : ""}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </Renamable>
           ) : (
             <span className="text-xs text-text-subtle">{t("live.pick.noCloud")}</span>
+          )}
+          {cloud.length > 1 && <StickToggle />}
+          {shown && (
+            <span className="text-xs">
+              <BranchTag branch={shown.branch} />
+            </span>
           )}
         </div>
       )}
 
+      {mode === "local" && pool.length === 1 && shown && (
+        <div className="flex items-center gap-2 text-xs">
+          <Renamable session={shown} name={sessionName(shown, names, nth(shown))}>
+            <span className="truncate px-2 font-medium">
+              {sessionName(shown, names, nth(shown))}
+            </span>
+          </Renamable>
+          <BranchTag branch={shown.branch} />
+        </div>
+      )}
+
       {mode === "local" && pool.length > 1 && (
-        <div className="flex flex-wrap gap-1" role="tablist" aria-label={t("live.sessions")}>
-          {pool.map((s, i) => {
+        <div
+          className="flex flex-wrap items-center gap-1"
+          role="tablist"
+          aria-label={t("live.sessions")}
+        >
+          {tabs.map((s) => {
             const selected = s.session === shown?.session;
             return (
               <button
@@ -127,11 +204,23 @@ export function SourcePicker() {
                   className="size-1.5 rounded-full"
                   style={{ background: stateColor(s.state) }}
                 />
-                {t("live.pick.nth", { n: pool.length - i })}
-                <span className="text-text-subtle">{s.surface || t("live.surface.terminal")}</span>
+                <span className="max-w-48 truncate">{sessionName(s, names, nth(s))}</span>
+                {s.branch ? (
+                  <BranchTag branch={s.branch} />
+                ) : (
+                  <span className="text-text-subtle">
+                    {s.surface || t("live.surface.terminal")}
+                  </span>
+                )}
               </button>
             );
           })}
+          {shown && (
+            <Renamable session={shown} name={sessionName(shown, names, nth(shown))}>
+              {null}
+            </Renamable>
+          )}
+          <StickToggle />
         </div>
       )}
 
@@ -150,9 +239,6 @@ export function SourcePicker() {
     </div>
   );
 }
-
-/** A cloud session's name: its repository, else its id. */
-const sessionLabel = (s: Session) => folder(s.project) || s.session.slice(0, 12);
 
 /**
  * The centre of the home page: what Claude is doing, the graph of Claude,
@@ -186,8 +272,27 @@ export function LiveView({ compact = false }: { compact?: boolean }) {
   return (
     <div className={compact ? "space-y-5" : "space-y-8"}>
       <LiveStatus session={session} compact={compact} />
-      {!compact && <WorkGraph session={session} />}
-      <Timeline session={session} limit={compact ? 3 : 6} />
+      {!compact && (
+        <section aria-label={t("live.graph.title")} className="space-y-3">
+          <h2 className="text-fs-11 font-medium tracking-wide text-text-subtle">
+            {t("live.graph.title")}
+          </h2>
+          <WorkGraph session={session} />
+        </section>
+      )}
+      {compact ? (
+        <Timeline session={session} limit={3} />
+      ) : (
+        <section
+          aria-label={t("live.timeline.title")}
+          className="space-y-4 border-t border-border pt-6"
+        >
+          <h2 className="text-fs-11 font-medium tracking-wide text-text-subtle">
+            {t("live.timeline.title")}
+          </h2>
+          <Timeline session={session} limit={6} />
+        </section>
+      )}
     </div>
   );
 }

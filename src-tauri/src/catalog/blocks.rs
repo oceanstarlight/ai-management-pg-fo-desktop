@@ -141,6 +141,8 @@ pub struct Block {
     pub origin: Option<Origin>,
     /// Bundled blocks only; library items have none.
     pub rating: Option<Rating>,
+    /// Taken in from "새로 발견" rather than bundled.
+    pub found: bool,
 }
 
 fn companion_paths<S: serde::Serializer>(
@@ -299,6 +301,7 @@ fn parse_bundled(id: &str, stem: &str, text: &str, source: Source) -> Option<Blo
         companions: Vec::new(),
         origin: None,
         rating: Rating::parse(&fm),
+        found: false,
     })
 }
 
@@ -461,6 +464,26 @@ pub fn external(cache: Option<&Path>) -> Vec<Block> {
                 None => bundled,
             })
         })
+        .chain(cache.into_iter().flat_map(found))
+        .collect()
+}
+
+/// Blocks the user took in from "새로 발견" (`catalog/discover.rs`). Only
+/// licenses the catalog accepts are read, also for copies that arrived
+/// through sync.
+fn found(cache: &Path) -> Vec<Block> {
+    super::discover::found_files(cache)
+        .into_iter()
+        .filter_map(|(_, source, stem, text)| {
+            let mut block = parse_external(&source, &stem, &text)?;
+            let license = &block.origin.as_ref()?.license;
+            if !matches!(license.as_str(), "MIT" | "Apache-2.0") {
+                return None;
+            }
+            block.id = format!("found:{source}__{stem}");
+            block.found = true;
+            Some(block)
+        })
         .collect()
 }
 
@@ -537,6 +560,7 @@ fn from_library(item: &LibraryItem) -> Option<Block> {
         companions: Vec::new(),
         origin: None,
         rating: None,
+        found: false,
     })
 }
 

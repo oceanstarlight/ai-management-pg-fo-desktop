@@ -9,6 +9,7 @@
 //! removed or overwritten without asking.
 
 mod codex;
+pub mod import;
 pub(crate) mod ops;
 
 use std::fs;
@@ -220,6 +221,18 @@ impl Library {
     /// The library folder in use (what sync reads and writes).
     pub(crate) fn library_dir(&self) -> PathBuf {
         self.dir(&self.lock())
+    }
+
+    #[cfg(test)]
+    pub(crate) fn for_tests(data_dir: PathBuf) -> Library {
+        Library {
+            data_dir,
+            state: Mutex::new(State {
+                config: Config::default(),
+                records: Vec::new(),
+                toggles: Vec::new(),
+            }),
+        }
     }
 
     fn lock(&self) -> std::sync::MutexGuard<'_, State> {
@@ -1108,6 +1121,101 @@ pub async fn library_import(
     kind: ItemKind,
 ) -> Result<(), String> {
     blocking(app, move |lib| import(lib, Path::new(&path), tool, kind)).await
+}
+
+/// The skills at a GitHub address, to choose from before importing.
+#[tauri::command]
+pub async fn library_import_preview_github(
+    app: AppHandle,
+    url: String,
+) -> Result<import::Preview, String> {
+    let token = crate::github::current_token(&app);
+    blocking(app, move |lib| {
+        import::preview_github(lib, &url, token.as_deref())
+    })
+    .await
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Imported {
+    pub added: Vec<String>,
+    /// `(path, reason)`.
+    pub failed: Vec<(String, String)>,
+}
+
+/// Imports the chosen skill folders of `repo` at the previewed `commit`.
+#[tauri::command]
+pub async fn library_import_github(
+    app: AppHandle,
+    repo: String,
+    commit: String,
+    paths: Vec<String>,
+) -> Result<Imported, String> {
+    let token = crate::github::current_token(&app);
+    let done = app.clone();
+    let result = blocking(app, move |lib| {
+        import::import_github(lib, &repo, &commit, &paths, token.as_deref())
+            .map(|(added, failed)| Imported { added, failed })
+    })
+    .await?;
+    crate::sync::changed(&done);
+    Ok(result)
+}
+
+#[tauri::command]
+pub async fn library_import_preview_folder(
+    app: AppHandle,
+    path: String,
+) -> Result<import::Preview, String> {
+    blocking(app, move |lib| {
+        import::preview_folder(lib, Path::new(&path))
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn library_import_folders(
+    app: AppHandle,
+    paths: Vec<String>,
+) -> Result<Imported, String> {
+    let done = app.clone();
+    let result = blocking(app, move |lib| {
+        let (added, failed) = import::import_folders(lib, &paths);
+        Ok(Imported { added, failed })
+    })
+    .await?;
+    crate::sync::changed(&done);
+    Ok(result)
+}
+
+/// Saves pasted or generated SKILL.md text as library skill `id`.
+#[tauri::command]
+pub async fn library_create_skill(
+    app: AppHandle,
+    id: String,
+    text: String,
+) -> Result<String, String> {
+    let done = app.clone();
+    let id = blocking(app, move |lib| import::create(lib, &id, &text)).await?;
+    crate::sync::changed(&done);
+    Ok(id)
+}
+
+/// A SKILL.md written by the user's own `claude -p` from a description;
+/// shown for editing before it is saved.
+#[tauri::command]
+pub async fn library_generate_skill(
+    app: AppHandle,
+    request: String,
+    project: Option<String>,
+) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let dir = crate::suggest::run_dir(&app, project.as_deref())?;
+        import::generate(&dir, &request)
+    })
+    .await
+    .map_err(|e| e.to_string())?
 }
 
 /// `path` is the item's file from the config map (Codex needs the SKILL.md

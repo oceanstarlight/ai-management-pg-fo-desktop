@@ -6,11 +6,16 @@
 
 pub mod apply;
 pub mod blocks;
+pub mod discover;
+pub mod fetch;
 pub mod refresh;
 
 use std::path::{Path, PathBuf};
+use std::sync::Mutex;
+use std::time::Duration;
 
-use tauri::{AppHandle, Manager};
+use serde::Serialize;
+use tauri::{AppHandle, Emitter, Manager};
 
 use crate::library::Library;
 pub use blocks::{Block, BlockKind};
@@ -96,11 +101,126 @@ pub async fn catalog_apply(
     .await
 }
 
+fn cache_for(app: &AppHandle) -> Result<PathBuf, String> {
+    app.path()
+        .app_data_dir()
+        .map(|d| cache_dir(&d))
+        .map_err(|e| e.to_string())
+}
+
+/// Emitted (no payload) when the catalog or its finds changed by themselves.
+pub const CHANGED_EVENT: &str = "catalog-changed";
+/// Preference: `"off"` stops the daily check.
+pub const AUTO_PREF: &str = "catalogAutoCheck";
+const AUTO_EVERY: Duration = Duration::from_secs(24 * 60 * 60);
+
+/// One check at a time, whether started by the user or the timer.
+static CHECKING: Mutex<()> = Mutex::new(());
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CheckResult {
+    pub refresh: refresh::RefreshResult,
+    pub discover: discover::DiscoverResult,
+}
+
+/// "최신 받아오기": brings bundled and found blocks up to date and looks for
+/// new ones next to them.
+fn check(app: &AppHandle) -> Result<CheckResult, String> {
+    let _one = CHECKING.lock().unwrap_or_else(|e| e.into_inner());
+    let cache = cache_for(app)?;
+    let token = crate::github::current_token(app);
+    let result = CheckResult {
+        refresh: refresh::refresh(&cache),
+        discover: discover::discover(&cache, token.as_deref()),
+    };
+    if !result.refresh.updated.is_empty() {
+        crate::sync::changed(app);
+    }
+    Ok(result)
+}
+
 #[tauri::command]
-pub async fn catalog_refresh(app: AppHandle) -> Result<refresh::RefreshResult, String> {
+pub async fn catalog_refresh(app: AppHandle) -> Result<CheckResult, String> {
+    blocking(app, check).await
+}
+
+/// Checks once a day in the background while the app runs, unless turned off.
+pub fn start_auto_check(app: &AppHandle) {
+    let app = app.clone();
+    std::thread::spawn(move || {
+        // Not in the way of the app's start.
+        std::thread::sleep(Duration::from_secs(120));
+        loop {
+            let on = crate::prefs::get(&app, AUTO_PREF).as_deref() != Some("off");
+            let due = cache_for(&app).is_ok_and(|cache| {
+                let last = discover::load(&cache).checked_at;
+                let now = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .map(|d| d.as_millis() as i64)
+                    .unwrap_or_default();
+                now - last >= AUTO_EVERY.as_millis() as i64
+            });
+            if on && due && check(&app).is_ok() {
+                let _ = app.emit(CHANGED_EVENT, ());
+            }
+            std::thread::sleep(Duration::from_secs(60 * 60));
+        }
+    });
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Discovered {
+    pub checked_at: i64,
+    pub candidates: Vec<discover::Candidate>,
+    pub failed: Vec<(String, String)>,
+    pub auto: bool,
+}
+
+#[tauri::command]
+pub async fn catalog_discovered(app: AppHandle) -> Result<Discovered, String> {
     blocking(app, |app| {
-        let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
-        Ok(refresh::refresh(&cache_dir(&dir)))
+        let state = discover::load(&cache_for(app)?);
+        Ok(Discovered {
+            checked_at: state.checked_at,
+            candidates: state.candidates,
+            failed: state.failed,
+            auto: crate::prefs::get(app, AUTO_PREF).as_deref() != Some("off"),
+        })
+    })
+    .await
+}
+
+/// A waiting find's upstream text, to read before taking it in.
+#[tauri::command]
+pub async fn catalog_candidate_text(app: AppHandle, id: String) -> Result<String, String> {
+    blocking(app, move |app| discover::text(&cache_for(app)?, &id)).await
+}
+
+/// Takes a find into the catalog (and the account's synced copy).
+#[tauri::command]
+pub async fn catalog_accept(app: AppHandle, id: String) -> Result<String, String> {
+    blocking(app, move |app| {
+        let name = discover::accept(&cache_for(app)?, &id)?;
+        crate::sync::changed(app);
+        Ok(name)
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn catalog_dismiss(app: AppHandle, id: String) -> Result<(), String> {
+    blocking(app, move |app| discover::dismiss(&cache_for(app)?, &id)).await
+}
+
+/// Takes a found block back out of the catalog. `id` is `<source>__<stem>`.
+#[tauri::command]
+pub async fn catalog_remove_found(app: AppHandle, id: String) -> Result<(), String> {
+    blocking(app, move |app| {
+        discover::remove_found(&cache_for(app)?, &id)?;
+        crate::sync::changed(app);
+        Ok(())
     })
     .await
 }

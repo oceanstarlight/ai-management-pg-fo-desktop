@@ -249,6 +249,7 @@ fn cycle(app: &AppHandle, sync: &Sync, last_sync: Option<i64>) -> firebase::Resu
         // Documents of the removed composer keep syncing so none are lost.
         docs: data_dir.join("compositions"),
         library: app.state::<crate::library::Library>().library_dir(),
+        found: crate::catalog::discover::found_dir(&crate::catalog::cache_dir(&data_dir)),
     };
     let device = store
         .meta("device_id")

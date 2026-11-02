@@ -1,9 +1,10 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { type MessageKey, useT } from "../../i18n";
 import { type ApplyStatus, type LibraryItem, useLibraryStore } from "../../store/library";
 import { useProjectStore } from "../../store/project";
 import { TOOLS } from "../../tools";
 import { ModeButtons, smallButton } from "./ModeButtons";
+import { SkillImport } from "./SkillImport";
 
 const STATUS_TEXT: Record<ApplyStatus, { label: MessageKey; className: string }> = {
   current: { label: "docs.status.current", className: "text-success" },
@@ -18,6 +19,7 @@ export function LibraryPanel() {
   const current = useProjectStore((s) => s.current);
   const info = TOOLS[useProjectStore((s) => s.tool)];
   const { overview, busy, error, load, chooseDir, useDefaultDir } = useLibraryStore();
+  const [importing, setImporting] = useState(false);
 
   // Reload whenever the selected project changes (statuses are per project).
   useEffect(() => {
@@ -43,6 +45,14 @@ export function LibraryPanel() {
               {t("docs.library.default")}
             </button>
           )}
+          <button
+            type="button"
+            onClick={() => setImporting((v) => !v)}
+            className={smallButton}
+            aria-expanded={importing}
+          >
+            {t("docs.import.open")}
+          </button>
         </div>
         <p className="mt-1 text-fs-10 text-text-muted">{t("docs.library.structureHint")}</p>
         {current && (
@@ -56,6 +66,8 @@ export function LibraryPanel() {
           </p>
         )}
       </div>
+
+      {importing && <SkillImport onClose={() => setImporting(false)} />}
 
       {error && <p className="rounded-md bg-danger-soft px-3 py-2 text-xs text-danger">{error}</p>}
       {!current && <p className="text-xs text-text-muted">{t("docs.library.pickProject")}</p>}

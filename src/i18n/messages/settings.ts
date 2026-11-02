@@ -94,6 +94,10 @@ export const ko = {
   "settings.fontSize.md": "기본",
   "settings.fontSize.lg": "큼",
   "settings.fontSize.xl": "매우 큼",
+  "settings.live": "진행 상황",
+  "settings.liveStick": "한 세션에 고정",
+  "settings.liveStickHint":
+    "Claude Code 세션 여러 개가 번갈아 일할 때, 가장 최근에 움직인 세션으로 바꾸지 않고 보고 있던 세션을 계속 보여줘요. 그 세션이 끝나면 다음 세션으로 넘어가요.",
   "settings.sidebar": "사이드바",
   "settings.sidebarWide": "확장 보기로 열기",
   "settings.sidebarWideHint":
@@ -255,6 +259,10 @@ export const en: Messages<typeof ko> = {
   "settings.fontSize.md": "Default",
   "settings.fontSize.lg": "Large",
   "settings.fontSize.xl": "Extra large",
+  "settings.live": "Live",
+  "settings.liveStick": "Stay on one session",
+  "settings.liveStickHint":
+    "When several Claude Code sessions take turns, keep showing the one you were watching instead of switching to whichever acted last. Moves on when that session ends.",
   "settings.sidebar": "Sidebar",
   "settings.sidebarWide": "Open in wide view",
   "settings.sidebarWideHint":

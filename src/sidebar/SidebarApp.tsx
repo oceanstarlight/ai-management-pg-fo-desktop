@@ -5,6 +5,7 @@ import { ErrorBoundary } from "../components/ErrorBoundary";
 import { DocsTab } from "../features/docs/DocsTab";
 import { LiveView } from "../features/live/LiveView";
 import { RepoLine } from "../features/live/RepoLine";
+import { SidebarSessionPicker } from "../features/live/SessionPicker";
 import { MemoPanel } from "../features/memo/MemoPanel";
 import { DecisionsPanel } from "../features/suggest/DecisionsPanel";
 import { LivePanel } from "../features/suggest/LivePanel";
@@ -74,7 +75,10 @@ export default function SidebarApp() {
         <ErrorBoundary resetKey={activeTab}>
           {activeTab === "live" ? (
             <div className="space-y-5">
-              <RepoLine />
+              <div className="space-y-2">
+                <SidebarSessionPicker />
+                <RepoLine />
+              </div>
               <LiveView compact={!wide} />
             </div>
           ) : activeTab === "suggest" ? (
