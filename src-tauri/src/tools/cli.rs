@@ -114,6 +114,9 @@ pub fn run_with_input(
         .env("NO_COLOR", "1");
     if tool == ToolId::Claude {
         cmd.env("CLAUDE_CODE_DISABLE_TERMINAL_TITLE", "1");
+        // The app's own runs: its Claude Code mod stays quiet in them, or
+        // the app would show each one as a session of the user's.
+        cmd.env("ENCELA_INTERNAL", "1");
     }
     #[cfg(windows)]
     {

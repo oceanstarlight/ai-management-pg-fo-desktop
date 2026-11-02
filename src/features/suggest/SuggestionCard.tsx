@@ -13,7 +13,7 @@ import { useActivityStore } from "../../store/activity";
 import { useAutomationStore } from "../../store/automation";
 import { useProjectStore } from "../../store/project";
 import { useSuggestStore } from "../../store/suggest";
-import { KindBadge } from "./KindBadge";
+import { ConfidenceBar, KindBadge } from "./KindBadge";
 
 function actionLabel(c: Candidate): MessageKey {
   if (c.key === NEW_AUTOMATION) return "suggest.act.automate";
@@ -149,6 +149,7 @@ export function SuggestionCard({
             {label(c, locale)}
           </span>
           <KindBadge kind={c.kind} />
+          <ConfidenceBar value={c.confidence} />
           <span className="shrink-0 rounded-full bg-sunken px-1.5 py-px text-fs-10 text-text-subtle">
             {t(`suggest.source.${c.source}` as MessageKey)}
           </span>

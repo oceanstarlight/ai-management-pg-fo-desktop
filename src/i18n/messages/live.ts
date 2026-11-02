@@ -129,6 +129,10 @@ export const ko = {
   "catalog.found.accept": "카탈로그에 추가",
   "catalog.found.dismiss": "숨기기",
   "catalog.found.remove": "카탈로그에서 빼기",
+  "catalog.autoHelp":
+    "켜 두면 앱이 하루 한 번 카탈로그 출처 GitHub 저장소를 확인해서 기존 블록을 최신으로 갱신하고, 같은 폴더에 새로 올라온 스킬·서브에이전트를 '새로 발견'에 올려요. 새 항목은 직접 추가해야 카탈로그에 들어가요.",
+  "catalog.found.help":
+    "같은 라이선스이고 Markdown만 있는 항목만 올라와요. 원격 스크립트 실행·추적 링크 같은 내용은 노란 경고로 보여요. 숨긴 항목은 다시 나오지 않아요.",
   "catalog.none": "맞는 블록이 없어요.",
 };
 
@@ -261,5 +265,9 @@ export const en: Messages<typeof ko> = {
   "catalog.found.accept": "Add to catalog",
   "catalog.found.dismiss": "Hide",
   "catalog.found.remove": "Remove from catalog",
+  "catalog.autoHelp":
+    "When on, the app checks the catalog's source repositories on GitHub once a day, updates existing blocks, and lists new skills and subagents from the same folders under New finds. New ones join the catalog only when you add them.",
+  "catalog.found.help":
+    "Only Markdown items under the same license are listed. Piped remote scripts or tracking links show as yellow warnings. Hidden items don't come back.",
   "catalog.none": "No block fits.",
 };

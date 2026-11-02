@@ -5,7 +5,14 @@ import { useCallback, useEffect, useState } from "react";
 import { Button, Card, Row, Segmented, Switch } from "../../components/ui";
 import { type MessageKey, useT } from "../../i18n";
 import { type ModStatus, OWN_MOD } from "../../store/connection";
-import { AUTO_DOCK_PREF, AUTO_PREF, useSuggestMode, useSwitchPref } from "../../store/live";
+import {
+  type AgentModel,
+  AUTO_DOCK_PREF,
+  AUTO_PREF,
+  useAgentModel,
+  useSuggestMode,
+  useSwitchPref,
+} from "../../store/live";
 
 const OWN = OWN_MOD;
 
@@ -98,6 +105,33 @@ function SuggestRow() {
         ]}
         onChange={setMode}
       />
+    </Row>
+  );
+}
+
+/** Which model the suggestion agent uses; more capable ones use more tokens. */
+function ModelRow() {
+  const t = useT();
+  const [model, setModel] = useAgentModel();
+  return (
+    <Row title={t("mods.model.title")} description={t("mods.model.description")}>
+      <div className="flex flex-col items-end gap-1">
+        <Segmented<AgentModel>
+          label={t("mods.model.title")}
+          value={model}
+          options={[
+            { value: "haiku", label: "Haiku" },
+            { value: "sonnet", label: "Sonnet" },
+            { value: "opus", label: "Opus" },
+          ]}
+          onChange={setModel}
+        />
+        {model !== "haiku" && (
+          <span className="max-w-72 text-right text-fs-11 text-warning">
+            {t("mods.model.warning")}
+          </span>
+        )}
+      </div>
     </Row>
   );
 }
@@ -276,6 +310,7 @@ export function ModsCard() {
         </div>
       </Row>
       <SuggestRow />
+      <ModelRow />
       <ApiKeyRow />
       <AutoRows />
       <Row

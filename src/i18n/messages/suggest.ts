@@ -8,10 +8,10 @@ export const ko = {
   "suggest.tooShort": "조금 더 써 주면 추천해 줄게요.",
   "suggest.none": "딱 맞는 추천이 없어요.",
   "suggest.byKeyword": "💡 키워드로 찾았어요",
-  "suggest.byAi": "✨ 에이전트(Haiku)가 골랐어요",
-  "suggest.picking": "에이전트(Haiku)가 고르는 중…",
+  "suggest.byAi": "✨ 에이전트가 골랐어요",
+  "suggest.picking": "에이전트가 고르는 중…",
   "suggest.off": "추천이 꺼져 있어요. 설정 → Claude Code 연동에서 켤 수 있어요.",
-  "suggest.aiFailed": "Haiku 호출 실패: {error}",
+  "suggest.aiFailed": "에이전트 호출 실패: {error}",
   "suggest.openSettings": "설정 열기",
 
   "suggest.source.installed": "바로 사용",
@@ -33,6 +33,25 @@ export const ko = {
   "suggest.chooseFolder": "폴더 선택",
   "suggest.needCloud":
     "클라우드 세션에 채팅을 하나 보내 활성화해 주세요. 활성화되면 위 'Claude Code 실시간'에서 이 추천을 허용할 수 있고, 다음 프롬프트에 붙어요.",
+  "suggest.legend.confidence": "신뢰도",
+  "suggest.confidence.title": "신뢰도 {n}/6",
+  "suggest.confidence.help":
+    "이 추천이 지금 프롬프트에 얼마나 필요한지예요. 에이전트가 1~6으로 매기고, 키워드 방식은 맞은 단어 수로 1~5를 매겨요.",
+  "suggest.confidence.level6": "6: 프롬프트가 분명히 필요로 해요",
+  "suggest.confidence.level5": "5: 도움이 될 가능성이 매우 커요 (자동 적용 기준)",
+  "suggest.confidence.level4": "3~4: 아마 도움이 돼요",
+  "suggest.confidence.level2": "1~2: 느슨하게만 관련 있어요",
+  "suggest.live.helpTitle": "Claude Code 실시간이란?",
+  "suggest.live.help1":
+    "Claude Code에 쓰고 있는 프롬프트를 엔셀라가 실시간으로 받아, 맞는 스킬·서브에이전트·규칙·MCP 등을 추천하는 곳이에요. '허용'을 누르면 그 항목이 적용돼요.",
+  "suggest.live.help2":
+    "로컬(터미널): 보내기 전에 추천해서 그 프롬프트에 바로 붙어요. ＋는 프로젝트 파일로 추가돼 이후에도 계속 적용되고, / @ 🔌는 그 프롬프트에만 쓰여요.",
+  "suggest.live.help3":
+    "클라우드: 프롬프트를 보낸 뒤에 받아서, 허용한 항목은 다음 프롬프트에 한 번 붙어요. 자동 적용은 하지 않아요.",
+  "suggest.pick.modelHelp":
+    "에이전트 모델은 설정 › Claude Code 연동에서 Haiku·Sonnet·Opus 중에 골라요. 큰 모델일수록 토큰을 더 써요.",
+  "suggest.decisions.help":
+    "Claude가 이 프로젝트에서 정한 언어·프레임워크·구조 같은 결정이 자동으로 쌓여요. 직접 고치거나 추가할 수 있고, CLAUDE.md에 넣으면 이후 세션도 따라요. 프롬프트 추천에는 쓰지 않아요.",
   "suggest.legend.title": "아이콘·종류 설명",
   "suggest.legend.icons": "이름 앞 표시",
   "suggest.legend.kinds": "문서·도구 종류",
@@ -80,8 +99,9 @@ export const ko = {
   "suggest.pick.agent": "에이전트",
   "suggest.pick.keyword": "키워드",
   "suggest.pick.agentHint":
-    "정확도가 높아요. 입력을 멈추면 Haiku 에이전트가 잠깐 골라서 매우 적은 양의 토큰을 써요.",
-  "suggest.pick.keywordHint": "토큰을 쓰지 않아요. 이름·설명만 맞춰 봐서 정확도는 낮아요.",
+    "에이전트: 입력을 멈추면 에이전트 모델(기본 Haiku)이 프롬프트를 읽고 골라요. 정확도가 높고, 토큰을 조금 써요.",
+  "suggest.pick.keywordHint":
+    "키워드: 이름·설명의 단어만 맞춰 봐요. 토큰을 쓰지 않지만 정확도가 낮고, 신뢰도는 5를 넘지 않아요.",
   "suggest.pick.offHint": "추천이 꺼져 있어요. 방식을 고르면 다시 켜져요.",
   "suggest.live.empty": "Claude Code를 실행하고 프롬프트를 쓰면 여기에 실시간으로 보여요.",
   "suggest.live.idle": "입력 중인 프롬프트가 없어요.",
@@ -91,7 +111,7 @@ export const ko = {
   "suggest.live.undo": "↩ 원문으로",
   "suggest.live.auto": "자동 적용",
   "suggest.live.autoHint":
-    "켜면 프롬프트를 보낼 때 추천을 모두 바로 적용해요 (라이브러리 추가, 확장 설치, MCP 추가 포함).",
+    "켜면 프롬프트를 보낼 때, 그 프롬프트에만 쓰이는 추천(이미 설치된 / 스킬·@ 서브에이전트·🔌 MCP) 중 신뢰도 5 이상만 바로 써요. 파일이 생기는 ＋ 추가와 ⬇ 설치는 항상 직접 눌러야 해요. 클라우드 세션은 자동 적용하지 않아요.",
   "suggest.live.cloud": "클라우드",
   "suggest.live.cloudHint":
     "이미 보낸 프롬프트라 추천은 이번 프롬프트엔 못 붙어요. 직접 허용한 항목만 다음 프롬프트에 한 번 붙어요(자동 적용 안 함).",
@@ -138,10 +158,10 @@ export const en: Messages<typeof ko> = {
   "suggest.tooShort": "Write a little more to get suggestions.",
   "suggest.none": "Nothing fits this one.",
   "suggest.byKeyword": "💡 Found by keyword",
-  "suggest.byAi": "✨ Picked by Haiku",
-  "suggest.picking": "Haiku is picking…",
+  "suggest.byAi": "\u2728 Picked by the agent",
+  "suggest.picking": "The agent is picking\u2026",
   "suggest.off": "Suggestions are off. Turn them on in Settings → Claude Code integration.",
-  "suggest.aiFailed": "Haiku failed: {error}",
+  "suggest.aiFailed": "The agent failed: {error}",
   "suggest.openSettings": "Open settings",
 
   "suggest.source.installed": "Ready",
@@ -163,6 +183,25 @@ export const en: Messages<typeof ko> = {
   "suggest.chooseFolder": "Choose folder",
   "suggest.needCloud":
     "Send a message in a cloud session to make it active. Then allow this suggestion under 'Claude Code live' above; it joins your next prompt.",
+  "suggest.legend.confidence": "Confidence",
+  "suggest.confidence.title": "Confidence {n}/6",
+  "suggest.confidence.help":
+    "How much the prompt needs this suggestion. The agent rates 1-6; keyword matching rates 1-5 by the words that match.",
+  "suggest.confidence.level6": "6: the prompt clearly needs it",
+  "suggest.confidence.level5": "5: very likely helps (the bar for automatic use)",
+  "suggest.confidence.level4": "3-4: probably helps",
+  "suggest.confidence.level2": "1-2: only loosely related",
+  "suggest.live.helpTitle": "What is Claude Code live?",
+  "suggest.live.help1":
+    "Encela reads the prompt you are writing in Claude Code as you type and suggests skills, subagents, rules, MCP servers and more. Press Allow to use one.",
+  "suggest.live.help2":
+    "Local (terminal): suggested before you send, so it joins that prompt. ＋ adds files to the project that stay; / @ 🔌 only affect that prompt.",
+  "suggest.live.help3":
+    "Cloud: the prompt arrives after it was sent, so what you allow joins the next prompt, once. Never automatic.",
+  "suggest.pick.modelHelp":
+    "Choose the agent's model (Haiku, Sonnet or Opus) in Settings › Claude Code. Bigger models use more tokens.",
+  "suggest.decisions.help":
+    "Decisions Claude made in this project (languages, frameworks, structure) gather here by themselves. Edit or add them; put them in CLAUDE.md so later sessions follow them. They are not used to pick suggestions.",
   "suggest.legend.title": "What the marks and kinds mean",
   "suggest.legend.icons": "Marks before the name",
   "suggest.legend.kinds": "Kinds of documents and tools",
@@ -210,9 +249,9 @@ export const en: Messages<typeof ko> = {
   "suggest.pick.agent": "Agent",
   "suggest.pick.keyword": "Keyword",
   "suggest.pick.agentHint":
-    "More accurate. When you stop typing, a Haiku agent picks briefly, using a very small number of tokens.",
+    "Agent: when you stop typing, the agent model (Haiku by default) reads the prompt and picks. More accurate; uses a few tokens.",
   "suggest.pick.keywordHint":
-    "Uses no tokens. Matches names and descriptions only, so it is less accurate.",
+    "Keyword: matches words in names and descriptions only. Uses no tokens but is less accurate; its confidence never goes above 5.",
   "suggest.pick.offHint": "Suggestions are off. Pick a way to turn them back on.",
   "suggest.live.empty": "Start Claude Code and write a prompt; it shows up here as you type.",
   "suggest.live.idle": "No prompt being written.",
@@ -222,7 +261,7 @@ export const en: Messages<typeof ko> = {
   "suggest.live.undo": "↩ Original",
   "suggest.live.auto": "Apply automatically",
   "suggest.live.autoHint":
-    "When on, every suggestion is used as the prompt is sent (library items added, extensions installed, MCP servers added).",
+    "When on, sending a prompt uses the suggestions that only affect that prompt (installed / skills, @ subagents, \ud83d\udd0c MCP) with confidence 5 or more. \uff0b adds and \u2b07 installs, which change files, always wait for your press. Cloud sessions are never automatic.",
   "suggest.live.cloud": "cloud",
   "suggest.live.cloudHint":
     "Already sent, so suggestions can't join this prompt. Only what you allow joins the next one, once (never automatic).",

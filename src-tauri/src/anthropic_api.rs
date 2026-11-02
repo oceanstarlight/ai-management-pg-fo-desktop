@@ -14,8 +14,14 @@ const SERVICE: &str = "ai-management";
 const ACCOUNT: &str = "anthropic-api-key";
 const URL: &str = "https://api.anthropic.com/v1/messages";
 const API_VERSION: &str = "2026-10-21";
-/// The current Haiku: suggestions and notes are short classification calls.
-const MODEL: &str = "claude-haiku-5-5";
+/// The model id for an alias the settings offer.
+fn model_id(alias: &str) -> &'static str {
+    match alias {
+        "sonnet" => "claude-sonnet-5-5",
+        "opus" => "claude-opus-5-5",
+        _ => "claude-haiku-5-5",
+    }
+}
 const MAX_TOKENS: u32 = 2048;
 
 type Result<T> = std::result::Result<T, String>;
@@ -52,17 +58,21 @@ fn agent() -> Agent {
         .into()
 }
 
-/// The request body: one user message, thinking off and low effort, since
-/// these are quick picks and short notes.
-fn body(system: &str, prompt: &str, max_tokens: u32) -> Value {
-    json!({
-        "model": MODEL,
+/// The request body: one user message at low effort, since these are quick
+/// picks and short notes. Haiku runs without thinking; Sonnet 5.5 and
+/// Opus 5.5 refuse a request that turns thinking off, so they keep it.
+fn body(model: &str, system: &str, prompt: &str, max_tokens: u32) -> Value {
+    let mut body = json!({
+        "model": model_id(model),
         "max_tokens": max_tokens,
         "system": system,
-        "thinking": { "type": "disabled" },
         "output_config": { "effort": "low" },
         "messages": [{ "role": "user", "content": prompt }],
-    })
+    });
+    if model_id(model) == "claude-haiku-5-5" {
+        body["thinking"] = json!({ "type": "disabled" });
+    }
+    body
 }
 
 /// The reply's text, or why there is none, from a Messages API answer.
@@ -109,14 +119,20 @@ fn reply_text(status: u16, value: &Value) -> Result<String> {
     Ok(text)
 }
 
-/// Asks Haiku with `key`; returns its reply text.
-pub fn complete_with(key: &str, system: &str, prompt: &str, max_tokens: u32) -> Result<String> {
+/// Asks `model` (an alias) with `key`; returns its reply text.
+pub fn complete_with(
+    key: &str,
+    model: &str,
+    system: &str,
+    prompt: &str,
+    max_tokens: u32,
+) -> Result<String> {
     let response = agent()
         .post(URL)
         .header("x-api-key", key)
         .header("anthropic-version", API_VERSION)
         .header("content-type", "application/json")
-        .send_json(body(system, prompt, max_tokens));
+        .send_json(body(model, system, prompt, max_tokens));
     let mut response = response.map_err(|e| {
         crate::tr!(
             "Anthropic API에 연결하지 못했어요 ({e})",
@@ -133,10 +149,10 @@ pub fn complete_with(key: &str, system: &str, prompt: &str, max_tokens: u32) -> 
     reply_text(status, &value)
 }
 
-/// Asks Haiku with the saved key; `None` when no key is saved.
-pub fn complete(system: &str, prompt: &str) -> Option<Result<String>> {
+/// Asks `model` (an alias) with the saved key; `None` when no key is saved.
+pub fn complete(model: &str, system: &str, prompt: &str) -> Option<Result<String>> {
     let key = key()?;
-    Some(complete_with(&key, system, prompt, MAX_TOKENS))
+    Some(complete_with(&key, model, system, prompt, MAX_TOKENS))
 }
 
 #[derive(serde::Serialize)]
@@ -174,7 +190,7 @@ pub async fn anthropic_key_set(key: Option<String>) -> Result<KeyStatus> {
     tauri::async_runtime::spawn_blocking(move || {
         match key.map(|k| k.trim().to_string()).filter(|k| !k.is_empty()) {
             Some(key) => {
-                complete_with(&key, "Reply with OK.", "ping", 16)?;
+                complete_with(&key, "haiku", "Reply with OK.", "ping", 16)?;
                 entry()?.set_password(&key).map_err(|e| {
                     crate::tr!(
                         "API 키를 저장하지 못했어요 ({e})",
@@ -204,7 +220,7 @@ mod tests {
 
     #[test]
     fn the_request_is_a_short_haiku_call() {
-        let b = body("sys", "hi", 40);
+        let b = body("haiku", "sys", "hi", 40);
         assert_eq!(b["model"], "claude-haiku-5-5");
         assert_eq!(b["max_tokens"], 40);
         assert_eq!(b["system"], "sys");
@@ -212,6 +228,11 @@ mod tests {
         assert_eq!(b["output_config"]["effort"], "low");
         assert_eq!(b["messages"][0]["content"], "hi");
         assert!(b.get("temperature").is_none());
+        // Opus and Sonnet 5.5 refuse thinking turned off.
+        let opus = body("opus", "sys", "hi", 40);
+        assert_eq!(opus["model"], "claude-opus-5-5");
+        assert!(opus.get("thinking").is_none());
+        assert_eq!(body("sonnet", "s", "p", 1)["model"], "claude-sonnet-5-5");
     }
 
     #[test]

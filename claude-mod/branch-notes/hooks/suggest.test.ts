@@ -1,6 +1,7 @@
 import { describe, expect, test } from "claude-code/testing";
 import {
   AI_SYSTEM,
+  agentModel,
   aiAsk,
   aiCatalog,
   bandLabel,
@@ -10,6 +11,7 @@ import {
   draftWith,
   draftWithBlock,
   installedCandidate,
+  keywordConfidence,
   keywordRank,
   kindWord,
   label,
@@ -127,6 +129,22 @@ describe("keyword matching", () => {
 
 describe("Haiku", () => {
   const all = buildCandidates(installed, exp);
+
+  test("the reply's pairs carry a confidence of 1 to 6", () => {
+    const picked = parseAiReply("[[2,6],[1,9],[3,0]]", all);
+    expect(picked.map((c) => c.confidence)).toEqual([6, 6, 1]);
+    expect(parseAiReply("[2, 1]", all)[0]?.confidence).toBeUndefined();
+    expect(parseAiReply("[]", all)).toEqual([]);
+    expect(agentModel({ mode: "ai", model: "opus" } as SuggestExport)).toBe("opus");
+    expect(agentModel(null)).toBe("haiku");
+  });
+
+  test("keyword matches say how sure they are, never 6", () => {
+    expect(keywordConfidence(2)).toBe(2);
+    expect(keywordConfidence(20)).toBe(5);
+    const top = keywordRank("코드 리뷰 해줘", all)[0];
+    expect(top?.confidence).toBeGreaterThanOrEqual(2);
+  });
 
   test("the question carries only the prompt, not the project's stack", () => {
     const ask = aiAsk("1번은 그대로, 터미널 안 표시줄도 반영해줘.");

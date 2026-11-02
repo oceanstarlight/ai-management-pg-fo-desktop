@@ -7,6 +7,7 @@ import { useT } from "../../i18n";
 import { type Decision, useLiveStore } from "../../store/live";
 import { useProjectStore } from "../../store/project";
 import { useSuggestStore } from "../../store/suggest";
+import { InfoTip } from "./KindBadge";
 import { SuggestionCard } from "./SuggestionCard";
 
 const inputClass =
@@ -76,8 +77,11 @@ export function DecisionsPanel({ compact = false }: { compact?: boolean }) {
   return (
     <section>
       <div className="mb-2 flex items-center gap-2 px-1">
-        <h2 className="flex-1 text-fs-11 font-medium tracking-wide text-text-subtle">
+        <h2 className="flex flex-1 items-center gap-1 text-fs-11 font-medium tracking-wide text-text-subtle">
           {t("suggest.decisions.title")}
+          <InfoTip title={t("suggest.decisions.title")}>
+            <p>{t("suggest.decisions.help")}</p>
+          </InfoTip>
         </h2>
         <IconButton
           label={t("suggest.decisions.add")}

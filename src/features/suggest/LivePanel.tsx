@@ -11,7 +11,7 @@ import {
 } from "../../store/live";
 import { useProjectStore } from "../../store/project";
 import { ConnectHint } from "./ConnectHint";
-import { KindBadge, SuggestLegend } from "./KindBadge";
+import { ConfidenceBar, ConfidenceHelp, InfoTip, KindBadge, SuggestLegend } from "./KindBadge";
 
 const base = (path: string) => path.split(/[\\/]/).filter(Boolean).pop() ?? path;
 const same = (a: string, b: string | null) =>
@@ -32,12 +32,21 @@ export function LivePanel() {
   return (
     <section>
       <div className="mb-2 flex items-center gap-2 px-1">
-        <h2 className="flex-1 text-fs-11 font-medium tracking-wide text-text-subtle">
+        <h2 className="flex flex-1 items-center gap-1 text-fs-11 font-medium tracking-wide text-text-subtle">
           {t("suggest.live.title")}
+          <InfoTip title={t("suggest.live.helpTitle")}>
+            <p>{t("suggest.live.help1")}</p>
+            <p>{t("suggest.live.help2")}</p>
+            <p>{t("suggest.live.help3")}</p>
+            <ConfidenceHelp />
+          </InfoTip>
         </h2>
         <span className="text-fs-11 text-text-subtle" title={t("suggest.live.autoHint")}>
           {t("suggest.live.auto")}
         </span>
+        <InfoTip title={t("suggest.live.auto")} align="right">
+          <p>{t("suggest.live.autoHint")}</p>
+        </InfoTip>
         <Switch checked={auto} onChange={setAuto} label={t("suggest.live.auto")} />
       </div>
       <PickBy />
@@ -63,7 +72,14 @@ function PickBy() {
   return (
     <div className="mb-2 px-1">
       <div className="flex items-center gap-2">
-        <span className="text-fs-11 text-text-subtle">{t("suggest.pick.label")}</span>
+        <span className="flex items-center gap-1 text-fs-11 text-text-subtle">
+          {t("suggest.pick.label")}
+          <InfoTip title={t("suggest.pick.label")}>
+            <p>{t("suggest.pick.agentHint")}</p>
+            <p>{t("suggest.pick.keywordHint")}</p>
+            <p>{t("suggest.pick.modelHelp")}</p>
+          </InfoTip>
+        </span>
         <Segmented
           label={t("suggest.pick.label")}
           value={mode}
@@ -145,6 +161,7 @@ function SessionCard({ live, auto }: { live: Live; auto: boolean }) {
                   <div className="flex min-w-0 items-center gap-1.5">
                     <span className="truncate font-mono text-fs-12 font-medium">{item.label}</span>
                     <KindBadge kind={item.kind} />
+                    <ConfidenceBar value={item.confidence} />
                   </div>
                   {item.description && (
                     <div className="line-clamp-1 text-fs-11 text-text-muted">

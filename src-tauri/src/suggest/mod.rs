@@ -23,6 +23,8 @@ type Result<T> = std::result::Result<T, String>;
 /// The pref that turns prompt suggestions on: `ai` (Haiku picks, the
 /// default), `keyword` (matched locally only) or `off`.
 pub const PREF: &str = "promptSuggest";
+/// The suggestion agent's model: `haiku` (default), `sonnet` or `opus`.
+pub const MODEL_PREF: &str = "suggestModel";
 /// `on`: picked suggestions are used without asking (the mod applies them
 /// when the prompt is sent). Anything else asks first.
 pub const AUTO_PREF: &str = "suggestAuto";
@@ -58,6 +60,8 @@ const AI_TIMEOUT: Duration = Duration::from_secs(60);
 #[serde(rename_all = "camelCase")]
 pub struct Catalog {
     mode: String,
+    /// The agent's model alias (`haiku`, `sonnet`, `opus`).
+    model: &'static str,
     /// Suggestions are used without asking.
     auto: bool,
     library: Vec<LibraryEntry>,
@@ -167,6 +171,19 @@ fn mode(app: &AppHandle) -> String {
     mode_of(crate::prefs::get(app, PREF))
 }
 
+/// The suggestion agent's model alias; Haiku unless the user chose another.
+pub fn agent_model(app: &AppHandle) -> &'static str {
+    model_of(crate::prefs::get(app, MODEL_PREF).as_deref())
+}
+
+fn model_of(value: Option<&str>) -> &'static str {
+    match value {
+        Some("sonnet") => "sonnet",
+        Some("opus") => "opus",
+        _ => "haiku",
+    }
+}
+
 fn auto(app: &AppHandle) -> bool {
     crate::prefs::get(app, AUTO_PREF).as_deref() == Some("on")
 }
@@ -268,6 +285,7 @@ pub fn catalog(app: &AppHandle) -> Catalog {
         .collect();
     Catalog {
         mode,
+        model: agent_model(app),
         auto: auto(app),
         library,
         blocks: block_entries(crate::catalog::suggestible(app)),
@@ -519,6 +537,9 @@ pub struct LiveItem {
     pub label: String,
     #[serde(default)]
     pub description: String,
+    /// How sure the pick is, 1-6, when it says.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub confidence: Option<u8>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
@@ -926,13 +947,18 @@ pub async fn suggest_candidates(app: AppHandle, project: Option<String>) -> Resu
 /// key when one is saved (`anthropic_api`), otherwise through the user's own
 /// `claude -p` (no tools, no MCP servers, nothing saved).
 pub fn haiku(dir: &Path, system: &str, prompt: String) -> Result<String> {
-    if let Some(reply) = crate::anthropic_api::complete(system, &prompt) {
+    ask_model(dir, "haiku", system, prompt)
+}
+
+/// [`haiku`] with another model alias (`haiku`, `sonnet`, `opus`).
+pub fn ask_model(dir: &Path, model: &str, system: &str, prompt: String) -> Result<String> {
+    if let Some(reply) = crate::anthropic_api::complete(model, system, &prompt) {
         return reply;
     }
     let args = [
         "-p",
         "--model",
-        "haiku",
+        model,
         "--output-format",
         "json",
         "--no-session-persistence",
@@ -965,7 +991,11 @@ pub async fn suggest_ai(
     system: String,
     prompt: String,
 ) -> Result<String> {
-    blocking(move || haiku(&run_dir(&app, project.as_deref())?, &system, prompt)).await
+    blocking(move || {
+        let model = agent_model(&app);
+        ask_model(&run_dir(&app, project.as_deref())?, model, &system, prompt)
+    })
+    .await
 }
 
 fn reply_text(ok: bool, stdout: &str, stderr: &str) -> Result<String> {
@@ -1106,6 +1136,7 @@ mod tests {
             source: "catalog".into(),
             label: format!("＋{key}"),
             description: String::new(),
+            confidence: None,
         };
         let live = |session: &str, at: i64, picked: &[&str]| Live {
             session: session.into(),

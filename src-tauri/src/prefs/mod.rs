@@ -35,6 +35,7 @@ pub const SYNCED_KEYS: &[&str] = &[
     crate::suggest::AUTO_PREF,
     crate::suggest::AUTO_DOCK_PREF,
     crate::catalog::AUTO_PREF,
+    crate::suggest::MODEL_PREF,
 ];
 
 pub fn is_synced(key: &str) -> bool {
