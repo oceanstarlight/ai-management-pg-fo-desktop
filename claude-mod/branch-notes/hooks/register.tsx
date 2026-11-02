@@ -32,6 +32,7 @@ import {
   aiAsk,
   aiCatalog,
   autoContext,
+  bandLabel,
   blockContext,
   buildCandidates,
   type Candidate,
@@ -41,6 +42,7 @@ import {
   installedCandidate,
   keywordRank,
   label,
+  legendLines,
   NEW_AUTOMATION,
   parseAiReply,
   REFINE_SYSTEM,
@@ -61,6 +63,8 @@ const suggestion = atom({ plugin: "branch-notes", key: "suggestion" } as const, 
 /** The starter forms offered above an empty prompt, or the required fields
  * a filled-in form still leaves blank. */
 const starter = atom({ plugin: "branch-notes", key: "starter" } as const, null);
+/** The ⓘ line under the suggestions is open. */
+const legendOpen = atom({ plugin: "branch-notes", key: "legendOpen" } as const, false);
 
 /** The export's suggestion settings and catalog, as last read. */
 let lastSuggest: SuggestExport | undefined;
@@ -835,6 +839,7 @@ export const register: Register = (on) => {
     const s = await read($, suggestion);
     const suggest = !!s && (s.items.length > 0 || s.pending);
     const st = await read($, starter);
+    const explain = suggest && (await read($, legendOpen));
     if (!band && !suggest && !st) return next(e);
     const { Box, Button, Text } = $.ui.resolve(e);
     const legend = [
@@ -881,7 +886,7 @@ export const register: Register = (on) => {
             {s.items.map((c) => (
               <Button
                 key={c.key}
-                label={label(c, v?.locale ?? "en")}
+                label={bandLabel(c, v?.locale ?? "en")}
                 onPress={() => void pick($, c)}
               />
             ))}
@@ -891,6 +896,13 @@ export const register: Register = (on) => {
               <Button key="undo" label={w.undo} dimColor onPress={() => void undoRefine($)} />
             ) : null}
             {legend ? <Text dimColor>{` ${legend} `}</Text> : <Text> </Text>}
+            <Button
+              key="explain"
+              label="ⓘ"
+              dimColor
+              onPress={() => void update($, legendOpen, (open) => !open)}
+            />
+            <Text> </Text>
             <Button
               key="mute"
               label="×"
@@ -902,6 +914,15 @@ export const register: Register = (on) => {
             />
           </Box>
         ) : null}
+        {explain
+          ? legendLines(v?.locale ?? "en").map((line) => (
+              <Box key={line}>
+                <Text dimColor wrap="wrap">
+                  {line}
+                </Text>
+              </Box>
+            ))
+          : null}
         {band ? (
           <Box key="band">
             <Text dimColor wrap="truncate">

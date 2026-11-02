@@ -1,6 +1,7 @@
 import { describe, expect, test } from "claude-code/testing";
 import {
   aiCatalog,
+  bandLabel,
   blockContext,
   buildCandidates,
   type Candidate,
@@ -8,7 +9,9 @@ import {
   draftWithBlock,
   installedCandidate,
   keywordRank,
+  kindWord,
   label,
+  legendLines,
   NEW_AUTOMATION,
   parseAiReply,
   parseFrontmatter,
@@ -148,6 +151,29 @@ describe("using a suggestion", () => {
     expect(label(byKey("i:skill:review"))).toBe("/review");
     expect(label(byKey("l:agent:debugger"))).toBe("＋debugger");
     expect(label(byKey("e:rea"))).toBe("⬇REA");
+  });
+
+  test("the band adds what kind each one is", () => {
+    expect(bandLabel(byKey("i:skill:review"), "ko")).toBe("/review·스킬");
+    expect(bandLabel(byKey("l:agent:debugger"))).toBe("＋debugger·agent");
+    const server = {
+      key: "m:x",
+      kind: "mcp",
+      source: "recommended",
+      name: "github",
+      description: "",
+    };
+    expect(bandLabel(server as Candidate, "ko")).toBe("⬇github·MCP");
+    const job = {
+      key: "a:x",
+      kind: "automation",
+      source: "automation",
+      name: "News",
+      description: "",
+    };
+    expect(bandLabel(job as Candidate)).toBe("⏰News");
+    expect(kindWord("rule", "ko")).toBe("규칙");
+    expect(legendLines("ko").join(" ")).toContain("＋ 프로젝트에 추가");
   });
 
   test("a skill goes first in the prompt; a subagent is asked for", () => {

@@ -603,6 +603,44 @@ export function label(c: Candidate, locale: "ko" | "en" = "en"): string {
   return c.kind === "agent" ? `@${c.name}` : `/${c.name}`;
 }
 
+const KIND_WORDS: Record<CandidateKind, { ko: string; en: string }> = {
+  skill: { ko: "스킬", en: "skill" },
+  agent: { ko: "에이전트", en: "agent" },
+  command: { ko: "명령", en: "command" },
+  instruction: { ko: "지침", en: "instruction" },
+  rule: { ko: "규칙", en: "rule" },
+  hook: { ko: "훅", en: "hook" },
+  extension: { ko: "확장", en: "extension" },
+  mcp: { ko: "MCP", en: "MCP" },
+  automation: { ko: "자동화", en: "automation" },
+};
+
+/** What kind of document or tool it is, in one word. */
+export function kindWord(kind: CandidateKind, locale: "ko" | "en" = "en"): string {
+  return KIND_WORDS[kind]?.[locale] ?? kind;
+}
+
+/** The label with its kind, for the band above the prompt: `＋api-design·스킬`.
+ * Automations say what they are with ⏰ already. */
+export function bandLabel(c: Candidate, locale: "ko" | "en" = "en"): string {
+  if (c.kind === "automation") return label(c, locale);
+  return `${label(c, locale)}·${kindWord(c.kind, locale)}`;
+}
+
+/** Each mark before a name and each kind, explained (the band's ⓘ). */
+export function legendLines(locale: "ko" | "en" = "en"): string[] {
+  const ko = locale === "ko";
+  return ko
+    ? [
+        "＋ 프로젝트에 추가 · ⬇ 설치 · ⏰ 앱 자동화 · / 설치된 스킬·명령 · @ 서브에이전트 · 🔌 연결된 MCP",
+        "스킬: 작업 방법 문서 · 에이전트: 따로 일하는 도우미 · 지침: 항상 지키는 글(CLAUDE.local.md) · 규칙: 특정 파일용 규칙 · 훅: 자동 실행 명령 · 확장: 묶음 설치 · MCP: 외부 도구 서버",
+      ]
+    : [
+        "＋ adds to the project · ⬇ installs · ⏰ app automation · / installed skill or command · @ subagent · 🔌 connected MCP",
+        "skill: how-to document · agent: separate helper · instruction: always-on guidance (CLAUDE.local.md) · rule: for certain files · hook: runs a command by itself · extension: bundle to install · MCP: external tool server",
+      ];
+}
+
 /** Whether picking it changes the prompt (rather than asking the app for something). */
 export const editsPrompt = (c: Candidate) => c.source === "installed";
 
