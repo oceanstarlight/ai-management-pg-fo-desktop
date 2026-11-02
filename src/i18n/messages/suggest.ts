@@ -16,6 +16,7 @@ export const ko = {
 
   "suggest.source.installed": "바로 사용",
   "suggest.source.library": "라이브러리",
+  "suggest.source.catalog": "카탈로그",
   "suggest.source.extension": "확장 설치",
   "suggest.source.recommended": "MCP 추가",
   "suggest.source.automation": "자동화",
@@ -29,6 +30,12 @@ export const ko = {
   "suggest.done": "완료했어요. Claude Code를 다시 시작하면 보여요.",
   "suggest.started": "실행을 시작했어요.",
   "suggest.needProject": "먼저 프로젝트를 골라 주세요.",
+  "suggest.block.done": "{path}에 추가했어요.",
+  "suggest.block.doneGuide": "{path}에 추가하고, 프롬프트에 따르라는 한 줄을 넣었어요.",
+  "suggest.block.already": "{path}에 이미 있어요.",
+  "suggest.block.hookTitle": "hook 추가",
+  "suggest.block.hookAsk":
+    "'{name}' hook을 이 프로젝트의 .claude/settings.local.json에 추가할까요?\n\nClaude Code가 때마다 이 명령을 직접 실행해요:\n\n{command}",
 
   "suggest.feed.title": "Claude Code에서 감지한 추천",
   "suggest.feed.empty":
@@ -99,6 +106,7 @@ export const en: Messages<typeof ko> = {
 
   "suggest.source.installed": "Ready",
   "suggest.source.library": "Library",
+  "suggest.source.catalog": "Catalog",
   "suggest.source.extension": "Extension",
   "suggest.source.recommended": "Add MCP",
   "suggest.source.automation": "Automation",
@@ -112,6 +120,12 @@ export const en: Messages<typeof ko> = {
   "suggest.done": "Done. Restart Claude Code if it doesn't show up.",
   "suggest.started": "Started.",
   "suggest.needProject": "Choose a project first.",
+  "suggest.block.done": "Added to {path}.",
+  "suggest.block.doneGuide": "Added to {path}, with a line in the prompt to follow it.",
+  "suggest.block.already": "Already in {path}.",
+  "suggest.block.hookTitle": "Add a hook",
+  "suggest.block.hookAsk":
+    "Add the '{name}' hook to this project's .claude/settings.local.json?\n\nClaude Code runs this command by itself each time:\n\n{command}",
 
   "suggest.feed.title": "Detected in Claude Code",
   "suggest.feed.empty":

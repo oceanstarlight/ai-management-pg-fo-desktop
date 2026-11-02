@@ -1,9 +1,11 @@
 import { describe, expect, test } from "claude-code/testing";
 import {
   aiCatalog,
+  blockContext,
   buildCandidates,
   type Candidate,
   draftWith,
+  draftWithBlock,
   installedCandidate,
   keywordRank,
   label,
@@ -207,5 +209,74 @@ describe("MCP servers and automations", () => {
       "count users (use the postgres-local MCP server)",
     );
     expect(aiCatalog(all)).toContain("[automation, the app's scheduler] new automation");
+  });
+});
+
+describe("catalog blocks", () => {
+  const withBlocks: SuggestExport = {
+    ...exp,
+    blocks: [
+      {
+        id: "builtin:rust",
+        kind: "rule",
+        name: "rust",
+        title: "Rust 규칙",
+        summary: "clippy 경고 없이, 라이브러리 코드에서 unwrap 금지",
+        category: "Rust",
+        description: "",
+        context: "No unwrap() outside tests.",
+      },
+      {
+        id: "builtin:debugger",
+        kind: "agent",
+        name: "debugger",
+        title: "Debugger",
+        summary: "Same name as a library agent",
+        category: "디버깅",
+        description: "",
+      },
+      {
+        id: "builtin:hook-stop-lint",
+        kind: "hook",
+        name: "stop-lint",
+        title: "응답 끝나면 lint",
+        summary: "Claude가 답을 마칠 때마다 lint를 돌려요",
+        category: "품질",
+        description: "",
+        command: "npm run lint --if-present",
+      },
+    ],
+  };
+
+  test("blocks are offered, skipping skills and subagents the user already has", () => {
+    const list = buildCandidates(installed, withBlocks);
+    const keys = list.map((c) => c.key);
+    expect(keys).toContain("b:builtin:rust");
+    expect(keys).toContain("b:builtin:hook-stop-lint");
+    expect(keys).not.toContain("b:builtin:debugger");
+    const rust = list.find((c) => c.key === "b:builtin:rust");
+    expect(rust?.source).toBe("catalog");
+    expect(label(rust as Candidate)).toBe("＋rust");
+    expect(aiCatalog(list)).toContain("[rule, from the app's catalog] rust");
+  });
+
+  test("Korean prompts find blocks by their Korean titles", () => {
+    const list = buildCandidates([], withBlocks);
+    expect(keywordRank("러스트 말고 rust 코드 리팩터링해 줘", list)[0]?.key).toBe("b:builtin:rust");
+    expect(keywordRank("응답 끝나면 lint 돌려줘", list).map((c) => c.key)).toContain(
+      "b:builtin:hook-stop-lint",
+    );
+  });
+
+  test("picked instructions and rules go with the prompt", () => {
+    const list = buildCandidates([], withBlocks);
+    const rust = list.find((c) => c.key === "b:builtin:rust") as Candidate;
+    const hook = list.find((c) => c.key === "b:builtin:hook-stop-lint") as Candidate;
+    expect(blockContext([hook])).toBeNull();
+    expect(blockContext([rust, hook])).toContain("No unwrap() outside tests.");
+    expect(draftWithBlock("fix it", rust, "en")).toBe(
+      "fix it (read and follow the rust rule added in .claude/rules/rust.md)",
+    );
+    expect(draftWithBlock("fix it", hook, "en")).toBe("fix it");
   });
 });

@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import { ask } from "@tauri-apps/plugin-dialog";
 import { LoaderCircle } from "lucide-react";
 import { useState } from "react";
 import {
@@ -17,6 +18,7 @@ function actionLabel(c: Candidate): MessageKey {
     case "installed":
       return "suggest.act.insert";
     case "library":
+    case "catalog":
       return "suggest.act.apply";
     case "extension":
       return "suggest.act.install";
@@ -25,6 +27,12 @@ function actionLabel(c: Candidate): MessageKey {
     default:
       return "suggest.act.run";
   }
+}
+
+/** Mirrors `Applied` in src-tauri/src/catalog/apply.rs. */
+interface Applied {
+  path: string;
+  unchanged: boolean;
 }
 
 /** Adds, installs or runs what a suggestion names (installed items and new
@@ -52,6 +60,7 @@ export function SuggestionCard({
   c,
   project,
   onInsert,
+  onBlock,
   onAutomate,
   compact = false,
 }: {
@@ -59,6 +68,8 @@ export function SuggestionCard({
   project: string | null;
   /** Installed items go into the prompt; without this they are only shown. */
   onInsert?: (c: Candidate) => void;
+  /** An instruction or rule was added: ask the prompt to follow it. */
+  onBlock?: (c: Candidate) => void;
   onAutomate?: () => void;
   compact?: boolean;
 }) {
@@ -70,13 +81,42 @@ export function SuggestionCard({
   const act = async () => {
     if (c.source === "installed") return onInsert?.(c);
     if (c.key === NEW_AUTOMATION) return onAutomate?.();
-    if (c.source === "library" && !project) {
+    if ((c.source === "library" || c.source === "catalog") && !project) {
       setNotice({ text: t("suggest.needProject"), bad: true });
       return;
     }
     setBusy(true);
     setNotice(null);
     try {
+      if (c.source === "catalog") {
+        let confirmed = false;
+        if (c.kind === "hook") {
+          confirmed = await ask(
+            t("suggest.block.hookAsk", { name: c.name, command: c.command ?? "" }),
+            { title: t("suggest.block.hookTitle"), kind: "warning" },
+          );
+          if (!confirmed) return;
+        }
+        const r = await invoke<Applied>("catalog_apply", {
+          project,
+          id: c.blockId,
+          confirmed,
+        });
+        const guide = c.kind === "instruction" || c.kind === "rule";
+        if (guide) onBlock?.(c);
+        setNotice({
+          text: t(
+            r.unchanged
+              ? "suggest.block.already"
+              : guide && onBlock
+                ? "suggest.block.doneGuide"
+                : "suggest.block.done",
+            { path: r.path },
+          ),
+        });
+        await useSuggestStore.getState().loadCandidates(project);
+        return;
+      }
       await runAction(c, project);
       const started = c.source === "automation";
       setNotice({ text: t(started ? "suggest.started" : "suggest.done") });

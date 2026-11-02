@@ -272,6 +272,46 @@ test("auto mode uses the suggestions when the prompt is sent", async ($, on) => 
   expect(log.picked).toContain("l:skill:pdf");
 });
 
+test("a picked catalog rule is added and its text goes with the prompt", async ($, on) => {
+  const written: string[] = [];
+  const blocks = [
+    {
+      id: "builtin:rust",
+      kind: "rule",
+      name: "rust",
+      title: "Rust rules",
+      summary: "Idiomatic Rust: clippy clean, no unwrap in library code",
+      category: "Rust",
+      description: "",
+      context: "Never call unwrap() outside tests.",
+    },
+  ];
+  const files = { state: state("keyword", { blocks }) };
+  const clock = engine(on, "keyword", "[]", [], written, files);
+  let context: readonly string[] | undefined;
+  on("prompt.submit", (_, e) => {
+    context = e.context;
+    return { text: e.text };
+  });
+  await $.session.start({ cwd: "/", surface: "terminal", isInteractive: true });
+  await type($, "refactor the rust parser module");
+  await clock.advance(1000);
+  const ui = await $.ui.mount({ ...ABOVE, surface: "terminal" });
+  await ui.press({ key: "b:builtin:rust" });
+  await ui.unmount();
+  expect(sent(written).find((r) => r.op === "applyBlock")).toEqual({
+    op: "applyBlock",
+    project: "/repo",
+    id: "builtin:rust",
+  });
+  await $.prompt.submit({
+    text: "refactor the rust parser module",
+    wait: false,
+    origin: { kind: "composer" },
+  });
+  expect(context?.join("\n")).toContain("Never call unwrap() outside tests.");
+});
+
 test("Claude's answer goes to the app to find decisions", async ($, on) => {
   const written: string[] = [];
   engine(on, "ai", "[]", [], written);

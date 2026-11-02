@@ -238,6 +238,15 @@ Claude Code 같은 AI 코딩 도구로 작업할 때, 터미널 옆에 붙어서
 - **클라우드 중계 → Realtime Database** (`sync/relay.rs`): Firestore 4초 폴링은 쉴 때도 사용자당 하루 약 2만 읽기(빈 조회도 1회 과금)라 무료 한도(프로젝트 전체 하루 5만)를 금방 넘는다. RTDB REST 스트리밍(SSE) 연결 하나로 받고, 받은 이벤트는 지운다. RTDB는 용량 과금(무료 1GB 저장·월 10GB 전송, 동시 연결 100). 훅은 `PreToolUse`·`PostToolUse`도 보내고(백그라운드 curl, 세션을 기다리게 하지 않음) 파일 내용·diff는 보내지 않는다. 규칙은 `firebase/database.rules.json`. 주소는 기본 `https://<프로젝트>-default-rtdb.firebaseio.com`, `AIM_FIREBASE_DATABASE`로 바꿈.
 - **버전**: 0.1.479 다음은 0.1.480(0.1.48은 0.1.479보다 낮게 비교돼 자동 업데이트가 안 됨).
 
+### 3.14 카탈로그 블록도 프롬프트 추천에 (2026-11-02 결정)
+- 문제: 추천 후보가 설치된 것·라이브러리(직접 넣은 skill·subagent만)·확장·MCP·자동화뿐이라 라이브러리가 비면 사실상 MCP만 추천됐다. 카탈로그(지침·규칙·skill·subagent·hook)는 도구함에서 복사만 됐다.
+- 이제 카탈로그 블록 전부가 추천 후보(`suggest.blocks`, 출처 `catalog`, 키 `b:<블록 id>`, 표시 `＋이름`). 같은 이름의 skill·subagent가 이미 설치됐거나 라이브러리에 있으면 빼고, 직접 채워야 하는 빈 hook(`hook-custom`)도 뺀다. 키워드 매칭은 한국어 제목·분류도 본다.
+- 고르면 **나만** 범위로 프로젝트에 쓴다(`catalog/apply.rs`, git에서 제외): skill `.claude/skills/<이름>/`(동반 파일 포함), subagent `.claude/agents/<이름>.md`, 규칙 `.claude/rules/<이름>.md`, 지침 `CLAUDE.local.md`의 표시 구역(`<!-- encela:block <id> -->`, 한 번만. AGENTS.md만 있던 프로젝트는 `@AGENTS.md`를 맨 위에 넣어 계속 읽히게), hook `.claude/settings.local.json`에 읽기-병합-쓰기. 같은 이름의 사용자 파일은 덮어쓰지 않는다. 외부 블록은 출처·라이선스를 frontmatter나 주석으로 남긴다.
+- 지침·규칙 파일은 세션 시작 때 읽히므로, 고른 프롬프트에도 내용을 붙인다: mod는 보낼 때 context로(최대 4000자), 앱 입력창은 "…을 읽고 따라 줘" 한 줄.
+- hook은 명령을 직접 실행하니 항상 확인 후 추가한다: 앱 입력창은 확인 창, mod에서 고르면 앱이 확인 창을 띄운다(`ApplyBlock` 요청, 자동 적용이어도).
+- 클라우드 세션은 지금처럼 고른 이름만 다음 프롬프트에 붙는다(파일 쓰기 없음).
+- 계획(PLANS.md)은 3.13에서 문서 작성기와 함께 삭제돼 추천 대상이 아니다.
+
 ## 4. 로드맵
 
 - [x] **Phase 0. 초기 세팅**: Tauri + React 스캐폴드, 린트, CI(Windows 설치 파일 빌드), 문서

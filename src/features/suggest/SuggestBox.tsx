@@ -1,7 +1,7 @@
 import { Check, Copy, LoaderCircle, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { missingFields } from "../../../claude-mod/branch-notes/hooks/starters";
-import { draftWith } from "../../../claude-mod/branch-notes/hooks/suggest";
+import { draftWith, draftWithBlock } from "../../../claude-mod/branch-notes/hooks/suggest";
 import { Button, IconButton } from "../../components/ui";
 import { useLocale, useT } from "../../i18n";
 import { useAutomationStore } from "../../store/automation";
@@ -90,6 +90,7 @@ export function SuggestBox() {
             c={c}
             project={project}
             onInsert={(c) => setDraft(draftWith(draft, c, locale))}
+            onBlock={(c) => setDraft(draftWithBlock(draft, c, locale))}
             onAutomate={() => {
               useAutomationStore.getState().startDraft(draft, project ?? "");
               go("automations");

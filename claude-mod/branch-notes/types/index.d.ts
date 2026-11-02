@@ -26,13 +26,25 @@ export type View = {
  * `hooks/suggest.ts` (the contract can import nothing); change both. */
 export type Candidate = {
   key: string;
-  kind: "skill" | "agent" | "command" | "extension" | "mcp" | "automation";
-  source: "installed" | "library" | "extension" | "recommended" | "automation";
+  kind:
+    | "skill"
+    | "agent"
+    | "command"
+    | "instruction"
+    | "rule"
+    | "hook"
+    | "extension"
+    | "mcp"
+    | "automation";
+  source: "installed" | "library" | "catalog" | "extension" | "recommended" | "automation";
   name: string;
   description: string;
   keywords?: string[];
   libraryKind?: "skill" | "agent";
   libraryId?: string;
+  blockId?: string;
+  context?: string;
+  command?: string;
   extensionId?: string;
   mcpId?: string;
   automationId?: string;

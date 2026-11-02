@@ -30,6 +30,7 @@ import {
   aiAsk,
   aiCatalog,
   autoContext,
+  blockContext,
   buildCandidates,
   type Candidate,
   cleanRefined,
@@ -196,6 +197,9 @@ const picks = new Map<string, string[]>();
 /** What was suggested and picked for the prompt being written, for the app's log. */
 let shown: { draft: string; items: Candidate[]; by: "keyword" | "ai" } | null = null;
 let picked: string[] = [];
+/** Catalog instructions and rules picked for the prompt being written: their
+ * text goes with it. */
+let guides: Candidate[] = [];
 
 async function claudeDir($: EngineInterface): Promise<string | null> {
   const own = await $.env.get("CLAUDE_CONFIG_DIR");
@@ -474,6 +478,13 @@ async function act(
       return false;
     }
     await send($, { op: "applyLibrary", project, kind: c.libraryKind, id: c.libraryId });
+  } else if (c.source === "catalog" && c.blockId) {
+    if (!project) {
+      $.ui.toast(w.noRepo);
+      return false;
+    }
+    await send($, { op: "applyBlock", project, id: c.blockId });
+    if (c.context && !guides.some((g) => g.key === c.key)) guides.push(c);
   } else if (c.extensionId) {
     await send($, { op: "installExtension", id: c.extensionId });
   } else if (c.source === "recommended" && c.mcpId) {
@@ -501,6 +512,14 @@ async function pick($: EngineInterface, c: Candidate) {
   }
   if (!(await act($, c, box))) return;
   if (c.source === "library") $.ui.toast(w.adding(c.name));
+  else if (c.source === "catalog")
+    $.ui.toast(
+      c.kind === "hook"
+        ? w.addingHook(c.name)
+        : c.context
+          ? w.addingGuide(c.name)
+          : w.adding(c.name),
+    );
   else if (c.extensionId) $.ui.toast(w.installing(c.name));
   else if (c.source === "recommended") $.ui.toast(w.addingMcp(c.name));
   else if (c.key === NEW_AUTOMATION) $.ui.toast(w.draftingAutomation);
@@ -545,7 +564,7 @@ async function undoRefine($: EngineInterface) {
  * context to send along (the installed items to use), if any. */
 async function autoApply($: EngineInterface, prompt: string): Promise<string | null> {
   const last = shown;
-  if (!lastSuggest?.auto || !last?.items.length) return null;
+  if (!lastSuggest?.auto || !last?.items.length) return blockContext(guides);
   const left = last.items.filter((c) => !picked.includes(c.key) && !c.automationId);
   const used: Candidate[] = [];
   for (const c of left) {
@@ -558,7 +577,7 @@ async function autoApply($: EngineInterface, prompt: string): Promise<string | n
     const w = words((await read($, view))?.locale ?? "en");
     $.ui.toast(w.autoApplied(used.map((c) => c.name).join(", ")));
   }
-  return autoContext(used);
+  return [autoContext(used), blockContext(guides)].filter(Boolean).join("\n\n") || null;
 }
 
 /** Runs what the app asked for in the sidebar (`outbox/<session>.json`). */
@@ -887,7 +906,8 @@ export const register: Register = (on) => {
     lastPrompt = e.text;
     offerStarters = false;
     await update($, starter, () => null).catch(() => {});
-    const extra = e.command ? null : await autoApply($, e.text).catch(() => null);
+    const extra = e.command ? null : await autoApply($, e.text).catch(() => blockContext(guides));
+    guides = [];
     await clearSuggestion($).catch(() => {});
     await logSent($).catch(() => {});
     return next(extra ? { ...e, context: [...(e.context ?? []), extra] } : e);
