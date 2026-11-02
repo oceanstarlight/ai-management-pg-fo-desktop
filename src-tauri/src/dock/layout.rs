@@ -32,6 +32,7 @@ pub enum Side {
     /// Outside the target, touching its left edge.
     Left,
     /// Overlapping the target's right edge, used when there is no room outside.
+    /// A maximized target on Windows gets a reserved strip instead (`win.rs`).
     Inside,
 }
 

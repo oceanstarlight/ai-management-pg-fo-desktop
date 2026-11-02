@@ -287,7 +287,14 @@ export type Request =
       picked: string[];
     }
   | { op: "turnAnswer"; session: string; project: string; prompt: string; answer: string }
-  | { op: "activity"; session: string; project: string; steps: import("./activity").Step[] }
+  | {
+      op: "activity";
+      session: string;
+      project: string;
+      /** The checked-out branch ("" when unknown). */
+      branch: string;
+      steps: import("./activity").Step[];
+    }
   | {
       op: "suggestLog";
       at: number;

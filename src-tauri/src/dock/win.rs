@@ -10,6 +10,7 @@
 //! destroys owned windows together with their owner.
 
 use std::cell::RefCell;
+use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::mpsc;
 
 use tauri::{AppHandle, Manager};
@@ -27,19 +28,22 @@ use windows::Win32::System::Threading::{
 };
 use windows::Win32::UI::Accessibility::{HWINEVENTHOOK, SetWinEventHook, UnhookWinEvent};
 use windows::Win32::UI::HiDpi::{GetDpiForMonitor, MDT_EFFECTIVE_DPI};
-use windows::Win32::UI::Shell::{DefSubclassProc, SetWindowSubclass};
+use windows::Win32::UI::Shell::{
+    ABE_RIGHT, ABM_NEW, ABM_QUERYPOS, ABM_REMOVE, ABM_SETPOS, ABN_POSCHANGED, APPBARDATA,
+    DefSubclassProc, SHAppBarMessage, SetWindowSubclass,
+};
 use windows::Win32::UI::WindowsAndMessaging::{
     CHILDID_SELF, DispatchMessageW, EVENT_OBJECT_CLOAKED, EVENT_OBJECT_DESTROY,
     EVENT_OBJECT_LOCATIONCHANGE, EVENT_OBJECT_UNCLOAKED, EVENT_SYSTEM_FOREGROUND,
     EVENT_SYSTEM_MINIMIZEEND, EVENT_SYSTEM_MINIMIZESTART, EnumWindows, GA_ROOT, GWL_EXSTYLE,
     GetAncestor, GetClassNameW, GetClientRect, GetForegroundWindow, GetMessageW, GetWindowLongPtrW,
     GetWindowRect, GetWindowTextLengthW, GetWindowTextW, GetWindowThreadProcessId, HWND_NOTOPMOST,
-    HWND_TOPMOST, IsIconic, IsWindow, IsWindowVisible, KillTimer, MSG, OBJID_WINDOW, PM_NOREMOVE,
-    PeekMessageW, PostThreadMessageW, STYLESTRUCT, SW_HIDE, SW_SHOWNOACTIVATE, SWP_ASYNCWINDOWPOS,
-    SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER, SetTimer, SetWindowLongPtrW,
-    SetWindowPos, ShowWindow, ShowWindowAsync, TranslateMessage, WINEVENT_OUTOFCONTEXT,
-    WINEVENT_SKIPOWNPROCESS, WM_APP, WM_STYLECHANGING, WM_TIMER, WM_USER, WS_EX_APPWINDOW,
-    WS_EX_TOOLWINDOW, WS_EX_TOPMOST,
+    HWND_TOPMOST, IsIconic, IsWindow, IsWindowVisible, IsZoomed, KillTimer, MSG, OBJID_WINDOW,
+    PM_NOREMOVE, PeekMessageW, PostThreadMessageW, STYLESTRUCT, SW_HIDE, SW_SHOWNOACTIVATE,
+    SWP_ASYNCWINDOWPOS, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER, SetTimer,
+    SetWindowLongPtrW, SetWindowPos, ShowWindow, ShowWindowAsync, TranslateMessage,
+    WINEVENT_OUTOFCONTEXT, WINEVENT_SKIPOWNPROCESS, WM_APP, WM_NCDESTROY, WM_STYLECHANGING,
+    WM_TIMER, WM_USER, WS_EX_APPWINDOW, WS_EX_TOOLWINDOW, WS_EX_TOPMOST,
 };
 use windows::core::{BOOL, PWSTR};
 
@@ -47,6 +51,8 @@ use super::layout::{self, Rect, Side};
 use super::{Dock, DockMode, DockStatus, Magnet, SIDEBAR_MIN_HEIGHT, Settings, TargetApp};
 
 const WM_DOCK_REFRESH: u32 = WM_APP + 1;
+/// App bar notifications the shell sends to the sidebar window.
+const WM_APPBAR: u32 = WM_APP + 0x3A1;
 const REFRESH_USER_SHOW: usize = 1;
 /// Delay before re-applying the rect after a monitor change, so it wins over the
 /// resize Windows applies for the new DPI.
@@ -54,6 +60,9 @@ const DPI_SETTLE_MS: u32 = 150;
 /// Windows smaller than this (physical pixels) are never docking targets.
 const MIN_TARGET_WIDTH: i32 = 320;
 const MIN_TARGET_HEIGHT: i32 = 240;
+
+/// The tracker thread, for the sidebar's window procedure to ask for a refresh.
+static TRACKER_THREAD: AtomicU32 = AtomicU32::new(0);
 
 pub struct TrackerHandle {
     thread_id: u32,
@@ -65,9 +74,11 @@ impl TrackerHandle {
     }
 }
 
-/// Subclass procedure that keeps the sidebar a tool window. tao rewrites the
-/// whole extended style whenever it shows or hides the window, which would put
-/// the sidebar back in the taskbar and Alt+Tab.
+/// Subclass procedure of the sidebar window.
+///
+/// Keeps the sidebar a tool window: tao rewrites the whole extended style
+/// whenever it shows or hides the window, which would put the sidebar back in
+/// the taskbar and Alt+Tab. Also follows its app bar (see `Tracker::reserve`).
 unsafe extern "system" fn keep_tool_window(
     hwnd: HWND,
     msg: u32,
@@ -80,6 +91,18 @@ unsafe extern "system" fn keep_tool_window(
         // SAFETY: for WM_STYLECHANGING, lparam points to the STYLESTRUCT being applied.
         let style = unsafe { &mut *(lparam.0 as *mut STYLESTRUCT) };
         style.styleNew = (style.styleNew | WS_EX_TOOLWINDOW.0) & !WS_EX_APPWINDOW.0;
+    }
+    match msg {
+        // The taskbar or another app bar moved: claim the strip again.
+        WM_APPBAR if wparam.0 as u32 == ABN_POSCHANGED => {
+            post_refresh(TRACKER_THREAD.load(Ordering::Relaxed), false);
+        }
+        // Give the screen space back even if the tracker never got to.
+        WM_NCDESTROY => {
+            let mut data = appbar_data(hwnd);
+            unsafe { SHAppBarMessage(ABM_REMOVE, &mut data) };
+        }
+        _ => {}
     }
     unsafe { DefSubclassProc(hwnd, msg, wparam, lparam) }
 }
@@ -116,6 +139,7 @@ pub fn start(app: AppHandle, sidebar: HWND) -> std::io::Result<TrackerHandle> {
     let thread_id = rx
         .recv()
         .map_err(|_| std::io::Error::other("dock tracker thread exited early"))?;
+    TRACKER_THREAD.store(thread_id, Ordering::Relaxed);
     Ok(TrackerHandle { thread_id })
 }
 
@@ -163,6 +187,7 @@ fn run(app: AppHandle, sidebar: HWND) {
     }
     TRACKER.with(|cell| {
         if let Some(mut t) = cell.borrow_mut().take() {
+            t.release();
             t.unhook_target();
         }
     });
@@ -237,6 +262,16 @@ struct Tracker {
     shown: Option<bool>,
     last_rect: Option<Rect>,
     settle_timer: usize,
+    /// The screen strip held as an app bar while the target is maximized.
+    appbar: Option<AppBar>,
+}
+
+struct AppBar {
+    /// What we last asked the shell for, to skip asking again for the same;
+    /// `None` to ask again anyway.
+    request: Option<Rect>,
+    /// The strip we hold.
+    rect: Rect,
 }
 
 impl Tracker {
@@ -252,6 +287,7 @@ impl Tracker {
             shown: None,
             last_rect: None,
             settle_timer: 0,
+            appbar: None,
         }
     }
 
@@ -313,6 +349,10 @@ impl Tracker {
     fn refresh(&mut self, user_show: bool) {
         self.last_rect = None;
         self.shown = None;
+        if let Some(bar) = self.appbar.as_mut() {
+            // Ask the shell again: the taskbar or another app bar may have moved.
+            bar.request = None;
+        }
         // The user asked to see the sidebar while its target is out of view:
         // let go of the target so the sidebar shows at the screen edge.
         if user_show && self.target.as_ref().is_some_and(|t| is_hidden(t.hwnd)) {
@@ -339,6 +379,7 @@ impl Tracker {
         }
 
         if !settings.magnet.on() {
+            self.release();
             self.detach();
             self.set_visible(settings.visible);
             self.set_topmost(settings.pinned);
@@ -347,6 +388,7 @@ impl Tracker {
         }
 
         let Some(target) = self.target.as_ref().map(|t| t.hwnd) else {
+            self.release();
             self.place_at_edge();
             self.set_visible(settings.visible);
             self.set_topmost(settings.pinned);
@@ -356,12 +398,16 @@ impl Tracker {
 
         if is_hidden(target) {
             // Follow the target out of view (minimized, hidden, other desktop).
+            self.release();
             self.set_visible(false);
             self.publish(&settings, DockMode::Docked, None);
             return;
         }
 
-        let side = self.place_beside(target);
+        // A maximized target leaves no room beside it: hold a strip of the
+        // screen instead, so the target shrinks to leave it to the sidebar.
+        let reserve = settings.visible && unsafe { IsZoomed(target) }.as_bool();
+        let side = self.place_beside(target, reserve);
         self.set_visible(settings.visible);
         let foreground = unsafe { GetForegroundWindow() };
         let keep_on_top = settings.pinned
@@ -413,7 +459,13 @@ impl Tracker {
         self.hooked_pid = None;
     }
 
-    fn place_beside(&mut self, target: HWND) -> Option<Side> {
+    fn place_beside(&mut self, target: HWND, reserve: bool) -> Option<Side> {
+        let monitor = unsafe { MonitorFromWindow(target, MONITOR_DEFAULTTONEAREST) };
+        if reserve && let Some(rect) = self.reserve(monitor) {
+            self.move_to(rect, monitor);
+            return Some(Side::Right);
+        }
+        self.release();
         let mut bounds = visible_bounds(target)?;
         // Electron apps (Claude, Codex) draw their own frame: what shows can
         // reach past the DWM frame bounds at the top or bottom.
@@ -426,7 +478,6 @@ impl Tracker {
             bounds.top = bounds.top.min(client.top);
             bounds.bottom = bounds.bottom.max(client.bottom);
         }
-        let monitor = unsafe { MonitorFromWindow(target, MONITOR_DEFAULTTONEAREST) };
         let work = work_area(monitor)?;
         let scale = monitor_scale(monitor);
         let placement = layout::place_beside(
@@ -437,6 +488,59 @@ impl Tracker {
         );
         self.move_to(placement.rect, monitor);
         Some(placement.side)
+    }
+
+    /// Registers the sidebar as an app bar on the right edge of `monitor`, the
+    /// way the taskbar holds its edge: the work area shrinks, so maximized
+    /// windows there leave the strip free. Returns the strip to show in.
+    fn reserve(&mut self, monitor: HMONITOR) -> Option<Rect> {
+        let (screen, work) = monitor_areas(monitor)?;
+        let width = layout::to_physical(self.settings().width(), monitor_scale(monitor));
+        // Measure from the screen edge: the work area already leaves out our
+        // own strip once it is held. Vertically, stay clear of the taskbar.
+        let request = layout::place_at_edge(
+            Rect {
+                right: screen.right,
+                ..work
+            },
+            width,
+        );
+        if let Some(bar) = &self.appbar
+            && bar.request == Some(request)
+        {
+            return Some(bar.rect);
+        }
+
+        let mut data = appbar_data(self.sidebar);
+        let held = self.appbar.as_ref().map(|bar| bar.rect);
+        if held.is_none() && unsafe { SHAppBarMessage(ABM_NEW, &mut data) } == 0 {
+            return None;
+        }
+        data.uEdge = ABE_RIGHT;
+        data.rc = to_win_rect(request);
+        // The shell moves the rect off other app bars (a taskbar on the
+        // right); keep our width from wherever it puts the outer edge.
+        unsafe { SHAppBarMessage(ABM_QUERYPOS, &mut data) };
+        data.rc.left = data.rc.right - width;
+        let rect = to_rect(data.rc);
+        // Setting the same rect again would only notify the other app bars,
+        // which can answer by notifying us: set it only when it changes.
+        if held != Some(rect) {
+            unsafe { SHAppBarMessage(ABM_SETPOS, &mut data) };
+        }
+        self.appbar = Some(AppBar {
+            request: Some(request),
+            rect,
+        });
+        Some(rect)
+    }
+
+    /// Gives the strip held by `reserve` back to the other windows.
+    fn release(&mut self) {
+        if self.appbar.take().is_some() {
+            let mut data = appbar_data(self.sidebar);
+            unsafe { SHAppBarMessage(ABM_REMOVE, &mut data) };
+        }
     }
 
     fn place_at_edge(&mut self) {
@@ -685,13 +789,28 @@ fn frame_margins(hwnd: HWND) -> Rect {
 }
 
 fn work_area(monitor: HMONITOR) -> Option<Rect> {
+    monitor_areas(monitor).map(|(_, work)| work)
+}
+
+/// The whole monitor and its work area (without the taskbar and app bars).
+fn monitor_areas(monitor: HMONITOR) -> Option<(Rect, Rect)> {
     let mut info = MONITORINFO {
         cbSize: size_of::<MONITORINFO>() as u32,
         ..Default::default()
     };
     unsafe { GetMonitorInfoW(monitor, &mut info) }
         .as_bool()
-        .then_some(to_rect(info.rcWork))
+        .then_some((to_rect(info.rcMonitor), to_rect(info.rcWork)))
+}
+
+/// App bar data naming the sidebar, for `SHAppBarMessage`.
+fn appbar_data(sidebar: HWND) -> APPBARDATA {
+    APPBARDATA {
+        cbSize: size_of::<APPBARDATA>() as u32,
+        hWnd: sidebar,
+        uCallbackMessage: WM_APPBAR,
+        ..Default::default()
+    }
 }
 
 fn monitor_scale(monitor: HMONITOR) -> f64 {
@@ -754,6 +873,15 @@ fn window_pid(hwnd: HWND) -> u32 {
 
 fn to_rect(r: RECT) -> Rect {
     Rect {
+        left: r.left,
+        top: r.top,
+        right: r.right,
+        bottom: r.bottom,
+    }
+}
+
+fn to_win_rect(r: Rect) -> RECT {
+    RECT {
         left: r.left,
         top: r.top,
         right: r.right,

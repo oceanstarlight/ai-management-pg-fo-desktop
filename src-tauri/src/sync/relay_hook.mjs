@@ -58,13 +58,19 @@ function curl(args) {
 
 /** Sends an event; `wait` false leaves curl running after this hook exits. */
 function post(event, wait) {
-  const args = ["-X", "POST", "-H", "Content-Type: application/json", "--data-binary", JSON.stringify(event), `${base}/events.json`];
+  const args = (e) => ["-X", "POST", "-H", "Content-Type: application/json", "--data-binary", JSON.stringify(e), `${base}/events.json`];
   if (wait) {
-    curl(args);
+    // Database rules published before `branch` existed refuse the event:
+    // send it again without the branch.
+    if (event.branch && /"error"/.test(curl(args(event)))) {
+      const { branch: _, ...rest } = event;
+      curl(args(rest));
+    }
+    if (!event.branch) curl(args(event));
     return;
   }
   try {
-    spawn("curl", ["-sS", "-m", TIMEOUT_S, ...args], { detached: true, stdio: "ignore" }).unref();
+    spawn("curl", ["-sS", "-m", TIMEOUT_S, ...args(event)], { detached: true, stdio: "ignore" }).unref();
   } catch {}
 }
 
@@ -90,6 +96,20 @@ function repoKey(cwd) {
     .join("__")
     .replace(/[^A-Za-z0-9._-]/g, "_")
     .slice(0, 200);
+}
+
+/** The checked-out branch, or "" (detached HEAD, not a repository). */
+function branchOf(cwd) {
+  try {
+    return execFileSync("git", ["-C", cwd, "symbolic-ref", "--quiet", "--short", "HEAD"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    })
+      .trim()
+      .slice(0, 200);
+  } catch {
+    return "";
+  }
 }
 
 /** The text of Claude's last answer: given by newer Claude Code, else read from the transcript. */
@@ -197,7 +217,10 @@ if (kind === "tool" || kind === "toolEnd") {
 
 const text = (kind === "prompt" ? String(input.prompt ?? "") : lastAnswer()).slice(0, MAX_TEXT);
 if (!text.trim()) quit();
-post({ ...event, text }, true);
+// Prompts and answers carry the branch, so the app can tell sessions of
+// one repository apart. Tool calls go in the background and leave it out.
+const branch = branchOf(cwd);
+post(branch ? { ...event, text, branch } : { ...event, text }, true);
 
 // What the user chose in Encela and the project's decisions go into this prompt.
 if (kind === "prompt" && repo) {

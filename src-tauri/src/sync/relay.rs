@@ -433,6 +433,7 @@ fn handle(app: &AppHandle, event: &Value) {
         .entry(repo.clone())
         .or_insert_with(|| (project.clone(), String::new()));
     let session = session_id(&s("session"));
+    let branch = s("branch");
     let at = event["at"].as_i64().unwrap_or_default();
     let step = |kind: &str| crate::activity::Step {
         at,
@@ -455,7 +456,7 @@ fn handle(app: &AppHandle, event: &Value) {
                 detail: text.chars().take(300).collect(),
                 ..step("turn")
             };
-            crate::activity::record(app, &session, &project, true, vec![turn]);
+            crate::activity::record(app, &session, &project, &branch, true, vec![turn]);
             crate::suggest::cloud_prompt(app, &session, project, &text);
         }
         "answer" => {
@@ -464,7 +465,7 @@ fn handle(app: &AppHandle, event: &Value) {
                 answer: s("text"),
                 ..step("turn")
             };
-            crate::activity::record(app, &session, &project, true, vec![turn]);
+            crate::activity::record(app, &session, &project, &branch, true, vec![turn]);
             crate::decisions::apply_request(
                 app,
                 crate::bridge::Request::TurnAnswer {
@@ -476,7 +477,7 @@ fn handle(app: &AppHandle, event: &Value) {
             );
         }
         kind @ ("tool" | "toolEnd") => {
-            crate::activity::record(app, &session, &project, true, vec![step(kind)]);
+            crate::activity::record(app, &session, &project, &branch, true, vec![step(kind)]);
         }
         _ => {}
     }
