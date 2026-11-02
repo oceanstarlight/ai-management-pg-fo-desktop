@@ -35,6 +35,10 @@ export const ko = {
     "엔셀라 계정 로그인이 만료됐어요. 다시 로그인하면 클라우드 세션이 다시 보여요.",
   "notice.relay.signIn.action": "다시 로그인",
   "notice.relay.error.title": "클라우드 연결에 문제가 있어요",
+  "notice.claudeLogin.title": "Claude Code 로그인이 만료됐어요",
+  "notice.claudeLogin.body":
+    "Haiku 추천·AI로 스킬 만들기·자동화가 멈췄어요. 아래 버튼으로 터미널에서 claude를 연 뒤 /login을 입력해 다시 로그인해 주세요. 다음 호출이 성공하면 이 알림은 사라져요.",
+  "notice.claudeLogin.action": "터미널에서 claude 열기",
   "notice.github.title": "GitHub 로그인이 만료됐어요",
   "notice.github.body": "PR·CI 상태를 보려면 GitHub에 다시 연결해 주세요.",
   "notice.github.action": "다시 연결",
@@ -117,6 +121,10 @@ export const en: Messages<typeof ko> = {
     "Your Encela sign-in expired. Sign in again and cloud sessions show up again.",
   "notice.relay.signIn.action": "Sign in again",
   "notice.relay.error.title": "The cloud connection has a problem",
+  "notice.claudeLogin.title": "Your Claude Code sign-in expired",
+  "notice.claudeLogin.body":
+    "Haiku suggestions, skill generation and automations stopped. Open claude in a terminal with the button below and type /login to sign in again. This notice goes away once the next call works.",
+  "notice.claudeLogin.action": "Open claude in a terminal",
   "notice.github.title": "Your GitHub sign-in expired",
   "notice.github.body": "Connect GitHub again to see PRs and CI.",
   "notice.github.action": "Connect again",
