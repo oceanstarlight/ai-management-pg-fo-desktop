@@ -459,9 +459,14 @@ async function track($: EngineInterface, step: Omit<Step, "at">) {
     const batch = steps;
     steps = [];
     if (batch.length) {
-      void send($, { op: "activity", session, project: projectDir, steps: batch }).catch(
-        () => false,
-      );
+      // The branch tells sessions of one repository apart in the app.
+      void read($, view)
+        .then((v) => v?.branch ?? "")
+        .catch(() => "")
+        .then((branch) =>
+          send($, { op: "activity", session, project: projectDir, branch, steps: batch }),
+        )
+        .catch(() => false);
     }
   });
 }

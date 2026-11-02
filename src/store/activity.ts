@@ -1,7 +1,7 @@
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { create } from "zustand";
-import { getPref, setPref } from "./prefs";
+import { getPref, onPrefChanged, setPref } from "./prefs";
 
 // Mirrors src-tauri/src/activity.rs: what each Claude Code session is doing.
 
@@ -63,6 +63,8 @@ export interface Session {
   session: string;
   project: string;
   surface: string;
+  /** The git branch where the session runs ("" when not known yet). */
+  branch?: string;
   cloud: boolean;
   state: State;
   doing: string;
@@ -152,14 +154,32 @@ export function pickSession(sessions: Session[], chosen: string | null): Session
 export type LiveMode = "local" | "cloud";
 const MODE_KEY = "live.mode";
 
+/** Names the user gave sessions, by session id. Kept on this computer only. */
+const NAMES_KEY = "live.sessionNames";
+const MAX_NAMES = 200;
+const MAX_NAME = 80;
+
+function readNames(raw: string | null): Record<string, string> {
+  try {
+    const parsed = raw ? JSON.parse(raw) : {};
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
 interface ActivityState {
   sessions: Session[];
   mode: LiveMode;
   setMode: (mode: LiveMode) => void;
   /** The session the user picked; `null` follows the latest. */
   chosen: string | null;
+  /** Names the user gave sessions (`rename`), by session id. */
+  names: Record<string, string>;
   init: () => void;
   choose: (session: string | null) => void;
+  /** Names a session; an empty name goes back to the automatic one. */
+  rename: (session: string, name: string) => void;
 }
 
 let started = false;
@@ -172,10 +192,14 @@ export const useActivityStore = create<ActivityState>((set, get) => ({
     set({ mode, chosen: null });
   },
   chosen: null,
+  names: readNames(getPref(NAMES_KEY)),
 
   init: () => {
     if (started) return;
     started = true;
+    // Prefs may load after the store was made; the other window renames too.
+    set({ names: readNames(getPref(NAMES_KEY)) });
+    onPrefChanged(NAMES_KEY, (raw) => set({ names: readNames(raw) }));
     if (!isTauri()) {
       // The browser preview plays a made-up session.
       if (import.meta.env.DEV) {
@@ -199,4 +223,14 @@ export const useActivityStore = create<ActivityState>((set, get) => ({
   },
 
   choose: (chosen) => set({ chosen }),
+
+  rename: (session, name) => {
+    const { [session]: _, ...rest } = get().names;
+    const trimmed = name.trim().slice(0, MAX_NAME);
+    // Newest last; drop the oldest past the limit.
+    const entries = Object.entries(trimmed ? { ...rest, [session]: trimmed } : rest);
+    const names = Object.fromEntries(entries.slice(-MAX_NAMES));
+    setPref(NAMES_KEY, JSON.stringify(names));
+    set({ names });
+  },
 }));

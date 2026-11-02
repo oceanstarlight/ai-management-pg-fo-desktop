@@ -17,6 +17,7 @@
             },
             "session": { ".validate": "newData.isString() && newData.val().length <= 200" },
             "repo": { ".validate": "newData.isString() && newData.val().length <= 200" },
+            "branch": { ".validate": "newData.isString() && newData.val().length <= 200" },
             "at": { ".validate": "newData.isNumber()" },
             "text": { ".validate": "newData.isString() && newData.val().length <= 20000" },
             "id": { ".validate": "newData.isString() && newData.val().length <= 200" },

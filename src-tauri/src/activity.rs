@@ -118,6 +118,8 @@ pub struct Session {
     pub session: String,
     pub project: String,
     pub surface: String,
+    /// The git branch checked out where the session runs, when known.
+    pub branch: String,
     /// Came through the cloud relay.
     pub cloud: bool,
     /// idle, thinking, read, search, edit, run, agent, plan, web, mcp,
@@ -388,10 +390,22 @@ pub fn end(app: &AppHandle, session: &str) {
 }
 
 /// Steps from a session; the project fills in for a session first heard here.
-pub fn record(app: &AppHandle, session: &str, project: &str, cloud: bool, steps: Vec<Step>) {
+/// Adds a batch of steps to a session. `branch` is empty when the sender did
+/// not say; the last one given is kept (a session can switch branches).
+pub fn record(
+    app: &AppHandle,
+    session: &str,
+    project: &str,
+    branch: &str,
+    cloud: bool,
+    steps: Vec<Step>,
+) {
     with_session(app, session, |s| {
         if s.project.is_empty() {
             s.project = project.to_string();
+        }
+        if !branch.is_empty() {
+            s.branch = branch.chars().take(200).collect();
         }
         s.cloud |= cloud;
         if s.state == "ended" {

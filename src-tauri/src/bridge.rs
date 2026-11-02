@@ -163,6 +163,9 @@ pub enum Request {
     Activity {
         session: String,
         project: String,
+        /// The checked-out branch; older mods do not send it.
+        #[serde(default)]
+        branch: String,
         steps: Vec<crate::activity::Step>,
     },
     /// What Claude answered, to find the decisions in it.
@@ -393,10 +396,11 @@ pub fn manage(app: &AppHandle) {
                     if let Request::Activity {
                         session,
                         project,
+                        branch,
                         steps,
                     } = request
                     {
-                        crate::activity::record(&app, &session, &project, false, steps);
+                        crate::activity::record(&app, &session, &project, &branch, false, steps);
                         continue;
                     }
                     if let Request::TurnAnswer { .. } = request {
