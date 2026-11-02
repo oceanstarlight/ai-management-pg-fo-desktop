@@ -102,7 +102,7 @@ service cloud.firestore {
       function valid(d) {
         return d.keys().hasOnly(['kind', 'key', 'name', 'data', 'hash', 'updatedAt',
                                  'deleted', 'deviceId', 'syncedAt'])
-          && d.kind in ['doc', 'skill', 'agent']
+          && d.kind in ['doc', 'skill', 'agent', 'block']
           && d.key is string && d.key.size() > 0 && d.key.size() <= 200
           && d.name is string && d.name.size() <= 500
           && d.data is string && d.data.size() <= 900000

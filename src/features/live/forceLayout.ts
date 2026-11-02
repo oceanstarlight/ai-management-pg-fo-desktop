@@ -26,6 +26,8 @@ export interface Body {
 const LINK = [0, 112, 70];
 /** Room kept between two boxes. */
 const PAD = 10;
+/** How far Claude leans off the middle toward its work (px). */
+export const LEAN = 36;
 /** Below this the layout is still. */
 export const ALPHA_MIN = 0.004;
 /** While Claude works the graph keeps drifting a little. */
@@ -84,7 +86,9 @@ export function step(
     if (!n.parent) {
       const kids = children.get(n.id) ?? [];
       const mean = kids.length ? kids.reduce((s, k) => s + k.x, 0) / kids.length : width / 2;
-      b.vx += ((width / 2) * 0.65 + mean * 0.35 - b.x) * 0.05 * alpha;
+      // Only a little, so the corners beside it stay free.
+      const lean = Math.max(-LEAN, Math.min(LEAN, (mean - width / 2) * 0.35));
+      b.vx += (width / 2 + lean - b.x) * 0.05 * alpha;
       b.vy += (n.h / 2 + 6 - b.y) * 0.12 * alpha;
       continue;
     }

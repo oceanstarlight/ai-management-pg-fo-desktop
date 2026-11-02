@@ -73,6 +73,12 @@ pub fn run() {
             library::library_remove,
             library::library_update,
             library::library_import,
+            library::library_import_preview_github,
+            library::library_import_github,
+            library::library_import_preview_folder,
+            library::library_import_folders,
+            library::library_create_skill,
+            library::library_generate_skill,
             library::library_forget,
             library::config_set_enabled,
             activity::activity_sessions,
@@ -80,6 +86,11 @@ pub fn run() {
             catalog::catalog_list,
             catalog::catalog_apply,
             catalog::catalog_refresh,
+            catalog::catalog_discovered,
+            catalog::catalog_candidate_text,
+            catalog::catalog_accept,
+            catalog::catalog_dismiss,
+            catalog::catalog_remove_found,
             memo::memo_context,
             memo::memo_get,
             memo::memo_set_note,
@@ -164,6 +175,7 @@ pub fn run() {
             extensions::check_later();
             suggest::check_mcp_later(handle);
             automation::start_scheduler(handle);
+            catalog::start_auto_check(handle);
             tray::create(handle)?;
             Dock::start(handle)?;
             tray::register_shortcut(handle);

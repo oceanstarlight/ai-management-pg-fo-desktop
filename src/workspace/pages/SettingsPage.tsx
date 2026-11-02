@@ -6,6 +6,7 @@ import { Button, Card, PageHeader, Row, Segmented, Switch } from "../../componen
 import { ModsCard } from "../../features/mods/ModsCard";
 import { type LocalePref, timeAgo, useLocaleStore, useT } from "../../i18n";
 import { useAccountStore } from "../../store/account";
+import { useActivityStore } from "../../store/activity";
 import { SIDEBAR_WIDE_PREF, useDockStore } from "../../store/dock";
 import { FONT_SIZES, useFontSizeStore } from "../../store/fontSize";
 import { useLibraryStore } from "../../store/library";
@@ -33,6 +34,8 @@ export function SettingsPage() {
   ];
   const { status, setPinned } = useDockStore();
   const [wide, setWide] = useSwitchPref(SIDEBAR_WIDE_PREF, false);
+  const stick = useActivityStore((s) => s.stick);
+  const setStick = useActivityStore((s) => s.setStick);
   const fontSize = useFontSizeStore((s) => s.size);
   const setFontSize = useFontSizeStore((s) => s.setSize);
   const { overview, busy, load, chooseDir } = useLibraryStore();
@@ -94,6 +97,12 @@ export function SettingsPage() {
             options={languages}
             onChange={setLanguage}
           />
+        </Row>
+      </Card>
+
+      <Card title={t("settings.live")}>
+        <Row title={t("settings.liveStick")} description={t("settings.liveStickHint")}>
+          <Switch label={t("settings.liveStick")} checked={stick} onChange={setStick} />
         </Row>
       </Card>
 
