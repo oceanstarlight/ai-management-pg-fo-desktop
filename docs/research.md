@@ -457,6 +457,8 @@ AGPL 프로젝트는 아이디어만 참고하고 코드는 가져오지 않는�
 - `tool.call`: 입력은 `{ tool, tool_use_id, agentId?, ...도구 인자 }`(Bash면 `e.command`, Read·Edit·Write면 `e.file_path`, Edit은 `old_string`/`new_string`, Write는 `content`, Agent는 `description`/`subagent_type`). `await next(e)`의 결과는 `{ result, text, isError? }` 또는 `{ deny }`. 수정 줄 수는 결과가 아니라 입력에서 셈(Edit: new/old 줄 수, MultiEdit: 합, Write: content 줄 수).
 - `turn.start`: `{ text, turnId, agentId? }`(서브에이전트 실행은 `agentId`가 있음). `turn.complete`: `{ answer, durationMs, isAborted, turnId, agentId? ... }`.
 - `session.measure`: 메인 턴이 끝날 때 등 `{ context: { tokens?, window, percent? }, rateLimits }`. 비용은 `$.session.usage()`의 `cost.usd`(무료 호출).
+- (2026-11-02, Claude Code 2.1.316 타입 파일) `session.measure` 입력에도 `cost?: { usd }`가 있음. `cost`는 "호스트가 비용 장부를 안 두면 없음"(CLI는 항상 있음) → 데스크톱 앱·VS Code에서는 비어 올 수 있음. 그때 mod는 `turn.complete`의 `usage`(`model`, `input_tokens`, `output_tokens`, `cache_read_input_tokens`, `cache_creation_input_tokens`, 서브에이전트 턴 포함)로 비용을 추정해 `costEstimated: true`로 보냄. 단가(입력/출력 $/1M, 2026-10 API 정가): Fable 5.1 10/50(캐시 읽기 0.25), Opus 5.5 4/20(0.20), Opus 5·4.x 5/25, Sonnet 5.5·5 2/10(0.20), Sonnet 4.6 3/15, Haiku 5.5 0.10/0.50, Haiku 4.5 1/5. 캐시 쓰기는 입력의 1.25배로 계산.
+- `turn.complete`의 `reason`: `answer` / `aborted`(Esc로 중단, `isAborted`) / `refusal` / `error`. 중단된 턴도 끝 이벤트가 옴. Claude Code를 강제로 닫으면 `session.end`가 안 올 수 있어서, mod가 턴 진행 중 5초마다 `ping`을 보내고 앱은 15초 넘게 조용하면 멈춘 것으로 봄.
 - 검증기는 `tool.call`처럼 도구를 막을 수 있는 훅 안의 비동기 호출에 `.catch`가 없으면 경고 → 활동 전송은 실패해도 도구를 막지 않게 `.catch(() => {})`.
 
 **클라우드 중계 비용** (Firebase 공식 문서 요약, 검색 결과로 확인. 이 세션은 firebase.google.com에 직접 접속 불가)

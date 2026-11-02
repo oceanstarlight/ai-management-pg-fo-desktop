@@ -40,8 +40,8 @@ export const ko = {
   "starters.emptyHint": "이름이나 내용이 빈 틀은 저장하지 않아요. 모두 지우면 기본 틀을 써요.",
   "mods.suggest.title": "프롬프트 추천",
   "mods.suggest.description":
-    "Claude Code 입력창에 글을 쓰면 맞는 skill·서브에이전트·확장을 입력창 위에 추천해요. AI는 내 Claude Code로 Haiku에 물어봐요(입력을 멈추면 한 번, 사용량에 포함). 키워드는 이름·설명만 맞춰 봐요.",
-  "mods.suggest.ai": "AI (Haiku)",
+    "Claude Code 입력창에 글을 쓰면 맞는 skill·서브에이전트·확장을 입력창 위에 추천해요. 에이전트는 내 Claude Code로 Haiku에 물어봐서 정확도가 높지만 매우 적은 토큰을 잠깐 써요(입력을 멈추면 한 번). 키워드는 토큰을 쓰지 않지만 이름·설명만 맞춰 봐서 정확도가 낮아요.",
+  "mods.suggest.ai": "에이전트 (Haiku)",
   "mods.suggest.keyword": "키워드",
   "mods.suggest.off": "끄기",
   "mods.suggest.auto": "추천 자동 적용",
@@ -199,7 +199,7 @@ export const en: Messages<typeof ko> = {
   "mods.suggest.title": "Prompt suggestions",
   "mods.suggest.description":
     "As you type in Claude Code, suggests matching skills, subagents and extensions above the prompt. AI asks Haiku through your Claude Code (once you stop typing; counts toward your usage). Keyword matches names and descriptions only.",
-  "mods.suggest.ai": "AI (Haiku)",
+  "mods.suggest.ai": "Agent (Haiku)",
   "mods.suggest.keyword": "Keyword",
   "mods.suggest.off": "Off",
   "mods.suggest.auto": "Apply suggestions automatically",

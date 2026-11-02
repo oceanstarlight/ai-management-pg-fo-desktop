@@ -6,7 +6,7 @@
 /** One step as `activity.rs` reads it (`Step`). */
 export type Step = {
   at: number;
-  kind: "turn" | "tool" | "toolEnd" | "usage";
+  kind: "turn" | "tool" | "toolEnd" | "usage" | "ping";
   id?: string;
   phase?: "start" | "end";
   tool?: string;
@@ -16,6 +16,7 @@ export type Step = {
   answer?: string;
   added?: number;
   removed?: number;
+  /** A tool's result; on a main turn's end, `false` when it was interrupted or failed. */
   ok?: boolean;
   agent?: string;
   /** An Agent call's task, so the app can tell which subagent it started. */
@@ -23,7 +24,53 @@ export type Step = {
   contextPercent?: number;
   tokens?: number;
   costUsd?: number;
+  /** `costUsd` is `turnCost`'s estimate: the host keeps no cost ledger. */
+  costEstimated?: boolean;
 };
+
+/** While a turn runs the mod pings this often, so the app can tell it stopped. */
+export const PING_MS = 5000;
+
+/** A turn's token counts, as `turn.complete`'s `usage` gives them. */
+export type TokenUsage = {
+  model: string;
+  input_tokens: number;
+  output_tokens: number;
+  cache_read_input_tokens: number;
+  cache_creation_input_tokens: number;
+};
+
+/**
+ * Dollars per million tokens: input, output, cache read (first match on the
+ * model id). Cache writes cost 1.25 times input. Anthropic API list prices,
+ * 2026-10 (docs/research.md); only an estimate where the host has no ledger.
+ */
+const PRICES: [RegExp, number, number, number][] = [
+  [/fable|mythos/, 10, 50, 0.25],
+  [/opus-5-5|opus-5\.5/, 4, 20, 0.2],
+  [/opus/, 5, 25, 0.5],
+  [/sonnet-5/, 2, 10, 0.2],
+  [/sonnet/, 3, 15, 0.3],
+  [/haiku-5/, 0.1, 0.5, 0.01],
+  [/haiku/, 1, 5, 0.1],
+];
+
+/** What a turn cost by its token counts, or null for an unknown model. */
+export function turnCost(u: TokenUsage | undefined): number | null {
+  if (!u) return null;
+  const model = u.model.toLowerCase();
+  const price = PRICES.find(([re]) => re.test(model));
+  if (!price) return null;
+  const [, input, output, cacheRead] = price;
+  const n = (v: number) => (Number.isFinite(v) ? v : 0);
+  return (
+    (n(u.input_tokens) * input +
+      n(u.output_tokens) * output +
+      n(u.cache_read_input_tokens) * cacheRead +
+      n(u.cache_creation_input_tokens) * input * 1.25) /
+    1e6
+  );
+}
 
 /** Steps sent in one request, at most; the oldest are dropped past it. */
 export const MAX_BATCH = 100;

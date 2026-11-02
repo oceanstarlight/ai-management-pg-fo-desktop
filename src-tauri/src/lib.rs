@@ -75,6 +75,7 @@ pub fn run() {
             library::library_forget,
             library::config_set_enabled,
             activity::activity_sessions,
+            activity::activity_save,
             catalog::catalog_list,
             catalog::catalog_apply,
             catalog::catalog_refresh,
@@ -156,6 +157,8 @@ pub fn run() {
             github::GitHub::manage(handle);
             sync::Sync::manage(handle);
             sync::relay::start(handle);
+            activity::restore(handle);
+            activity::start_sweeper(handle);
             bridge::manage(handle);
             extensions::check_later();
             suggest::check_mcp_later(handle);
@@ -177,6 +180,12 @@ pub fn run() {
                 app.state::<Dock>().set_visible(app, false);
             }
         })
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while running tauri application")
+        .run(|app, event| {
+            // Keeps the home page for the next start (also when quitting to update).
+            if let tauri::RunEvent::Exit = event {
+                let _ = activity::save(app);
+            }
+        });
 }

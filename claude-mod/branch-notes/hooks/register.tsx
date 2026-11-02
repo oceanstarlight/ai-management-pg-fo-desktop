@@ -6,8 +6,10 @@ import {
   enqueue,
   FLUSH_MS,
   MAX_ANSWER,
+  PING_MS,
   type Step,
   toolInput,
+  turnCost,
 } from "./activity";
 import {
   applyLocally,
@@ -82,6 +84,12 @@ let steps: Step[] = [];
 let flushTimer: { cancel: () => void } | null = null;
 /** Each tool call's edit size, by call id, until it finishes. */
 const edits = new Map<string, { added: number; removed: number }>();
+/** Stops the pings of the main turn that runs. */
+let stopPing: (() => void) | null = null;
+/** The host reported a real cost (it keeps a ledger), so no estimate is sent. */
+let ledger = false;
+/** The session's cost so far by its turns' token counts. */
+let estimated = 0;
 
 /** A new project's first prompt is still to come: the starter forms are offered. */
 let offerStarters = false;
@@ -684,6 +692,11 @@ export const register: Register = (on) => {
   });
 
   on("turn.start", async ($, e, next) => {
+    if (e.agentId === undefined) {
+      // The app takes silence mid-turn as Claude Code having stopped.
+      stopPing?.();
+      stopPing = $.clock.every(PING_MS, () => void track($, { kind: "ping" }).catch(() => {}));
+    }
     await track($, {
       kind: "turn",
       phase: "start",
@@ -695,10 +708,15 @@ export const register: Register = (on) => {
   });
 
   on("session.measure", async ($, e, next) => {
-    const cost = await $.session
-      .usage()
-      .then((u) => u.cost?.usd)
-      .catch(() => undefined);
+    // The desktop app and VS Code may keep no cost ledger: then the turns'
+    // estimate (turn.complete) stands.
+    const cost =
+      e.cost?.usd ??
+      (await $.session
+        .usage()
+        .then((u) => u.cost?.usd)
+        .catch(() => undefined));
+    if (cost !== undefined) ledger = true;
     await track($, {
       kind: "usage",
       contextPercent: e.context.percent,
@@ -709,6 +727,8 @@ export const register: Register = (on) => {
   });
 
   on("session.end", async ($, e, next) => {
+    stopPing?.();
+    stopPing = null;
     if (session) await send($, { op: "sessionEnd", session }).catch(() => false);
     return next(e);
   });
@@ -716,13 +736,24 @@ export const register: Register = (on) => {
   // The branch can change between turns (git switch in the session); the
   // app looks for decisions settled in the answer.
   on("turn.complete", async ($, e, next) => {
+    if (e.agentId === undefined) {
+      stopPing?.();
+      stopPing = null;
+    }
+    const cost = turnCost(e.usage);
+    if (cost !== null) estimated += cost;
     await track($, {
       kind: "turn",
       phase: "end",
       id: e.turnId,
       agent: e.agentId,
+      // Interrupted (Esc) or ended by an error: the app shows it stopped.
+      ok: e.agentId === undefined ? e.reason === "answer" : undefined,
       answer: e.agentId === undefined && e.reason === "answer" ? e.answer.slice(0, MAX_ANSWER) : "",
     });
+    if (!ledger && cost !== null) {
+      await track($, { kind: "usage", costUsd: estimated, costEstimated: true });
+    }
     await refresh($);
     if (e.agentId === undefined && e.reason === "answer" && lastPrompt && session) {
       await send($, {

@@ -1,8 +1,14 @@
 import { Check, Cloud, LoaderCircle, TerminalSquare } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Button, Switch } from "../../components/ui";
+import { Button, Segmented, Switch } from "../../components/ui";
 import { timeAgo, useT } from "../../i18n";
-import { AUTO_PREF, type Live, useLiveStore, useSwitchPref } from "../../store/live";
+import {
+  AUTO_PREF,
+  type Live,
+  useLiveStore,
+  useSuggestMode,
+  useSwitchPref,
+} from "../../store/live";
 import { useProjectStore } from "../../store/project";
 import { ConnectHint } from "./ConnectHint";
 
@@ -33,6 +39,7 @@ export function LivePanel() {
         </span>
         <Switch checked={auto} onChange={setAuto} label={t("suggest.live.auto")} />
       </div>
+      <PickBy />
       {live ? (
         <SessionCard live={live} auto={auto} />
       ) : (
@@ -45,6 +52,37 @@ export function LivePanel() {
         />
       )}
     </section>
+  );
+}
+
+/** Who picks the suggestions: an agent (more accurate, a few tokens) or keywords (free). */
+function PickBy() {
+  const t = useT();
+  const [mode, setMode] = useSuggestMode();
+  return (
+    <div className="mb-2 px-1">
+      <div className="flex items-center gap-2">
+        <span className="text-fs-11 text-text-subtle">{t("suggest.pick.label")}</span>
+        <Segmented
+          label={t("suggest.pick.label")}
+          value={mode}
+          options={[
+            { value: "ai", label: t("suggest.pick.agent") },
+            { value: "keyword", label: t("suggest.pick.keyword") },
+          ]}
+          onChange={setMode}
+        />
+      </div>
+      <p className="mt-1 text-fs-11 leading-snug text-text-subtle">
+        {t(
+          mode === "ai"
+            ? "suggest.pick.agentHint"
+            : mode === "keyword"
+              ? "suggest.pick.keywordHint"
+              : "suggest.pick.offHint",
+        )}
+      </p>
+    </div>
   );
 }
 

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "claude-code/testing";
-import { describeTool, editSize, enqueue, MAX_BATCH, toolInput } from "./activity";
+import { describeTool, editSize, enqueue, MAX_BATCH, toolInput, turnCost } from "./activity";
 
 describe("activity", () => {
   test("each tool names its file or what it runs", () => {
@@ -48,5 +48,18 @@ describe("activity", () => {
     for (let i = 0; i < MAX_BATCH + 5; i++) q = enqueue(q, { at: i, kind: "tool" });
     expect(q).toHaveLength(MAX_BATCH);
     expect(q[0]?.at).toBe(5);
+  });
+  test("a turn's cost comes from its tokens and model", () => {
+    const u = {
+      model: "claude-opus-5-5",
+      input_tokens: 1_000_000,
+      output_tokens: 100_000,
+      cache_read_input_tokens: 1_000_000,
+      cache_creation_input_tokens: 0,
+    };
+    expect(Math.round((turnCost(u) ?? 0) * 1000)).toBe(6200);
+    expect(Math.round((turnCost({ ...u, model: "claude-haiku-4-5" }) ?? 0) * 1000)).toBe(1600);
+    expect(turnCost({ ...u, model: "some-other-model" })).toBeNull();
+    expect(turnCost(undefined)).toBeNull();
   });
 });

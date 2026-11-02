@@ -190,6 +190,28 @@ export const useLiveStore = create<LiveState>((set, get) => ({
   },
 }));
 
+/** How prompt suggestions are picked: by an agent (Haiku), by keyword, or not at all. */
+export type SuggestMode = "ai" | "keyword" | "off";
+export const SUGGEST_PREF = "promptSuggest";
+
+export function readSuggestMode(): SuggestMode {
+  const v = getPref(SUGGEST_PREF);
+  return v === "keyword" || v === "off" ? v : "ai";
+}
+
+/** The suggestion mode as React state, kept in step with Settings. */
+export function useSuggestMode(): [SuggestMode, (mode: SuggestMode) => void] {
+  const [mode, setMode] = useState<SuggestMode>(readSuggestMode);
+  useEffect(() => onPrefChanged(SUGGEST_PREF, () => setMode(readSuggestMode())), []);
+  return [
+    mode,
+    (next) => {
+      setMode(next);
+      setPref(SUGGEST_PREF, next);
+    },
+  ];
+}
+
 /** An on/off preference as React state (`on` / `off`, or the default). */
 export function useSwitchPref(key: string, fallback: boolean): [boolean, (on: boolean) => void] {
   const read = () => {
