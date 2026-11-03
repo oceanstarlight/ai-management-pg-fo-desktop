@@ -52,6 +52,8 @@ export type Candidate = {
   extensionId?: string;
   mcpId?: string;
   automationId?: string;
+  /** How sure the pick is, 1 (barely related) to 6 (clearly needed). */
+  confidence?: number;
 };
 
 /** What is suggested for the draft being typed. */
@@ -69,8 +71,13 @@ export type SuggestMode = "ai" | "keyword" | "off";
 export const NEW_AUTOMATION = "a:new";
 
 /** The export's `suggest` section. */
+/** The model that picks suggestions and refines prompts. */
+export type AgentModel = "haiku" | "sonnet" | "opus";
+
 export type SuggestExport = {
   mode: SuggestMode;
+  /** The agent's model; Haiku when unset. */
+  model?: AgentModel;
   /** Suggestions are used without asking, when the prompt is sent. */
   auto?: boolean;
   /** Each project's settled decisions (`topic: value`), by project folder. */
@@ -147,6 +154,27 @@ const MAX_DESCRIPTION = 200;
 export function suggestMode(exp: { suggest?: { mode?: string } } | null | undefined): SuggestMode {
   const mode = exp?.suggest?.mode;
   return mode === "keyword" || mode === "off" ? mode : "ai";
+}
+
+/** The agent's model alias from the export, Haiku unless another is chosen. */
+export function agentModel(exp: SuggestExport | null | undefined): AgentModel {
+  const m = exp?.model;
+  return m === "sonnet" || m === "opus" ? m : "haiku";
+}
+
+/** A confidence of 1-6, or none. */
+export function clampConfidence(n: unknown): number | undefined {
+  return typeof n === "number" && Number.isFinite(n)
+    ? Math.min(6, Math.max(1, Math.round(n)))
+    : undefined;
+}
+
+/** Keyword scores as a confidence: matching words alone never reach 6. */
+export function keywordConfidence(score: number): number {
+  if (score >= 9) return 5;
+  if (score >= 6) return 4;
+  if (score >= 3) return 3;
+  return 2;
 }
 
 /** Whether a draft is worth suggesting for: not a command or a shell line. */
@@ -444,11 +472,11 @@ export function keywordRank(
     .filter((x) => x.s >= 2)
     .sort((a, b) => b.s - a.s || order[a.c.source] - order[b.c.source])
     .slice(0, limit)
-    .map((x) => x.c);
+    .map((x) => ({ ...x.c, confidence: keywordConfidence(x.s) }));
 }
 
 export const AI_SYSTEM =
-  "You pick which Claude Code skills, subagents, commands, instructions, rules, hooks, MCP servers, extensions or automations would clearly help with the task the user is typing. Suggest the new automation only when the user asks for something to happen repeatedly or on a schedule. Be strict: suggest nothing rather than something loosely related. Reply with a JSON array of entry numbers only, best first, for example [3,12] or [].";
+  'You pick which Claude Code skills, subagents, commands, instructions, rules, hooks, MCP servers, extensions or automations would clearly help with the task the user is typing. Judge only by what the prompt itself asks for, not by what the project might use. Suggest a language or framework guide (React, TypeScript, Rust, Python...) only when the prompt names that language or framework or asks to write code in it. A short follow-up, answer or acknowledgement without a concrete new task ("keep #1 as is", "yes, do it", "apply it there too") gets []. Suggest the new automation only when the user asks for something to happen repeatedly or on a schedule. Be strict: suggest nothing rather than something loosely related. For each pick give a confidence from 1 to 6: 6 the prompt plainly needs it, 5 very likely helps, 3-4 probably helps, 1-2 only loosely related. Reply with a JSON array of [entry number, confidence] pairs only, best first, for example [[3,6],[12,4]] or [].';
 
 /** The numbered list Haiku picks from; the same for every draft, so it caches. */
 export function aiCatalog(candidates: Candidate[]): string {
@@ -467,11 +495,11 @@ export function aiCatalog(candidates: Candidate[]): string {
   return `Entries:\n${lines.join("\n")}`;
 }
 
-export function aiAsk(draft: string, decisions: string[] = []): string {
-  const settled = decisions.length
-    ? `Already settled for this project:\n${decisions.map((d) => `- ${d}`).join("\n")}\n`
-    : "";
-  return `${settled}The user is typing this prompt (any language):\n<<<\n${draft.slice(0, 2000)}\n>>>\nWhich entries would clearly help? At most ${MAX_ITEMS}. JSON array of numbers only.`;
+/** The question for one draft. The project's settled decisions are left
+ * out on purpose: they made every prompt look like a request for the
+ * project's languages and frameworks. */
+export function aiAsk(draft: string): string {
+  return `The user is typing this prompt (any language):\n<<<\n${draft.slice(0, 2000)}\n>>>\nWhich entries would this prompt itself clearly need? At most ${MAX_ITEMS}. JSON array of [number, confidence] pairs only.`;
 }
 
 /** The project's decisions, found by its folder (case and slashes aside). */
@@ -573,21 +601,25 @@ export function draftWithBlock(draft: string, c: Candidate, locale: "ko" | "en")
   return draft.includes(ask) ? draft : `${draft.trimEnd()} ${ask}`;
 }
 
-/** The candidates Haiku's reply names, in its order. */
+/** The candidates the agent's reply names, in its order, with its confidence:
+ * `[[3,6],[12,4]]`, or plain numbers `[3,12]` (no confidence). */
 export function parseAiReply(text: string, candidates: Candidate[]): Candidate[] {
-  const m = /\[[\d\s,]*\]/.exec(text);
+  const m = /\[[\d\s,.[\]]*\]/.exec(text);
   if (!m) return [];
-  let numbers: unknown;
+  let entries: unknown;
   try {
-    numbers = JSON.parse(m[0]);
+    entries = JSON.parse(m[0]);
   } catch {
     return [];
   }
-  if (!Array.isArray(numbers)) return [];
+  if (!Array.isArray(entries)) return [];
   const out: Candidate[] = [];
-  for (const n of numbers) {
+  for (const entry of entries) {
+    const [n, confidence] = Array.isArray(entry) ? entry : [entry, undefined];
     const c = typeof n === "number" ? candidates[n - 1] : undefined;
-    if (c && !out.includes(c)) out.push(c);
+    if (c && !out.some((o) => o.key === c.key)) {
+      out.push({ ...c, confidence: clampConfidence(confidence) });
+    }
     if (out.length >= MAX_ITEMS) break;
   }
   return out;
@@ -601,6 +633,44 @@ export function label(c: Candidate, locale: "ko" | "en" = "en"): string {
   if (c.source === "extension" || c.source === "recommended") return `⬇${c.name}`;
   if (c.kind === "mcp") return `🔌${c.name}`;
   return c.kind === "agent" ? `@${c.name}` : `/${c.name}`;
+}
+
+const KIND_WORDS: Record<CandidateKind, { ko: string; en: string }> = {
+  skill: { ko: "스킬", en: "skill" },
+  agent: { ko: "에이전트", en: "agent" },
+  command: { ko: "명령", en: "command" },
+  instruction: { ko: "지침", en: "instruction" },
+  rule: { ko: "규칙", en: "rule" },
+  hook: { ko: "훅", en: "hook" },
+  extension: { ko: "확장", en: "extension" },
+  mcp: { ko: "MCP", en: "MCP" },
+  automation: { ko: "자동화", en: "automation" },
+};
+
+/** What kind of document or tool it is, in one word. */
+export function kindWord(kind: CandidateKind, locale: "ko" | "en" = "en"): string {
+  return KIND_WORDS[kind]?.[locale] ?? kind;
+}
+
+/** The label with its kind, for the band above the prompt: `＋api-design·스킬`.
+ * Automations say what they are with ⏰ already. */
+export function bandLabel(c: Candidate, locale: "ko" | "en" = "en"): string {
+  if (c.kind === "automation") return label(c, locale);
+  return `${label(c, locale)}·${kindWord(c.kind, locale)}`;
+}
+
+/** Each mark before a name and each kind, explained (the band's ⓘ). */
+export function legendLines(locale: "ko" | "en" = "en"): string[] {
+  const ko = locale === "ko";
+  return ko
+    ? [
+        "＋ 프로젝트에 추가 · ⬇ 설치 · ⏰ 앱 자동화 · / 설치된 스킬·명령 · @ 서브에이전트 · 🔌 연결된 MCP",
+        "스킬: 작업 방법 문서 · 에이전트: 따로 일하는 도우미 · 지침: 항상 지키는 글(CLAUDE.local.md) · 규칙: 특정 파일용 규칙 · 훅: 자동 실행 명령 · 확장: 묶음 설치 · MCP: 외부 도구 서버",
+      ]
+    : [
+        "＋ adds to the project · ⬇ installs · ⏰ app automation · / installed skill or command · @ subagent · 🔌 connected MCP",
+        "skill: how-to document · agent: separate helper · instruction: always-on guidance (CLAUDE.local.md) · rule: for certain files · hook: runs a command by itself · extension: bundle to install · MCP: external tool server",
+      ];
 }
 
 /** Whether picking it changes the prompt (rather than asking the app for something). */

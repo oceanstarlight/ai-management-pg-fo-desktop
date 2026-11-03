@@ -23,6 +23,8 @@ type Result<T> = std::result::Result<T, String>;
 /// The pref that turns prompt suggestions on: `ai` (Haiku picks, the
 /// default), `keyword` (matched locally only) or `off`.
 pub const PREF: &str = "promptSuggest";
+/// The suggestion agent's model: `haiku` (default), `sonnet` or `opus`.
+pub const MODEL_PREF: &str = "suggestModel";
 /// `on`: picked suggestions are used without asking (the mod applies them
 /// when the prompt is sent). Anything else asks first.
 pub const AUTO_PREF: &str = "suggestAuto";
@@ -58,6 +60,8 @@ const AI_TIMEOUT: Duration = Duration::from_secs(60);
 #[serde(rename_all = "camelCase")]
 pub struct Catalog {
     mode: String,
+    /// The agent's model alias (`haiku`, `sonnet`, `opus`).
+    model: &'static str,
     /// Suggestions are used without asking.
     auto: bool,
     library: Vec<LibraryEntry>,
@@ -167,6 +171,19 @@ fn mode(app: &AppHandle) -> String {
     mode_of(crate::prefs::get(app, PREF))
 }
 
+/// The suggestion agent's model alias; Haiku unless the user chose another.
+pub fn agent_model(app: &AppHandle) -> &'static str {
+    model_of(crate::prefs::get(app, MODEL_PREF).as_deref())
+}
+
+fn model_of(value: Option<&str>) -> &'static str {
+    match value {
+        Some("sonnet") => "sonnet",
+        Some("opus") => "opus",
+        _ => "haiku",
+    }
+}
+
 fn auto(app: &AppHandle) -> bool {
     crate::prefs::get(app, AUTO_PREF).as_deref() == Some("on")
 }
@@ -268,6 +285,7 @@ pub fn catalog(app: &AppHandle) -> Catalog {
         .collect();
     Catalog {
         mode,
+        model: agent_model(app),
         auto: auto(app),
         library,
         blocks: block_entries(crate::catalog::suggestible(app)),
@@ -519,6 +537,9 @@ pub struct LiveItem {
     pub label: String,
     #[serde(default)]
     pub description: String,
+    /// How sure the pick is, 1-6, when it says.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub confidence: Option<u8>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
@@ -718,19 +739,28 @@ pub fn cloud_prompt(app: &AppHandle, session: &str, project: String, prompt: &st
     }
 }
 
-/// The labels allowed in the project's cloud sessions.
+/// The labels allowed for the project's next cloud prompt: from its newest
+/// cloud session only, so picks from older sessions never pile up.
 pub fn cloud_picks(project: &str) -> Vec<String> {
-    LIVE.lock()
-        .unwrap_or_else(|e| e.into_inner())
+    let live = LIVE.lock().unwrap_or_else(|e| e.into_inner());
+    newest_cloud_picks(&live, project)
+}
+
+fn newest_cloud_picks(live: &[Live], project: &str) -> Vec<String> {
+    let Some(l) = live
         .iter()
         .filter(|l| l.surface == CLOUD_SURFACE && l.project == project)
-        .flat_map(|l| {
-            l.items
-                .iter()
-                .filter(|i| l.picked.contains(&i.key))
-                .map(|i| i.label.clone())
-        })
-        .collect()
+        .max_by_key(|l| l.at)
+    else {
+        return Vec::new();
+    };
+    let mut out: Vec<String> = Vec::new();
+    for i in l.items.iter().filter(|i| l.picked.contains(&i.key)) {
+        if !out.contains(&i.label) {
+            out.push(i.label.clone());
+        }
+    }
+    out
 }
 
 // ---------------------------------------------------------------------------
@@ -913,13 +943,22 @@ pub async fn suggest_candidates(app: AppHandle, project: Option<String>) -> Resu
     .await
 }
 
-/// Asks Haiku through the user's own `claude -p` (no tools, no MCP servers,
-/// nothing saved) and returns its reply text.
+/// Asks Haiku and returns its reply text: with the user's own Anthropic API
+/// key when one is saved (`anthropic_api`), otherwise through the user's own
+/// `claude -p` (no tools, no MCP servers, nothing saved).
 pub fn haiku(dir: &Path, system: &str, prompt: String) -> Result<String> {
+    ask_model(dir, "haiku", system, prompt)
+}
+
+/// [`haiku`] with another model alias (`haiku`, `sonnet`, `opus`).
+pub fn ask_model(dir: &Path, model: &str, system: &str, prompt: String) -> Result<String> {
+    if let Some(reply) = crate::anthropic_api::complete(model, system, &prompt) {
+        return reply;
+    }
     let args = [
         "-p",
         "--model",
-        "haiku",
+        model,
         "--output-format",
         "json",
         "--no-session-persistence",
@@ -952,7 +991,11 @@ pub async fn suggest_ai(
     system: String,
     prompt: String,
 ) -> Result<String> {
-    blocking(move || haiku(&run_dir(&app, project.as_deref())?, &system, prompt)).await
+    blocking(move || {
+        let model = agent_model(&app);
+        ask_model(&run_dir(&app, project.as_deref())?, model, &system, prompt)
+    })
+    .await
 }
 
 fn reply_text(ok: bool, stdout: &str, stderr: &str) -> Result<String> {
@@ -1040,7 +1083,9 @@ pub fn suggest_cloud_claim(session: String) -> Option<CloudClaim> {
 }
 
 /// The suggestions picked for a cloud prompt (dropped if a newer one came).
-/// With automatic use on, they are all allowed at once.
+/// They are never allowed automatically: the prompt was already sent, so
+/// whatever is allowed goes into the *next* one, which may be about
+/// something else entirely. The user allows them one by one.
 #[tauri::command]
 pub fn suggest_cloud_items(
     app: AppHandle,
@@ -1058,13 +1103,8 @@ pub fn suggest_cloud_items(
     if !current {
         return;
     }
-    let all = auto(&app);
     with_live(&app, &session, |l| {
-        l.picked = if all {
-            items.iter().map(|i| i.key.clone()).collect()
-        } else {
-            Vec::new()
-        };
+        l.picked = Vec::new();
         l.items = items;
         l.by = by;
         l.pending = false;
@@ -1086,6 +1126,36 @@ pub async fn suggest_log_clear(app: AppHandle) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn cloud_picks_come_from_the_newest_session_only_and_once() {
+        let item = |key: &str| LiveItem {
+            key: key.into(),
+            name: key.into(),
+            kind: "rule".into(),
+            source: "catalog".into(),
+            label: format!("＋{key}"),
+            description: String::new(),
+            confidence: None,
+        };
+        let live = |session: &str, at: i64, picked: &[&str]| Live {
+            session: session.into(),
+            project: "o/r".into(),
+            surface: CLOUD_SURFACE.into(),
+            draft: String::new(),
+            by: String::new(),
+            pending: false,
+            items: vec![item("react"), item("rust")],
+            picked: picked.iter().map(|k| k.to_string()).collect(),
+            at,
+        };
+        let sessions = vec![
+            live("cloud-old", 1, &["react"]),
+            live("cloud-new", 2, &["rust", "rust"]),
+        ];
+        assert_eq!(newest_cloud_picks(&sessions, "o/r"), ["＋rust"]);
+        assert!(newest_cloud_picks(&sessions, "other/repo").is_empty());
+    }
 
     fn entry(at: i64, items: &[&str], picked: &[&str]) -> LogEntry {
         LogEntry {

@@ -3,6 +3,7 @@ import { type ReactNode, useEffect } from "react";
 import { Button } from "../../components/ui";
 import { type MessageKey, useT } from "../../i18n";
 import { useAccountStore } from "../../store/account";
+import { useClaudeAuthStore } from "../../store/claudeAuth";
 import { modReady, OWN_MOD, useConnectionStore } from "../../store/connection";
 import { useGitHubStore } from "../../store/github";
 import { useNoticesStore } from "../../store/notices";
@@ -46,6 +47,7 @@ export function useNotices(): Notice[] {
   const dismissSync = useSyncStore((s) => s.dismissNotice);
   const update = useUpdaterStore();
   const dismissed = useNoticesStore((s) => s.dismissed);
+  const claudeAuth = useClaudeAuthStore();
 
   const list: Notice[] = [];
 
@@ -91,6 +93,22 @@ export function useNotices(): Notice[] {
       body: relay.message ?? undefined,
       action: { label: t("notice.open.settings"), run: () => void openConnect() },
       dismiss: "forever",
+    });
+  }
+
+  if (claudeAuth.expired && !claudeAuth.hidden) {
+    list.push({
+      id: "claude-login",
+      tone: "warning",
+      icon: TriangleAlert,
+      title: t("notice.claudeLogin.title"),
+      body: claudeAuth.openError ?? t("notice.claudeLogin.body"),
+      action: {
+        label: t("notice.claudeLogin.action"),
+        run: () => void claudeAuth.openLogin(),
+      },
+      dismiss: "close",
+      onClose: claudeAuth.hide,
     });
   }
 

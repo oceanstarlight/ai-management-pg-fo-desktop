@@ -47,9 +47,10 @@ function engine(
   asked: string[],
   written: string[] = [],
   files: Record<string, string> = {},
+  env: Record<string, string> = {},
 ) {
   const clock = mock.clock(on, { now: 1000 });
-  mock.env(on, { AIM_BRIDGE_DIR: "/bridge", HOME: "/home/me" });
+  mock.env(on, { AIM_BRIDGE_DIR: "/bridge", HOME: "/home/me", ...env });
   on("fs.read", (_, e) => ({
     value: e.path === "/bridge/state.json" ? (files.state ?? state(mode)) : (files[e.path] ?? ""),
   }));
@@ -249,7 +250,14 @@ test("the app's sidebar picks a suggestion through the outbox", async ($, on) =>
   expect(sent(written).filter((r) => r.op === "applyLibrary")).toHaveLength(1);
 });
 
-test("auto mode uses the suggestions when the prompt is sent", async ($, on) => {
+test("a session the app started itself tells the app nothing", async ($, on) => {
+  const written: string[] = [];
+  engine(on, "ai", "[]", [], written, {}, { ENCELA_INTERNAL: "1" });
+  await $.session.start({ cwd: "/", surface: null, isInteractive: false });
+  expect(sent(written).find((r) => r.op === "sessionStart")).toBeUndefined();
+});
+
+test("auto mode never adds files to the project by itself", async ($, on) => {
   const written: string[] = [];
   const files = { state: state("keyword", { auto: true }) };
   const clock = engine(on, "keyword", "[]", [], written, files);
@@ -266,10 +274,13 @@ test("auto mode uses the suggestions when the prompt is sent", async ($, on) => 
     wait: false,
     origin: { kind: "composer" },
   });
-  expect(sent(written).find((r) => r.op === "applyLibrary")).toMatchObject({ id: "pdf" });
+  // The library skill was suggested, but writing it into the project waits
+  // for the user's own press.
+  expect(sent(written).find((r) => r.op === "applyLibrary")).toBeUndefined();
   expect(context).toBeUndefined();
   const log = sent(written).find((r) => r.op === "suggestLog");
-  expect(log.picked).toContain("l:skill:pdf");
+  expect(log.items.map((i: { key: string }) => i.key)).toContain("l:skill:pdf");
+  expect(log.picked).not.toContain("l:skill:pdf");
 });
 
 test("a picked catalog rule is added and its text goes with the prompt", async ($, on) => {

@@ -1,7 +1,9 @@
 mod activity;
+mod anthropic_api;
 mod automation;
 mod bridge;
 mod catalog;
+mod claude_auth;
 mod claude_detect;
 mod claude_mod;
 mod decisions;
@@ -86,6 +88,10 @@ pub fn run() {
             catalog::catalog_list,
             catalog::catalog_apply,
             catalog::catalog_refresh,
+            anthropic_api::anthropic_key_status,
+            anthropic_api::anthropic_key_set,
+            claude_auth::claude_auth_expired,
+            claude_auth::claude_open_login,
             catalog::catalog_discovered,
             catalog::catalog_candidate_text,
             catalog::catalog_accept,
@@ -167,6 +173,7 @@ pub fn run() {
             prefs::Prefs::manage(handle)?;
             automation::Automations::manage(handle)?;
             github::GitHub::manage(handle);
+            claude_auth::manage(handle);
             sync::Sync::manage(handle);
             sync::relay::start(handle);
             activity::restore(handle);

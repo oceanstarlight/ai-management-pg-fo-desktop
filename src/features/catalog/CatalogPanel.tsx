@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button, Switch } from "../../components/ui";
 import { type MessageKey, timeAgo, useLocale, useT } from "../../i18n";
 import { setPref } from "../../store/prefs";
+import { InfoTip } from "../suggest/KindBadge";
 import { open } from "../work/useGitHubSync";
 
 // Mirrors `Block` in src-tauri/src/catalog/blocks.rs (the fields shown here).
@@ -180,6 +181,9 @@ export function CatalogPanel() {
           }}
         />
         <span>{t("catalog.auto")}</span>
+        <InfoTip title={t("catalog.auto")}>
+          <p>{t("catalog.autoHelp")}</p>
+        </InfoTip>
         <span className="text-text-subtle">
           ·{" "}
           {found?.checkedAt
@@ -301,11 +305,14 @@ function FoundList({
   if (items.length === 0) return null;
   return (
     <section className="mb-8">
-      <h3 className="mb-1 text-xs font-semibold">
-        {t("catalog.found.title")}{" "}
+      <h3 className="mb-2 flex items-center gap-1 text-xs font-semibold">
+        {t("catalog.found.title")}
         <span className="font-normal text-text-muted">· {items.length}</span>
+        <InfoTip title={t("catalog.found.title")}>
+          <p>{t("catalog.found.hint")}</p>
+          <p>{t("catalog.found.help")}</p>
+        </InfoTip>
       </h3>
-      <p className="mb-2 text-fs-11 text-text-subtle">{t("catalog.found.hint")}</p>
       <ul className="space-y-1">
         {items.map((c) => {
           const expanded = openId === c.id;

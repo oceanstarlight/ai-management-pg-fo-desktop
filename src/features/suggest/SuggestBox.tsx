@@ -8,6 +8,7 @@ import { useAutomationStore } from "../../store/automation";
 import { useProjectStore } from "../../store/project";
 import { useSuggestStore } from "../../store/suggest";
 import { useWorkspaceStore } from "../../store/workspace";
+import { SuggestLegend } from "./KindBadge";
 import { SuggestionCard } from "./SuggestionCard";
 
 /** The app's own prompt box: suggestions as you type, like in the terminal. */
@@ -48,6 +49,7 @@ export function SuggestBox() {
                   ? t(by === "ai" ? "suggest.byAi" : "suggest.byKeyword")
                   : ""}
           </span>
+          {items.length > 0 && <SuggestLegend />}
           {draft && (
             <IconButton label={t("suggest.clear")} className="size-7!" onClick={() => setDraft("")}>
               <X size={14} />

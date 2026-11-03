@@ -1,14 +1,21 @@
 import { describe, expect, test } from "claude-code/testing";
 import {
+  AI_SYSTEM,
+  agentModel,
+  aiAsk,
   aiCatalog,
+  bandLabel,
   blockContext,
   buildCandidates,
   type Candidate,
   draftWith,
   draftWithBlock,
   installedCandidate,
+  keywordConfidence,
   keywordRank,
+  kindWord,
   label,
+  legendLines,
   NEW_AUTOMATION,
   parseAiReply,
   parseFrontmatter,
@@ -123,6 +130,29 @@ describe("keyword matching", () => {
 describe("Haiku", () => {
   const all = buildCandidates(installed, exp);
 
+  test("the reply's pairs carry a confidence of 1 to 6", () => {
+    const picked = parseAiReply("[[2,6],[1,9],[3,0]]", all);
+    expect(picked.map((c) => c.confidence)).toEqual([6, 6, 1]);
+    expect(parseAiReply("[2, 1]", all)[0]?.confidence).toBeUndefined();
+    expect(parseAiReply("[]", all)).toEqual([]);
+    expect(agentModel({ mode: "ai", model: "opus" } as SuggestExport)).toBe("opus");
+    expect(agentModel(null)).toBe("haiku");
+  });
+
+  test("keyword matches say how sure they are, never 6", () => {
+    expect(keywordConfidence(2)).toBe(2);
+    expect(keywordConfidence(20)).toBe(5);
+    const top = keywordRank("코드 리뷰 해줘", all)[0];
+    expect(top?.confidence).toBeGreaterThanOrEqual(2);
+  });
+
+  test("the question carries only the prompt, not the project's stack", () => {
+    const ask = aiAsk("1번은 그대로, 터미널 안 표시줄도 반영해줘.");
+    expect(ask).toContain("터미널 안 표시줄");
+    expect(ask).not.toContain("settled");
+    expect(AI_SYSTEM).toContain("only when the prompt names that language or framework");
+  });
+
   test("the catalog numbers every entry and says where it is", () => {
     const text = aiCatalog(all);
     expect(text).toContain("1. [skill, ready] review - Review the current diff");
@@ -148,6 +178,29 @@ describe("using a suggestion", () => {
     expect(label(byKey("i:skill:review"))).toBe("/review");
     expect(label(byKey("l:agent:debugger"))).toBe("＋debugger");
     expect(label(byKey("e:rea"))).toBe("⬇REA");
+  });
+
+  test("the band adds what kind each one is", () => {
+    expect(bandLabel(byKey("i:skill:review"), "ko")).toBe("/review·스킬");
+    expect(bandLabel(byKey("l:agent:debugger"))).toBe("＋debugger·agent");
+    const server = {
+      key: "m:x",
+      kind: "mcp",
+      source: "recommended",
+      name: "github",
+      description: "",
+    };
+    expect(bandLabel(server as Candidate, "ko")).toBe("⬇github·MCP");
+    const job = {
+      key: "a:x",
+      kind: "automation",
+      source: "automation",
+      name: "News",
+      description: "",
+    };
+    expect(bandLabel(job as Candidate)).toBe("⏰News");
+    expect(kindWord("rule", "ko")).toBe("규칙");
+    expect(legendLines("ko").join(" ")).toContain("＋ 프로젝트에 추가");
   });
 
   test("a skill goes first in the prompt; a subagent is asked for", () => {

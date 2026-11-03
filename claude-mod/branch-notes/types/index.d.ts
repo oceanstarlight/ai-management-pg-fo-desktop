@@ -70,6 +70,8 @@ declare module "claude-code" {
     "branch-notes": {
       view: View | null;
       isHidden: boolean;
+      /** The ⓘ explanation under the suggestions is open. */
+      legendOpen: boolean;
       suggestion: Suggestion | null;
       starter: StarterView | null;
     };

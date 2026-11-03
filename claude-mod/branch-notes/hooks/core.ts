@@ -283,6 +283,8 @@ export type Request =
         source: string;
         label: string;
         description: string;
+        /** 1-6, when the pick says how sure it is. */
+        confidence?: number;
       }[];
       picked: string[];
     }

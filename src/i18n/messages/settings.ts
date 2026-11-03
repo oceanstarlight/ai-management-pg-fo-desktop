@@ -40,13 +40,25 @@ export const ko = {
   "starters.emptyHint": "이름이나 내용이 빈 틀은 저장하지 않아요. 모두 지우면 기본 틀을 써요.",
   "mods.suggest.title": "프롬프트 추천",
   "mods.suggest.description":
-    "Claude Code 입력창에 글을 쓰면 맞는 skill·서브에이전트·확장을 입력창 위에 추천해요. 에이전트는 내 Claude Code로 Haiku에 물어봐서 정확도가 높지만 매우 적은 토큰을 잠깐 써요(입력을 멈추면 한 번). 키워드는 토큰을 쓰지 않지만 이름·설명만 맞춰 봐서 정확도가 낮아요.",
-  "mods.suggest.ai": "에이전트 (Haiku)",
+    "Claude Code 입력창에 글을 쓰면 맞는 skill·서브에이전트·확장을 입력창 위에 추천해요. 에이전트는 아래에서 고른 모델(기본 Haiku)이 프롬프트를 읽고 골라서 정확도가 높지만 토큰을 조금 써요(입력을 멈추면 한 번). 키워드는 토큰을 쓰지 않지만 이름·설명만 맞춰 봐서 정확도가 낮아요.",
+  "mods.suggest.ai": "에이전트",
+  "mods.model.title": "추천 에이전트 모델",
+  "mods.model.description":
+    "프롬프트 추천과 다듬기에 쓸 모델이에요. 기본은 Haiku예요. (결정 기록은 계속 Haiku를 써요.)",
+  "mods.model.warning":
+    "Sonnet·Opus는 더 정확할 수 있지만 토큰을 훨씬 많이 쓰고 느려요. 추천은 입력을 멈출 때마다 호출돼요.",
+  "mods.apiKey.title": "Anthropic API 키 (선택)",
+  "mods.apiKey.description":
+    "넣으면 앱의 추천 에이전트·결정 기록이 Claude Code 로그인 대신 이 키로 Haiku를 불러요. 로그인이 만료돼도 계속 동작하고, 비용은 구독이 아니라 이 키의 API 사용량으로 청구돼요. 키는 OS 자격 증명 저장소에만 저장되고, 저장 전에 짧은 요청으로 확인해요. Claude Code 안의 추천은 그대로 Claude Code를 써요.",
+  "mods.apiKey.saved": "저장됨 ····{hint}",
+  "mods.apiKey.remove": "지우기",
+  "mods.apiKey.save": "확인 후 저장",
+  "mods.apiKey.checking": "확인 중…",
   "mods.suggest.keyword": "키워드",
   "mods.suggest.off": "끄기",
   "mods.suggest.auto": "추천 자동 적용",
   "mods.suggest.autoDescription":
-    "켜면 Claude Code에서 프롬프트를 보낼 때 추천을 묻지 않고 모두 적용해요 (라이브러리 추가, 확장 설치, MCP 추가 포함).",
+    "켜면 Claude Code에서 프롬프트를 보낼 때, 그 프롬프트에만 쓰이는 추천(설치된 스킬·서브에이전트·MCP) 중 신뢰도 5 이상을 묻지 않고 써요. 프로젝트에 파일이 생기는 추가(＋)와 설치(⬇)는 항상 직접 눌러야 해요.",
   "mods.autoDock": "Claude가 켜지면 사이드바로",
   "mods.autoDockDescription":
     "Claude 데스크톱 앱이나 Claude Code가 실행 중이면 엔셀라가 사이드바로 열려 그 옆에 붙고, 그 프로젝트를 열어요.",
@@ -205,13 +217,25 @@ export const en: Messages<typeof ko> = {
     "Forms without a name or text aren't saved. Delete them all to use the built-in forms.",
   "mods.suggest.title": "Prompt suggestions",
   "mods.suggest.description":
-    "As you type in Claude Code, suggests matching skills, subagents and extensions above the prompt. AI asks Haiku through your Claude Code (once you stop typing; counts toward your usage). Keyword matches names and descriptions only.",
-  "mods.suggest.ai": "Agent (Haiku)",
+    "As you type in Claude Code, suggests matching skills, subagents and extensions above the prompt. Agent: the model chosen below (Haiku by default) reads the prompt and picks (once you stop typing; uses a few tokens). Keyword matches names and descriptions only.",
+  "mods.suggest.ai": "Agent",
+  "mods.model.title": "Suggestion agent model",
+  "mods.model.description":
+    "The model that picks prompt suggestions and refines prompts. Haiku by default. (Decision notes keep using Haiku.)",
+  "mods.model.warning":
+    "Sonnet and Opus can be more accurate but use many more tokens and are slower. Suggestions are asked each time you stop typing.",
+  "mods.apiKey.title": "Anthropic API key (optional)",
+  "mods.apiKey.description":
+    "With a key, the app's suggestion agent and decision notes call Haiku with it instead of your Claude Code sign-in. It keeps working when the sign-in expires, and usage is billed to this key's API account, not your subscription. The key is kept only in the OS credential store and checked with a tiny request before saving. Suggestions inside Claude Code still use Claude Code.",
+  "mods.apiKey.saved": "saved ····{hint}",
+  "mods.apiKey.remove": "Remove",
+  "mods.apiKey.save": "Check and save",
+  "mods.apiKey.checking": "Checking…",
   "mods.suggest.keyword": "Keyword",
   "mods.suggest.off": "Off",
   "mods.suggest.auto": "Apply suggestions automatically",
   "mods.suggest.autoDescription":
-    "When on, every suggestion is used without asking as you send a prompt in Claude Code (library items added, extensions installed, MCP servers added).",
+    "When on, sending a prompt in Claude Code uses, without asking, the suggestions that only affect that prompt (installed skills, subagents, MCP servers) with confidence 5 or more. Adding files (\uff0b) and installing (\u2b07) always wait for your press.",
   "mods.autoDock": "Turn into the sidebar when Claude starts",
   "mods.autoDockDescription":
     "When the Claude desktop app or Claude Code is running, Encela opens as the sidebar beside it, on that project.",

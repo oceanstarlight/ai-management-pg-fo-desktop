@@ -7,7 +7,6 @@ import {
   aiAsk,
   aiCatalog,
   type Candidate,
-  decisionsFor,
   keywordRank,
   label,
   MAX_ITEMS,
@@ -28,6 +27,8 @@ export interface LiveItem {
   source: string;
   label: string;
   description: string;
+  /** 1-6, when the pick says how sure it is. */
+  confidence?: number;
 }
 
 /** The prompt being written in one Claude Code session. */
@@ -104,7 +105,7 @@ async function pickForCloud(session: string) {
         const reply = await invoke<string>("suggest_ai", {
           project: local,
           system: AI_SYSTEM,
-          prompt: `${aiCatalog(candidates)}\n\n${aiAsk(claim.draft, decisionsFor(catalog, claim.project))}`,
+          prompt: `${aiCatalog(candidates)}\n\n${aiAsk(claim.draft)}`,
         }).catch(() => null);
         if (reply !== null) {
           items = parseAiReply(reply, candidates);
@@ -127,6 +128,7 @@ async function pickForCloud(session: string) {
       source: c.source,
       label: label(c, locale),
       description: c.description ?? "",
+      confidence: c.confidence,
     })),
   });
 }
@@ -208,6 +210,27 @@ export function useSuggestMode(): [SuggestMode, (mode: SuggestMode) => void] {
     (next) => {
       setMode(next);
       setPref(SUGGEST_PREF, next);
+    },
+  ];
+}
+
+/** The suggestion agent's model (`suggest::MODEL_PREF`); Haiku by default. */
+export type AgentModel = "haiku" | "sonnet" | "opus";
+export const MODEL_PREF = "suggestModel";
+
+function readModel(): AgentModel {
+  const v = getPref(MODEL_PREF);
+  return v === "sonnet" || v === "opus" ? v : "haiku";
+}
+
+export function useAgentModel(): [AgentModel, (model: AgentModel) => void] {
+  const [model, setModel] = useState<AgentModel>(readModel);
+  useEffect(() => onPrefChanged(MODEL_PREF, () => setModel(readModel())), []);
+  return [
+    model,
+    (next) => {
+      setModel(next);
+      setPref(MODEL_PREF, next === "haiku" ? null : next);
     },
   ];
 }

@@ -123,6 +123,10 @@ export const ko = {
   // Library: panel
   "docs.import.open": "스킬 가져오기",
   "docs.import.title": "스킬 가져오기",
+  "docs.import.help1":
+    "GitHub 주소·내 컴퓨터 폴더·직접 작성·AI 생성으로 스킬을 내 라이브러리에 넣어요. 라이브러리에 넣은 스킬은 프로젝트마다 적용하거나 뺄 수 있고, 계정으로 동기화돼요.",
+  "docs.import.help2":
+    "가져오기 전에 라이선스와 경고(스크립트·원격 실행·추적 링크)를 보여 줘요. 라이선스가 없거나 제한적이면 나만 쓰는 건 괜찮지만 공유 전에 확인해 주세요.",
   "docs.import.close": "닫기",
   "docs.import.way.github": "GitHub 주소",
   "docs.import.way.folder": "폴더",
@@ -286,6 +290,10 @@ export const en: Messages<typeof ko> = {
 
   "docs.import.open": "Import skills",
   "docs.import.title": "Import skills",
+  "docs.import.help1":
+    "Put skills into your library from a GitHub address, a folder on this computer, your own text, or AI. Library skills can be applied to or removed from each project, and sync with your account.",
+  "docs.import.help2":
+    "The license and warnings (scripts, piped remote code, tracking links) show before importing. Without a permissive license it's fine for your own use, but check before sharing.",
   "docs.import.close": "Close",
   "docs.import.way.github": "GitHub address",
   "docs.import.way.folder": "Folder",

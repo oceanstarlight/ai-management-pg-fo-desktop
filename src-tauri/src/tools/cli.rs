@@ -95,6 +95,11 @@ pub fn run_with_input(
 ) -> Result<(bool, String, String)> {
     use std::io::{Read, Write};
     let path = find(tool).ok_or_else(|| not_found(tool))?;
+    // A prompt run uses the user's Claude Code login (see `claude_auth`).
+    let prompt_run = tool == ToolId::Claude && args.contains(&"-p");
+    if prompt_run {
+        crate::claude_auth::before_run();
+    }
     let cmd_name = command_name(tool);
     let mut cmd = Command::new(&path);
     cmd.args(args)
@@ -109,6 +114,9 @@ pub fn run_with_input(
         .env("NO_COLOR", "1");
     if tool == ToolId::Claude {
         cmd.env("CLAUDE_CODE_DISABLE_TERMINAL_TITLE", "1");
+        // The app's own runs: its Claude Code mod stays quiet in them, or
+        // the app would show each one as a session of the user's.
+        cmd.env("ENCELA_INTERNAL", "1");
     }
     #[cfg(windows)]
     {
@@ -163,6 +171,11 @@ pub fn run_with_input(
     };
     let stdout = out.join().unwrap_or_default();
     let stderr = err.join().unwrap_or_default();
+    if prompt_run
+        && let Some(message) = crate::claude_auth::after_run(status.success(), &stdout, &stderr)
+    {
+        return Err(message);
+    }
     Ok((status.success(), stdout, stderr))
 }
 

@@ -29,9 +29,11 @@ import { isNewProject, missingFields, type Starter, startersFor } from "./starte
 import {
   AI_DELAY_MS,
   AI_SYSTEM,
+  agentModel,
   aiAsk,
   aiCatalog,
   autoContext,
+  bandLabel,
   blockContext,
   buildCandidates,
   type Candidate,
@@ -41,6 +43,7 @@ import {
   installedCandidate,
   keywordRank,
   label,
+  legendLines,
   NEW_AUTOMATION,
   parseAiReply,
   REFINE_SYSTEM,
@@ -52,6 +55,9 @@ import {
 
 const APP_ID = "io.github.alsrb060303collab.aimanagement";
 const PANE = "branch-notes";
+/** Automatic use takes only picks at least this sure (green or blue). */
+const AUTO_MIN_CONFIDENCE = 5;
+
 /** How often the app's export and the checked-out branch are read again. */
 const REFRESH_MS = 5000;
 
@@ -61,6 +67,8 @@ const suggestion = atom({ plugin: "branch-notes", key: "suggestion" } as const, 
 /** The starter forms offered above an empty prompt, or the required fields
  * a filled-in form still leaves blank. */
 const starter = atom({ plugin: "branch-notes", key: "starter" } as const, null);
+/** The ⓘ line under the suggestions is open. */
+const legendOpen = atom({ plugin: "branch-notes", key: "legendOpen" } as const, false);
 
 /** The export's suggestion settings and catalog, as last read. */
 let lastSuggest: SuggestExport | undefined;
@@ -168,6 +176,7 @@ async function refresh($: EngineInterface) {
 
 /** Leaves a request for the app and shows it at once. */
 async function send($: EngineInterface, request: Request): Promise<boolean> {
+  if (internal) return false;
   const dir = await bridgeDir($);
   if (!dir) return false;
   const s = sep(dir);
@@ -200,8 +209,12 @@ let current = "";
 let muted = false;
 let timer: { cancel: () => void } | null = null;
 let asking: AbortController | null = null;
-/** Haiku's picks by draft and catalog. */
-const picks = new Map<string, string[]>();
+/** The agent's picks by draft and catalog, with their confidence. */
+const picks = new Map<string, { key: string; confidence?: number }[]>();
+/** This session is one the Encela app started itself (`claude -p` for its
+ * own suggestions, notes or automations): it tells the app nothing, or the
+ * app would show it as the user's session. */
+let internal = false;
 /** What was suggested and picked for the prompt being written, for the app's log. */
 let shown: { draft: string; items: Candidate[]; by: "keyword" | "ai" } | null = null;
 let picked: string[] = [];
@@ -328,6 +341,7 @@ async function pushLive($: EngineInterface) {
       source: c.source,
       label: label(c, locale),
       description: c.description,
+      confidence: c.confidence,
     })),
     picked,
   });
@@ -348,13 +362,10 @@ async function askHaiku($: EngineInterface, draft: string, list: Candidate[]) {
   const catalog = aiCatalog(list);
   const r = await $.model.complete(
     {
-      model: "haiku",
+      model: agentModel(lastSuggest),
       system: AI_SYSTEM,
-      prompt: [
-        { text: catalog, cache: true },
-        { text: aiAsk(draft, decisionsFor(lastSuggest, projectDir)) },
-      ],
-      maxTokens: 40,
+      prompt: [{ text: catalog, cache: true }, { text: aiAsk(draft) }],
+      maxTokens: 80,
       effort: "low",
       timeoutMs: 15000,
     },
@@ -370,7 +381,7 @@ async function askHaiku($: EngineInterface, draft: string, list: Candidate[]) {
   if (picks.size > 50) picks.clear();
   picks.set(
     `${draft}\n${catalog.length}`,
-    items.map((c) => c.key),
+    items.map((c) => ({ key: c.key, confidence: c.confidence })),
   );
   shown = { draft, items, by: "ai" };
   await setSuggestion($, () => ({ draft, items, by: "ai" as const, pending: false }));
@@ -407,7 +418,10 @@ async function onDraft($: EngineInterface, text: string) {
   const known = picks.get(`${draft}\n${aiCatalog(list).length}`);
   if (known) {
     const items = known
-      .map((key) => list.find((c) => c.key === key))
+      .map(({ key, confidence }) => {
+        const c = list.find((x) => x.key === key);
+        return c ? { ...c, confidence } : undefined;
+      })
       .filter((c): c is Candidate => !!c);
     shown = { draft, items, by: "ai" };
     await setSuggestion($, () => ({ draft, items, by: "ai" as const, pending: false }));
@@ -549,7 +563,7 @@ async function refine($: EngineInterface) {
   $.ui.toast(w.refining);
   const use = ((await read($, suggestion))?.items ?? []).filter((c) => c.source === "installed");
   const r = await $.model.complete({
-    model: "haiku",
+    model: agentModel(lastSuggest),
     system: REFINE_SYSTEM,
     prompt: [{ text: refineAsk(draft, use, decisionsFor(lastSuggest, projectDir)) }],
     maxTokens: 1500,
@@ -575,16 +589,22 @@ async function undoRefine($: EngineInterface) {
 
 /** Auto mode: what wasn't picked is used as the prompt is sent. Returns the
  * context to send along (the installed items to use), if any. */
-async function autoApply($: EngineInterface, prompt: string): Promise<string | null> {
+async function autoApply($: EngineInterface): Promise<string | null> {
   const last = shown;
   if (!lastSuggest?.auto || !last?.items.length) return blockContext(guides);
-  const left = last.items.filter((c) => !picked.includes(c.key) && !c.automationId);
+  // Only what joins this prompt alone: installed skills, subagents and
+  // servers the pick is sure of. Anything that writes files into the
+  // project or installs something waits for the user's own press.
+  const left = last.items.filter(
+    (c) =>
+      !picked.includes(c.key) &&
+      c.source === "installed" &&
+      (c.confidence ?? 0) >= AUTO_MIN_CONFIDENCE,
+  );
   const used: Candidate[] = [];
   for (const c of left) {
-    if (c.source === "installed" || (await act($, c, async () => prompt))) {
-      used.push(c);
-      picked.push(c.key);
-    }
+    used.push(c);
+    picked.push(c.key);
   }
   if (used.length) {
     const w = words((await read($, view))?.locale ?? "en");
@@ -642,6 +662,8 @@ async function logSent($: EngineInterface) {
 
 export const register: Register = (on) => {
   on("session.start", async ($, e, next) => {
+    internal = !!(await $.env.get("ENCELA_INTERNAL").catch(() => ""));
+    if (internal) return next(e);
     await $.command.register({
       name: "todo",
       description: "Branch to-dos (Encela): /todo, /todo <text>, /todo done <n>",
@@ -835,6 +857,7 @@ export const register: Register = (on) => {
     const s = await read($, suggestion);
     const suggest = !!s && (s.items.length > 0 || s.pending);
     const st = await read($, starter);
+    const explain = suggest && (await read($, legendOpen));
     if (!band && !suggest && !st) return next(e);
     const { Box, Button, Text } = $.ui.resolve(e);
     const legend = [
@@ -881,7 +904,7 @@ export const register: Register = (on) => {
             {s.items.map((c) => (
               <Button
                 key={c.key}
-                label={label(c, v?.locale ?? "en")}
+                label={bandLabel(c, v?.locale ?? "en")}
                 onPress={() => void pick($, c)}
               />
             ))}
@@ -891,6 +914,13 @@ export const register: Register = (on) => {
               <Button key="undo" label={w.undo} dimColor onPress={() => void undoRefine($)} />
             ) : null}
             {legend ? <Text dimColor>{` ${legend} `}</Text> : <Text> </Text>}
+            <Button
+              key="explain"
+              label="ⓘ"
+              dimColor
+              onPress={() => void update($, legendOpen, (open) => !open)}
+            />
+            <Text> </Text>
             <Button
               key="mute"
               label="×"
@@ -902,6 +932,15 @@ export const register: Register = (on) => {
             />
           </Box>
         ) : null}
+        {explain
+          ? legendLines(v?.locale ?? "en").map((line) => (
+              <Box key={line}>
+                <Text dimColor wrap="wrap">
+                  {line}
+                </Text>
+              </Box>
+            ))
+          : null}
         {band ? (
           <Box key="band">
             <Text dimColor wrap="truncate">
@@ -942,7 +981,7 @@ export const register: Register = (on) => {
     lastPrompt = e.text;
     offerStarters = false;
     await update($, starter, () => null).catch(() => {});
-    const extra = e.command ? null : await autoApply($, e.text).catch(() => blockContext(guides));
+    const extra = e.command ? null : await autoApply($).catch(() => blockContext(guides));
     guides = [];
     await clearSuggestion($).catch(() => {});
     await logSent($).catch(() => {});

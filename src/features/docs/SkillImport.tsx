@@ -5,6 +5,7 @@ import { Button, Segmented } from "../../components/ui";
 import { useT } from "../../i18n";
 import { useLibraryStore } from "../../store/library";
 import { useProjectStore } from "../../store/project";
+import { InfoTip } from "../suggest/KindBadge";
 
 // Mirrors `Found` and `Preview` in src-tauri/src/library/import.rs.
 interface Found {
@@ -104,6 +105,10 @@ export function SkillImport({ onClose }: { onClose: () => void }) {
     <div className="space-y-3 rounded-md border border-border bg-surface-raised px-3 py-3 text-xs">
       <div className="flex items-center gap-2">
         <span className="font-semibold">{t("docs.import.title")}</span>
+        <InfoTip title={t("docs.import.title")}>
+          <p>{t("docs.import.help1")}</p>
+          <p>{t("docs.import.help2")}</p>
+        </InfoTip>
         <Button size="sm" variant="ghost" className="ml-auto" onClick={onClose}>
           {t("docs.import.close")}
         </Button>
