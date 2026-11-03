@@ -729,7 +729,7 @@ fn set_enabled(project: &Path, config_dir: &Path, name: &str, on: bool) -> Resul
 }
 
 /// Adds or changes a server. `old` is where it was before an edit.
-fn save(
+pub(crate) fn save(
     project: &Path,
     config_dir: &Path,
     old: Option<(Scope, String, Option<Config>)>,

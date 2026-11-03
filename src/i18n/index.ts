@@ -6,6 +6,7 @@ import * as automation from "./messages/automation";
 import * as common from "./messages/common";
 import * as connect from "./messages/connect";
 import * as docs from "./messages/docs";
+import * as hub from "./messages/hub";
 import * as live from "./messages/live";
 import * as mcp from "./messages/mcp";
 import * as memo from "./messages/memo";
@@ -29,6 +30,7 @@ const KO = {
   ...settings.ko,
   ...docs.ko,
   ...mcp.ko,
+  ...hub.ko,
   ...work.ko,
   ...memo.ko,
   ...account.ko,
@@ -45,6 +47,7 @@ const EN: Record<MessageKey, string> = {
   ...settings.en,
   ...docs.en,
   ...mcp.en,
+  ...hub.en,
   ...work.en,
   ...memo.en,
   ...account.en,

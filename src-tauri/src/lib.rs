@@ -14,6 +14,7 @@ mod github;
 mod i18n;
 mod library;
 mod mcp;
+mod mcp_hub;
 mod mcp_server;
 mod memo;
 mod prefs;
@@ -65,6 +66,14 @@ pub fn run() {
             mcp::mcp_set_enabled,
             mcp::mcp_parse,
             mcp::mcp_recommended,
+            mcp_hub::hub_list,
+            mcp_hub::hub_save,
+            mcp_hub::hub_remove,
+            mcp_hub::hub_check,
+            mcp_hub::hub_apply,
+            mcp_hub::hub_server_status,
+            mcp_hub::hub_server_connect,
+            mcp_hub::hub_server_disconnect,
             project_docs::project_docs_list,
             project_docs::project_doc_read,
             project_docs::project_doc_write,

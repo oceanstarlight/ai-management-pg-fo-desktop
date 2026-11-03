@@ -316,6 +316,7 @@ Claude Code 같은 AI 코딩 도구로 작업할 때, 터미널 옆에 붙어서
   2. [ ] **사용량·비용 보기**: `~/.claude`의 세션 기록(JSONL)을 읽어 모델·프로젝트별 토큰, 5시간 창. 로그인 정보 파일은 읽지 않는다.
   3. [x] **MCP 관리**: 2026-10-12 완료(MCP 서버 페이지, `docs/research.md` 11).
   3-1. [x] **앱 자체 MCP 서버** (2026-10-15, Windows 실기 테스트 대기): `<앱> mcp`(stdio). 브랜치 메모·할 일·PR/CI 읽기와 할 일 추가·완료·메모 추가, 블록 검색·문서 만들기·미리보기. 쓰기는 bridge inbox로 앱에 맡긴다(앱만 데이터를 씀). 설정 > Claude Code 연동에서 `claude mcp add --scope user encela`로 연결. 다음 후보: 할 일 삭제, 문서에 블록 추가, 프로젝트에 쓰기.
+  3-2. [x] **MCP 보관함·허브 서버** (2026-11-03, Windows 실기 테스트 대기): 도구함 › MCP 보관함. 설치하지 않은 MCP 서버 설정을 `<앱 데이터>/mcp-hub.json`에 모아두고(설명·태그·`${VAR}` 비밀값, 앱만 씀) ① 프로젝트에 범위(로컬·프로젝트·개인)를 골라 넣고 빼거나 ② 허브 서버 `encela-hub`(`<앱> mcp hub`, user 범위로 등록)로 쓴다. 허브는 처음엔 자기 도구 5개(`hub_list_servers`·`hub_open_server`·`hub_list_tools`·`hub_call`·`hub_close_server`)만 내놓고, Claude가 서버를 열면 그때 그 서버를 띄워 도구를 `<서버>__<도구>`로 보여준다(`tools/list_changed`, 안 되는 클라이언트는 `hub_call`). stdio·HTTP(streamable)만 띄우고 SSE·WebSocket·OAuth는 프로젝트에 넣어서 쓴다. Claude Code만 지원(Codex는 나중에). 다음 후보: 추천(suggest)에 보관함 서버 넣기, OAuth 서버, Codex.
   4. [ ] **프로필**: skills·agents·hooks·MCP 묶음을 이름 붙여 저장하고 프로젝트에 한 번에 적용.
   5. [~] **설정 점검**: 깨진 설정 JSON·가려진 항목·꺼진 항목 표시는 설정 지도에 있음(완료). 없는 hook 경로 검사는 아직.
   6. 세션 기록 탐색 [ ], 슬래시 명령 편집기 [~](프로젝트 문서 화면에서 commands 파일 편집은 완료, 전용 편집기는 아직), 상태줄 빌더 [ ], 가져오기·내보내기 [ ].

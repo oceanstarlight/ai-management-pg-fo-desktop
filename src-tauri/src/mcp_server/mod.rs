@@ -34,6 +34,10 @@ pub fn run(args: &[String]) -> i32 {
         eprintln!("encela mcp: couldn't find the app's data folder; pass --data-dir <dir>");
         return 1;
     };
+    // `<app> mcp hub`: the MCP hub (`crate::mcp_hub::gateway`).
+    if args.first().map(String::as_str) == Some("hub") {
+        return crate::mcp_hub::gateway::run(data_dir);
+    }
     let server = tools::Server::new(data_dir);
     let stdin = std::io::stdin();
     let mut out = std::io::stdout().lock();
