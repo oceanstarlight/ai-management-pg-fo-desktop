@@ -10,7 +10,7 @@
 ![Platform](https://img.shields.io/badge/platform-Windows-0078d4)
 [![License](https://img.shields.io/badge/license-Apache--2.0-green)](LICENSE)
 
-<img src="docs/images/live-en.png" alt="The Live screen: Claude on top, five subagents under it, and the web pages and documents each one works on" width="900">
+<img src="docs/images/live-en.png" alt="The Live screen: Claude in the middle, five subagents around it, and the web pages and documents each one works on further out" width="900">
 
 </div>
 
@@ -64,7 +64,7 @@ Live view, suggestions and decisions work with **Claude Code** (terminal, cmd, t
 
 - **Status**: idle, thinking, reading, searching, editing, running, a subagent at work, asking you… with the file or command it is on and how long the prompt has run.
 - **This prompt's numbers**: tool calls, reads, edits, lines added and removed, commands, failures, how full the context window is, and the session's cost so far.
-- **Work graph**: Claude sits on top; the subagents it starts line up under it, and under each one the files, web searches and pages, searches, MCP tools and questions it works on. A line with small blocks moving along it is working right now; finished work turns to a dashed line and fades after a few seconds, so the graph keeps showing what is happening. Claude stays until the session ends (or `/clear` starts a new one).
+- **Work graph**: Claude sits in the middle; the subagents it starts ring around it, and further out, in the same direction, the files, web searches and pages, searches, MCP tools and questions each one works on. A line with small blocks moving along it is working right now; finished work turns to a dashed line and fades after a few seconds, so the graph keeps showing what is happening. Claude stays until the session ends (or `/clear` starts a new one).
 - **Timeline**: like Claude Code's own app: each prompt, one line summing up its tool calls ("Read 2 files · Web 6× · 5 agents", open it for every call), what runs now, and Claude's answer. When Claude asks you something it shows in yellow as **Question · Asking you**.
 - **Local or cloud**: pick in the title bar. Local follows the open project folder (several sessions in one folder get tabs, and a note points to a folder where Claude runs if the open one is quiet); Cloud lists cloud sessions, the newest first. Nothing of this is stored or synced; it lives only while the app runs.
 

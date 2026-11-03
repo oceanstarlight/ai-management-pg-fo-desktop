@@ -14,16 +14,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { type MessageKey, useT } from "../../i18n";
 import { type Category, type Session, turnsOf } from "../../store/activity";
 import { useHubStore } from "../../store/hub";
-import {
-  ALPHA_ALIVE,
-  ALPHA_MIN,
-  type Body,
-  extent,
-  LEAN,
-  type SimNode,
-  seed,
-  step,
-} from "./forceLayout";
+import { ALPHA_ALIVE, ALPHA_MIN, type Body, reach, type SimNode, seed, step } from "./forceLayout";
 import {
   type AgentNode,
   buildGraph,
@@ -54,11 +45,13 @@ const RES_H = 30;
 /** Narrower than this and the graph lays out as if it had this much room. */
 const MIN_W = 360;
 /** The graph's own fixed height, so what is below it never moves (px). */
-const FRAME_H = 360;
+const FRAME_H = 400;
+/** Of the frame, the line above the graph (this request, the colours) (px). */
+const STRIP_H = 44;
 /** A tall graph shrinks to fit the frame, down to this; past it the frame scrolls. */
 const FIT_MIN = 0.7;
-/** The corners beside Claude are used once each has this much room (px). */
-const CORNER_MIN = 150;
+/** The line above the graph (this request, the colours) needs this much room (px). */
+const STRIP_MIN = 300;
 /** Fade-out of what leaves (ms). */
 const LEAVE_MS = 450;
 
@@ -223,13 +216,18 @@ interface Geo {
 }
 
 /**
- * A soft curve from parent to child: bottom to top when the child hangs
- * below, side to side while it sits beside its parent.
+ * A soft curve from parent to child: bottom to top when the child is below,
+ * top to bottom when it is above, side to side while it sits beside.
  */
 function geometry(p: Body, pn: SimNode, c: Body, cn: SimNode): Geo {
-  if (c.y - cn.h / 2 >= p.y + pn.h / 2 - 4) {
-    const y0 = p.y + pn.h / 2;
-    const y3 = c.y - cn.h / 2;
+  const below = c.y - cn.h / 2 >= p.y + pn.h / 2 - 4;
+  const above = c.y + cn.h / 2 <= p.y - pn.h / 2 + 4;
+  // Far to the side, a side-to-side line reads better even when it also climbs.
+  const side = Math.abs(c.x - p.x) - (pn.w + cn.w) / 2 > Math.abs(c.y - p.y) * 0.6;
+  if ((below || above) && !side) {
+    const dir = below ? 1 : -1;
+    const y0 = p.y + (dir * pn.h) / 2;
+    const y3 = c.y - (dir * cn.h) / 2;
     const my = (y0 + y3) / 2;
     return { x0: p.x, y0, x1: p.x, y1: my, x2: c.x, y2: my, x3: c.x, y3 };
   }
@@ -257,11 +255,11 @@ function pointAt(g: Geo, t: number): { x: number; y: number; angle: number } {
 }
 
 /**
- * Claude's whole work for the current prompt: Claude, the subagents it
- * started, and what each one reads, edits, looks up or calls. Every node
- * finds its own place (a small force layout), springs out of its parent when
- * it appears and drifts gently while Claude works; lines with something
- * moving along them are working now.
+ * Claude's whole work for the current prompt: Claude in the middle, the
+ * subagents it started around it, and what each one reads, edits, looks up
+ * or calls further out. Every node finds its own place (a small force
+ * layout), springs out of its parent when it appears and drifts gently while
+ * Claude works; lines with something moving along them are working now.
  */
 export function WorkGraph({ session }: { session: Session }) {
   const t = useT();
@@ -312,12 +310,9 @@ export function WorkGraph({ session }: { session: Session }) {
   const signature = live.map((n) => n.id).join("|");
   const s = sim.current;
   if (room && s.sig !== `${signature}@${width}`) {
-    const siblings = new Map<string | null, string[]>();
-    for (const n of live) siblings.set(n.parent, [...(siblings.get(n.parent) ?? []), n.id]);
     for (const n of live) {
       if (s.bodies.has(n.id)) continue;
-      const group = siblings.get(n.parent) ?? [];
-      s.bodies.set(n.id, seed(n, s.bodies, group.length, group.indexOf(n.id), width));
+      s.bodies.set(n.id, seed(n, s.bodies, width));
     }
     s.alpha = Math.max(s.alpha, s.sig ? 0.7 : 1);
     s.sig = `${signature}@${width}`;
@@ -356,132 +351,144 @@ export function WorkGraph({ session }: { session: Session }) {
   if (!room) return <div ref={wrap} className="w-full" style={{ height: FRAME_H }} />;
 
   const size = new Map(nodes.map((n) => [n.id, n]));
-  const height = Math.max(extent(nodes, s.bodies), MAIN_H + 16);
+  // Claude stays in the middle: as much room above it as below. In steps, so
+  // the drift does not keep resizing the view.
+  const half = Math.ceil(Math.max(reach(nodes, s.bodies), MAIN_H / 2 + 8) / 24) * 24;
+  const height = 2 * half;
   const time = s.t || performance.now();
-  // A fixed frame: the graph shrinks a little to fit, and scrolls past that.
-  const fit = height * scale > FRAME_H ? Math.max(FIT_MIN, FRAME_H / (height * scale)) : 1;
+  const strip = room >= STRIP_MIN;
+  const view = strip ? FRAME_H - STRIP_H : FRAME_H;
+  // A fixed view: the graph shrinks a little to fit, and scrolls past that.
+  const fit = height * scale > view ? Math.max(FIT_MIN, view / (height * scale)) : 1;
   const zoom = scale * fit;
   const left = (room - width * zoom) / 2;
-  const corner = (room - (MAIN_W + 2 * LEAN) * zoom) / 2 - 16;
+  const top = Math.max(0, (view - height * zoom) / 2);
+  // The layout puts Claude at y = 0; the view at the middle of its height.
+  const bodyOf = (id: string): Body | undefined => {
+    const b = s.bodies.get(id);
+    return b && { ...b, y: b.y + half };
+  };
 
   return (
-    <div
-      ref={wrap}
-      className={`relative w-full ${height * zoom > FRAME_H ? "overflow-y-auto" : "overflow-hidden"}`}
-      style={{ height: FRAME_H }}
-    >
-      {corner >= CORNER_MIN && (
-        <>
-          <RequestCorner session={session} width={Math.min(corner, 280)} />
-          <LegendCorner graph={graph} width={Math.min(corner, 280)} />
-        </>
+    <div ref={wrap} className="w-full" style={{ height: FRAME_H }}>
+      {strip && (
+        <div className="flex items-start justify-between gap-6" style={{ height: STRIP_H }}>
+          <RequestLine session={session} />
+          <Legend graph={graph} />
+        </div>
       )}
-      <div style={{ height: height * zoom }} aria-hidden />
       <div
-        className="absolute top-0 origin-top-left"
-        style={{
-          left,
-          width,
-          height,
-          transform: zoom < 1 ? `scale(${zoom})` : undefined,
-          transition: "transform 0.5s cubic-bezier(0.4, 0, 0.2, 1), left 0.5s",
-        }}
+        className={`relative w-full ${height * zoom > view ? "overflow-y-auto" : "overflow-hidden"}`}
+        style={{ height: view }}
       >
-        <svg
-          width={width}
-          height={height}
-          className="absolute inset-0 overflow-visible"
-          aria-hidden
+        <div style={{ height: height * zoom }} aria-hidden />
+        <div
+          className="absolute origin-top-left"
+          style={{
+            left,
+            top,
+            width,
+            height,
+            transform: zoom < 1 ? `scale(${zoom})` : undefined,
+            transition: "transform 0.5s cubic-bezier(0.4, 0, 0.2, 1), left 0.5s, top 0.5s",
+          }}
         >
-          {edges.map((e) => {
-            const p = s.bodies.get(e.from);
-            const c = s.bodies.get(e.to);
-            const pn = size.get(e.from);
-            const cn = size.get(e.to);
-            if (!p || !c || !pn || !cn) return null;
-            const g = geometry(p, pn, c, cn);
+          <svg
+            width={width}
+            height={height}
+            className="absolute inset-0 overflow-visible"
+            aria-hidden
+          >
+            {edges.map((e) => {
+              const p = bodyOf(e.from);
+              const c = bodyOf(e.to);
+              const pn = size.get(e.from);
+              const cn = size.get(e.to);
+              if (!p || !c || !pn || !cn) return null;
+              const g = geometry(p, pn, c, cn);
+              return (
+                <g key={e.id} className={e.leaving ? "anim-node-out" : "anim-node-in"}>
+                  <path
+                    d={pathOf(g)}
+                    fill="none"
+                    style={{
+                      stroke: e.active ? e.color : "var(--c-border-strong)",
+                      strokeOpacity: e.active ? 0.6 : 0.9,
+                      strokeWidth: e.active ? 1.6 : 1.2,
+                      transition:
+                        "stroke 0.4s ease, stroke-opacity 0.4s ease, stroke-width 0.4s ease",
+                    }}
+                    strokeDasharray={e.active ? undefined : "3 4"}
+                  />
+                  {e.active && !e.leaving && (
+                    <g className="motion-reduce:hidden">
+                      {[0, 1, 2].map((i) => {
+                        const at = pointAt(g, (((time / 1500 + i / 3) % 1) + 1) % 1);
+                        return (
+                          <rect
+                            key={i}
+                            width={7}
+                            height={3.5}
+                            rx={1.5}
+                            x={-3.5}
+                            y={-1.75}
+                            fill={e.color}
+                            transform={`translate(${at.x} ${at.y}) rotate(${at.angle})`}
+                          />
+                        );
+                      })}
+                    </g>
+                  )}
+                </g>
+              );
+            })}
+          </svg>
+
+          {nodes.map((n) => {
+            const b = bodyOf(n.id);
+            if (!b) return null;
             return (
-              <g key={e.id} className={e.leaving ? "anim-node-out" : "anim-node-in"}>
-                <path
-                  d={pathOf(g)}
-                  fill="none"
-                  style={{
-                    stroke: e.active ? e.color : "var(--c-border-strong)",
-                    strokeOpacity: e.active ? 0.6 : 0.9,
-                    strokeWidth: e.active ? 1.6 : 1.2,
-                    transition:
-                      "stroke 0.4s ease, stroke-opacity 0.4s ease, stroke-width 0.4s ease",
-                  }}
-                  strokeDasharray={e.active ? undefined : "3 4"}
-                />
-                {e.active && !e.leaving && (
-                  <g className="motion-reduce:hidden">
-                    {[0, 1, 2].map((i) => {
-                      const at = pointAt(g, (((time / 1500 + i / 3) % 1) + 1) % 1);
-                      return (
-                        <rect
-                          key={i}
-                          width={7}
-                          height={3.5}
-                          rx={1.5}
-                          x={-3.5}
-                          y={-1.75}
-                          fill={e.color}
-                          transform={`translate(${at.x} ${at.y}) rotate(${at.angle})`}
-                        />
-                      );
-                    })}
-                  </g>
-                )}
-              </g>
+              <div
+                key={n.id}
+                className="absolute"
+                style={{ left: b.x - n.w / 2, top: b.y - n.h / 2, width: n.w, height: n.h }}
+              >
+                <div
+                  className={`h-full w-full ${n.leaving ? "anim-node-out" : n.kind === "main" ? "" : "anim-node-pop"}`}
+                >
+                  {n.kind === "main" ? (
+                    <MainNode
+                      session={session}
+                      more={
+                        graph.agents.length || graph.modules.length ? 0 : (graph.hidden.main ?? 0)
+                      }
+                    />
+                  ) : n.kind === "module" ? (
+                    <ModuleCard module={n.module} hidden={n.hidden} />
+                  ) : n.kind === "head" ? (
+                    n.agent ? (
+                      <AgentCard agent={n.agent} hidden={n.hidden} />
+                    ) : (
+                      <OwnCard active={n.active} hidden={n.hidden} />
+                    )
+                  ) : (
+                    <ResourceChip
+                      node={n.node}
+                      label={n.node.kind === "ask" ? t("live.ask.what") : n.node.label}
+                    />
+                  )}
+                </div>
+              </div>
             );
           })}
-        </svg>
-
-        {nodes.map((n) => {
-          const b = s.bodies.get(n.id);
-          if (!b) return null;
-          return (
-            <div
-              key={n.id}
-              className="absolute"
-              style={{ left: b.x - n.w / 2, top: b.y - n.h / 2, width: n.w, height: n.h }}
-            >
-              <div
-                className={`h-full w-full ${n.leaving ? "anim-node-out" : n.kind === "main" ? "" : "anim-node-pop"}`}
-              >
-                {n.kind === "main" ? (
-                  <MainNode
-                    session={session}
-                    more={
-                      graph.agents.length || graph.modules.length ? 0 : (graph.hidden.main ?? 0)
-                    }
-                  />
-                ) : n.kind === "module" ? (
-                  <ModuleCard module={n.module} hidden={n.hidden} />
-                ) : n.kind === "head" ? (
-                  n.agent ? (
-                    <AgentCard agent={n.agent} hidden={n.hidden} />
-                  ) : (
-                    <OwnCard active={n.active} hidden={n.hidden} />
-                  )
-                ) : (
-                  <ResourceChip
-                    node={n.node}
-                    label={n.node.kind === "ask" ? t("live.ask.what") : n.node.label}
-                  />
-                )}
-              </div>
-            </div>
-          );
-        })}
+        </div>
       </div>
     </div>
   );
 }
 
-/** Top left, beside Claude: what this turn was asked to do. */
-function RequestCorner({ session, width }: { session: Session; width: number }) {
+/** Above the graph, on the left: what this turn was asked to do. */
+function RequestLine({ session }: { session: Session }) {
   const t = useT();
   const prompt = useMemo(() => {
     const turns = turnsOf(session.steps);
@@ -489,7 +496,7 @@ function RequestCorner({ session, width }: { session: Session; width: number }) 
   }, [session.steps]);
   if (!prompt) return null;
   return (
-    <div className="absolute top-1 left-1 z-10" style={{ width }} title={prompt}>
+    <div className="min-w-0 flex-1" title={prompt}>
       <div className="text-fs-10.5 font-medium text-text-subtle">{t("live.graph.request")}</div>
       <p
         key={prompt}
@@ -501,8 +508,8 @@ function RequestCorner({ session, width }: { session: Session; width: number }) 
   );
 }
 
-/** Top right, beside Claude: what each colour on the graph means (only those on it). */
-function LegendCorner({ graph, width }: { graph: ReturnType<typeof buildGraph>; width: number }) {
+/** Above the graph, on the right: what each colour on the graph means (only those on it). */
+function Legend({ graph }: { graph: ReturnType<typeof buildGraph> }) {
   const t = useT();
   const counts = new Map<Category, number>();
   if (graph.agents.length) counts.set("agent", graph.agents.length);
@@ -510,7 +517,7 @@ function LegendCorner({ graph, width }: { graph: ReturnType<typeof buildGraph>; 
   for (const r of graph.resources) counts.set(r.category, (counts.get(r.category) ?? 0) + 1);
   if (!counts.size) return null;
   return (
-    <div className="absolute top-1 right-1 z-10 text-right" style={{ width }}>
+    <div className="max-w-[55%] shrink-0 text-right">
       <div className="text-fs-10.5 font-medium text-text-subtle">{t("live.graph.legend")}</div>
       <ul className="mt-1 flex max-h-10 flex-wrap justify-end gap-x-3 gap-y-1 overflow-hidden text-fs-11 text-text-muted">
         {[...counts].map(([cat, n]) => (
