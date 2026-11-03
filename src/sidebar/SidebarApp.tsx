@@ -2,6 +2,7 @@ import { isTauri } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { useEffect } from "react";
 import { ErrorBoundary } from "../components/ErrorBoundary";
+import { AdaptiveSidebar } from "../features/adaptive/AdaptiveSidebar";
 import { DocsTab } from "../features/docs/DocsTab";
 import { LiveView } from "../features/live/LiveView";
 import { RepoLine } from "../features/live/RepoLine";
@@ -93,6 +94,8 @@ export default function SidebarApp() {
               <DecisionsPanel compact />
               <SuggestFeed compact />
             </div>
+          ) : activeTab === "adaptive" ? (
+            <AdaptiveSidebar />
           ) : activeTab === "docs" ? (
             <DocsTab />
           ) : (

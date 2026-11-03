@@ -47,6 +47,7 @@ export const ko = {
   "home.sideMenu": "프롬프트 · 추천 · 결정 · 메모",
   "shell.nav.project": "프로젝트",
   "shell.nav.toolbox": "도구함",
+  "shell.nav.adaptive": "적응형 도구",
   "shell.project": "프로젝트",
   "shell.nav.memo": "메모",
   "shell.nav.settings": "설정",
@@ -57,6 +58,7 @@ export const ko = {
   // Sidebar window: tabs
   "shell.tab.live": "진행",
   "shell.tab.suggest": "추천",
+  "shell.tab.adaptive": "적응형",
   "shell.tab.docs": "문서",
   "shell.tab.memo": "메모",
 
@@ -132,6 +134,7 @@ export const en: Messages<typeof ko> = {
   "home.sideMenu": "Prompt · suggestions · decisions · notes",
   "shell.nav.project": "Project",
   "shell.nav.toolbox": "Toolbox",
+  "shell.nav.adaptive": "Adaptive tools",
   "shell.project": "Project",
   "shell.nav.memo": "Notes",
   "shell.nav.settings": "Settings",
@@ -141,6 +144,7 @@ export const en: Messages<typeof ko> = {
 
   "shell.tab.live": "Live",
   "shell.tab.suggest": "Suggest",
+  "shell.tab.adaptive": "Adaptive",
   "shell.tab.docs": "Docs",
   "shell.tab.memo": "Notes",
 

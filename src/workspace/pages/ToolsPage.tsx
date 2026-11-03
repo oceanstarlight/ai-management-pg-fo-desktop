@@ -4,8 +4,6 @@ import { LibraryPanel } from "../../features/docs/LibraryPanel";
 import { ExtensionGallery } from "../../features/extensions/ExtensionGallery";
 import { useT } from "../../i18n";
 import { type ToolsTab, useWorkspaceStore } from "../../store/workspace";
-import { McpHubPanel } from "./McpHubPanel";
-import { McpPage } from "./McpPage";
 
 /** What Claude can be given: skills and subagents, MCP servers, extensions, ready-made blocks. */
 export function ToolsPage() {
@@ -14,8 +12,6 @@ export function ToolsPage() {
   const setTab = useWorkspaceStore((s) => s.setToolsTab);
   const tabs: { value: ToolsTab; label: string }[] = [
     { value: "library", label: t("tools.tab.library") },
-    { value: "mcp", label: t("tools.tab.mcp") },
-    { value: "hub", label: t("tools.tab.hub") },
     { value: "extensions", label: t("tools.tab.extensions") },
     { value: "catalog", label: t("tools.tab.catalog") },
   ];
@@ -27,10 +23,6 @@ export function ToolsPage() {
       </div>
       {tab === "library" ? (
         <LibraryPanel />
-      ) : tab === "mcp" ? (
-        <McpPage embedded />
-      ) : tab === "hub" ? (
-        <McpHubPanel />
       ) : tab === "extensions" ? (
         <ExtensionGallery />
       ) : (

@@ -20,6 +20,9 @@ describe("activity", () => {
       describeTool("AskUserQuestion", { questions: [{ question: "Which one?" }] }).detail,
     ).toBe("Which one?");
     expect(describeTool("mcp__github__get_issue", {}).detail).toBe("github get_issue");
+    expect(describeTool("mcp__encela-hub__hub_open_server", { name: "rea" }).target).toBe("rea");
+    expect(describeTool("mcp__encela-hub__hub_call", { server: "artex" }).target).toBe("artex");
+    expect(describeTool("mcp__github__get_issue", { name: "x" }).target).toBe("");
     expect(describeTool("Bash", { command: "x".repeat(500) }).detail.length).toBe(300);
   });
 

@@ -18,6 +18,7 @@ import { CommandPalette, useCommandPaletteKey } from "./CommandPalette";
 import { saveBeforeLeaving } from "./leave";
 import { MainTitleBar } from "./MainTitleBar";
 import { NavSidebar } from "./NavSidebar";
+import { AdaptivePage } from "./pages/AdaptivePage";
 import { AutomationsPage } from "./pages/AutomationsPage";
 import { HomePage } from "./pages/HomePage";
 import { MemoPage } from "./pages/MemoPage";
@@ -27,6 +28,7 @@ import { ToolsPage } from "./pages/ToolsPage";
 
 const PAGES: Record<Page, () => React.ReactNode> = {
   home: () => <HomePage />,
+  adaptive: () => <AdaptivePage />,
   project: () => <ProjectPage />,
   tools: () => <ToolsPage />,
   automations: () => <AutomationsPage />,

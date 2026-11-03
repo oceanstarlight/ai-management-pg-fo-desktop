@@ -485,3 +485,29 @@ AGPL 프로젝트는 아이디어만 참고하고 코드는 가져오지 않는�
 - streamable HTTP: POST에 `Accept: application/json, text/event-stream`, 답의 `Mcp-Session-Id`를 다음 요청에 붙이고 `initialize` 뒤에는 `MCP-Protocol-Version`을 보낸다. 답이 SSE면 같은 id의 `data:`가 나올 때까지 읽는다. 401·403은 OAuth가 필요한 서버로 보고, 허브는 OAuth를 하지 않는다(헤더에 `${VAR}` 토큰 또는 프로젝트에 넣어 `/mcp`로 로그인).
 - `${VAR}`·`${VAR:-기본값}`은 허브 프로세스의 환경 변수(= Claude Code가 넘긴 환경)로 펼친다. 값이 없고 기본값도 없으면 그 서버를 열 때 오류.
 - Windows: 앱 실행 파일이 GUI 서브시스템이라 하위 서버마다 콘솔 창이 뜨지 않게 `CREATE_NO_WINDOW`로 띄우고, `npx`처럼 확장자 없는 명령은 PATH와 PATHEXT로 `.cmd`까지 찾는다. 실기 테스트 필요.
+
+## 21. 적응형 도구 카탈로그 (2026-11-03 조사: haiku, 검증: sonnet, 각 저장소의 LICENSE를 고정 커밋에서 읽음)
+
+앱은 실행 방법(설정)과 사용 가이드만 넣고 코드는 포함하지 않는다. 사용자가 추가해도 설치되지 않고, 쓸 때 사용자의 npx·uvx가 받는다.
+
+| 모듈 | 저장소 @ 커밋 | 라이선스 | 종류 | 실행·설치 | 비고 |
+|---|---|---|---|---|---|
+| postgres-pro | crystaldba/postgres-mcp @ 15c8e3335354 | MIT | mcp | `docker run -i --rm -e DATABASE_URI crystaldba/postgres-mcp --access-mode=restricted` | README의 uvx 방식(`uvx postgres-mcp`)으로 넣음. README 예시는 unrestricted, 앱은 읽기 전용 restricted |
+| ast-grep | ast-grep/ast-grep @ e83806463b5f | MIT | cli | `npm install --global @ast-grep/cli (also: pip install ast-grep-cli, brew install ast-grep,` | 실행 파일 이름은 ast-grep |
+| repomix | yamadashy/repomix @ fe02ab760f14 | MIT | cli | `npm install -g repomix (also brew install repomix); no install: npx repomix@latest` | 앱은 `npx -y repomix --mcp`(MCP 모듈)로 넣음, transport 문서에 없음 |
+| markitdown | microsoft/markitdown @ 7482c092d9c0 | MIT | mcp | `markitdown-mcp` | 인증 없음, 사용자가 읽을 수 있는 파일 다 읽음 → stdio만 |
+| ghidra | LaurieWired/GhidraMCP @ 1e980252087b | Apache-2.0 | mcp | `uvx --from git+https://github.com/LaurieWired/GhidraMCP ghidra-mcp --ghidra-server http://` | Ghidra + GhidraMCP 확장 먼저, git 최신을 받음 |
+| mermaid-cli | mermaid-js/mermaid-cli @ 1423a0d7967d | MIT | cli | `npm install -g @mermaid-js/mermaid-cli (executable mmdc); no-install: npx -p @mermaid-js/m` | brew 설치는 지원 중단 |
+| (제외) | supabase/mcp @ ed5084d19575 | Apache-2.0 | mcp | `https://mcp.supabase.com/mcp` | 원격 전용, Supabase 계정 OAuth 필요 |
+| qdrant | qdrant/mcp-server-qdrant @ c56ae5adf62b | Apache-2.0 | mcp | `uvx mcp-server-qdrant` | QDRANT_URL 또는 QDRANT_LOCAL_PATH, COLLECTION_NAME |
+| kubernetes | containers/kubernetes-mcp-server @ 91cbf349d6cc | Apache-2.0 | mcp | `npx -y kubernetes-mcp-server@latest` | 기본 transport 문서에 없음(npx stdio로 넣음), OpenTelemetry는 설정할 때만 |
+| jupyter | datalayer/jupyter-mcp-server @ ec66cb82f10b | BSD-3-Clause | mcp | `uvx jupyter-mcp-server@latest` | JUPYTER_URL·JUPYTER_TOKEN, uv 0.6.14+ |
+| lighthouse | GoogleChrome/lighthouse @ df282a603063 | Apache-2.0 | cli | `npm install -g lighthouse (or yarn global add lighthouse)` | 첫 실행 오류 보고 질문 → --no-enable-error-reporting, Node 22+ |
+| mcp-mermaid | hustcc/mcp-mermaid @ 13497062a980 | MIT | mcp | `npx -y mcp-mermaid` | svg_url·png_url 출력은 mermaid.ink로 보냄 |
+| ripgrep | BurntSushi/ripgrep @ 91f5d22ef48b | MIT OR Unlicense | cli | `brew install ripgrep; apt-get install ripgrep; cargo install ripgrep; winget install Burnt` | MIT OR Unlicense 둘 다 확인 |
+| drawio | jgraph/drawio-mcp @ 2a0f57032862 | Apache-2.0 | mcp | `npx -y @drawio/mcp` | diagrams.net에서 코드·도형 목록 받음, DRAWIO_ICON_SERVICE_URL=off |
+| jq | jqlang/jq @ 5c001b18d723 | MIT | cli | `Download the standalone prebuilt binary from the GitHub releases page (rename to jq, chmod` | COPYING은 MIT, 문서는 CC BY 3.0(코드 아님) |
+
+- 제외: ktanaka101/mcp-server-duckdb·chroma-core/chroma-mcp(6개월 넘게 커밋 없음), oraios/serena(GPL-3.0), makenotion/notion-mcp-server(README에 유지보수 중단), stripe/ai(호스팅 전용, Stripe 계정 OAuth).
+- 확인 못 한 것: 실행해 보지 않아서 네트워크로 나가는 데이터가 없다는 증명은 아니다. kubernetes README는 앞 100k자만 읽음.
+- GitHub에서 추가하는 모듈은 사용자 책임으로 추가한다. 앱이 라이선스 파일을 직접 판정하고(`catalog::fetch::classify_license`), 허용 목록 밖이거나 없으면 경고만 띄운다(번들하지 않으므로 막지 않음).

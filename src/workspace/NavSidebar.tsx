@@ -1,6 +1,7 @@
 import {
   Activity,
   AlarmClock,
+  Blocks,
   CircleUserRound,
   FolderGit2,
   type LucideIcon,
@@ -24,6 +25,7 @@ type NavItem = { page: Page; label: MessageKey; icon: LucideIcon };
 /** What Claude is doing comes first; the rest supports it. */
 const NAV: NavItem[] = [
   { page: "home", label: "shell.nav.live", icon: Activity },
+  { page: "adaptive", label: "shell.nav.adaptive", icon: Blocks },
   { page: "project", label: "shell.nav.project", icon: FolderGit2 },
   { page: "tools", label: "shell.nav.toolbox", icon: Wrench },
   { page: "automations", label: "shell.nav.automations", icon: AlarmClock },

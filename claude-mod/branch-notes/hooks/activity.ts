@@ -121,7 +121,10 @@ export function describeTool(
       return { target: "", detail: cut(str(input.query)) };
     default:
       return {
-        target: "",
+        // Encela Hub tools name the module or combination they work on.
+        target: tool.startsWith("mcp__encela-hub__hub_")
+          ? cut(str(input.name) || str(input.server))
+          : "",
         detail: tool.startsWith("mcp__") ? tool.split("__").slice(1).join(" ") : "",
       };
   }

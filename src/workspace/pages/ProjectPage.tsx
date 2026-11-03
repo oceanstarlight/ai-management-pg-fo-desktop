@@ -37,8 +37,8 @@ export function ProjectPage() {
         ) : tab === "map" ? (
           <ConfigMapPanel
             onManageMcp={() => {
-              useWorkspaceStore.getState().setToolsTab("mcp");
-              useWorkspaceStore.getState().go("tools");
+              useWorkspaceStore.getState().setAdaptiveTab("installed");
+              useWorkspaceStore.getState().go("adaptive");
             }}
             onEdit={async (rel) => {
               const docs = useProjectDocsStore.getState();

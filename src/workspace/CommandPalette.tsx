@@ -42,6 +42,7 @@ function useCommands(): Command[] {
   return useMemo(() => {
     const pages: [Page, string][] = [
       ["home", t("shell.nav.live")],
+      ["adaptive", t("shell.nav.adaptive")],
       ["project", t("shell.nav.project")],
       ["tools", t("shell.nav.toolbox")],
       ["automations", t("shell.nav.automations")],
