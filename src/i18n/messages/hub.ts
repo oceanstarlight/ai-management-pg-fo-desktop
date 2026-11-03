@@ -1,6 +1,43 @@
 import type { Messages } from "./types";
 
 export const ko = {
+  "adaptive.help.title": "사용법",
+  "adaptive.help.add.title": "모듈 넣기",
+  "adaptive.help.add.body":
+    "카탈로그에서 '추가'를 누르거나, 'GitHub에서 추가'로 저장소를 분석하거나(파일만 읽고 실행하지 않아요), 'claude mcp add …' 명령·JSON을 붙여넣어요. 넣기만 하면 설치되지 않아요. 빌드가 필요한 저장소만 명령을 확인하고 체크해야 설치돼요.",
+  "adaptive.help.hub.title": "허브 연결 (처음 한 번)",
+  "adaptive.help.hub.body":
+    "위의 허브 서버 encela-hub에서 '연결'을 눌러요. Claude Code에는 서버 하나만 등록되고, 모듈의 '허브에 포함'이 켜진 것만 Claude가 쓸 수 있어요.",
+  "adaptive.help.one.title": "모듈 하나 쓰기",
+  "adaptive.help.one.body":
+    "Claude Code에 그냥 시켜요. 예: \"repomix로 이 저장소 구조를 정리해줘\". Claude가 hub_open_server로 그 모듈만 켜서 써요. 켜기 전에는 실행되지 않고 도구 목록도 차지하지 않아요. 진행 상황 화면의 모듈 칸에서 '쓰기'를 누르면 이 문장이 프롬프트 상자에 들어가요.",
+  "adaptive.help.combo.title": "여러 모듈 동시에 쓰기 (조합)",
+  "adaptive.help.combo.body":
+    '조합 탭에서 목표를 적고 모듈과 각자 역할을 골라요. Claude Code에 "코드베이스 지도 조합으로 진행해줘"처럼 말하면 hub_open_combo로 멤버를 한꺼번에 켜고, 서로 기다릴 필요 없는 역할은 서브에이전트로 동시에 진행해요. CLI·라이브러리 모듈은 사용 가이드를 받아 Claude가 직접 실행해요.',
+  "adaptive.help.watch.title": "확인하기",
+  "adaptive.help.watch.body":
+    "진행 상황의 작업 그래프에 쓰는 모듈이 Claude만 한 크기로 뜨고 그 도구 호출이 이어져요. 조합의 적응도는 모듈끼리 얼마나 잘 맞는지(0~100)예요. 'AI 평가'를 누르면 Haiku가 이유와 함께 다시 매겨요.",
+  "adaptive.help.tips": `적응도를 올리려면 한 모듈의 '내놓는 것'이 다른 모듈의 '받는 것'과 겹치게 적어요(예: source-code). 비밀값은 \${변수}로 적고 실제 값은 환경 변수에 둬요. 허브는 stdio·HTTP 서버만 켜요. OAuth 로그인이 필요한 서버는 ⬇로 프로젝트에 넣고 /mcp로 로그인해요.`,
+  "adaptive.dock.help1":
+    "자주 쓰는 모듈이나 조합을 다섯 개까지 꺼내 둬요. +로 넣고, 마우스를 올려 ✕로 빼요.",
+  "adaptive.dock.help2":
+    "'쓰기'를 누르면 Claude에게 그 모듈(조합)을 허브로 열어 쓰라는 문장이 위 프롬프트 상자에 들어가요. 복사해서 Claude Code에 붙여넣어요.",
+  "adaptive.dock.help3":
+    "점이 켜진 모듈만 허브에서 쓸 수 있어요. 자세한 사용법은 적응형 도구 페이지의 '사용법'에 있어요.",
+  "adaptive.dock.useModule": "엔셀라 허브의 {name} 모듈을 열어서(hub_open_server) 써줘.",
+  "adaptive.dock.useCombo":
+    "엔셀라 허브의 '{name}' 조합을 열어서(hub_open_combo) 역할대로 동시에 진행해줘.",
+  "adaptive.dock.use": "프롬프트 상자에 넣기",
+  "adaptive.dock.useShort": "쓰기",
+  "adaptive.dock.remove": "목록에서 빼기",
+  "adaptive.dock.addModule": "모듈 넣기",
+  "adaptive.dock.addCombo": "조합 넣기",
+  "adaptive.dock.noMore": "더 넣을 게 없어요.",
+  "adaptive.dock.findMore": "카탈로그에서 모듈 더 찾기 →",
+  "adaptive.dock.makeCombo": "새 조합 만들기 →",
+  "adaptive.dock.offHub": "허브에 포함 안 됨 ('쓰기'를 누르면 켜요)",
+  "adaptive.dock.notConnected":
+    "허브 서버가 아직 Claude Code에 연결되지 않았어요. 적응형 도구 페이지에서 연결하세요.",
   "adaptive.description":
     "MCP 서버·CLI·라이브러리를 설치하지 않고 모듈로 모아둬요. 모듈끼리 조합해서, Claude가 필요한 것만 켜서 하나씩 또는 여러 개를 동시에 써요.",
   "adaptive.tab.modules": "모듈",
@@ -137,6 +174,43 @@ export const ko = {
 };
 
 export const en: Messages<typeof ko> = {
+  "adaptive.help.title": "How to use",
+  "adaptive.help.add.title": "Add modules",
+  "adaptive.help.add.body":
+    "Press 'Add' in the catalog, analyse a repository with 'Add from GitHub' (it only reads files, nothing runs), or paste a 'claude mcp add …' command or JSON. Adding installs nothing. Only repositories that must be built install, after you check their commands and tick the box.",
+  "adaptive.help.hub.title": "Connect the hub (once)",
+  "adaptive.help.hub.body":
+    "Press 'Connect' on the hub server encela-hub above. Claude Code gets one server, and Claude can use the modules marked 'In hub'.",
+  "adaptive.help.one.title": "Use one module",
+  "adaptive.help.one.body":
+    "Just ask Claude Code, e.g. \"use repomix to outline this repository\". Claude starts only that module with hub_open_server. Until then it doesn't run or take up the tool list. 'Use' in the module slots on the Live page puts that line into the prompt box.",
+  "adaptive.help.combo.title": "Use several at once (combinations)",
+  "adaptive.help.combo.body":
+    'In Combinations, write a goal and pick modules with a role each. Tell Claude Code "go with the Codebase map combination": hub_open_combo starts every member, and roles that don\'t wait on each other run in parallel as subagents. CLI and library modules hand Claude their guide and Claude runs them.',
+  "adaptive.help.watch.title": "Watch it",
+  "adaptive.help.watch.body":
+    "On the Live page's work graph, modules in use appear as large as Claude, with their tool calls. A combination's fit (0-100) says how well its modules go together; 'AI judge' has Haiku score it again with reasons.",
+  "adaptive.help.tips": `To raise the fit, make one module's 'Gives back' match another's 'Takes' (e.g. source-code). Write secrets as \${VAR} and keep the values in environment variables. The hub starts stdio and HTTP servers; one that needs an OAuth sign-in goes into a project with ⬇, then /mcp to sign in.`,
+  "adaptive.dock.help1":
+    "Keep up to five modules or combinations at hand. Add with +, hover and ✕ to take one out.",
+  "adaptive.dock.help2":
+    "'Use' puts a line into the prompt box above asking Claude to open that module (or combination) through the hub. Copy it into Claude Code.",
+  "adaptive.dock.help3":
+    "Only modules with the dot lit can be used through the hub. More in 'How to use' on the Adaptive tools page.",
+  "adaptive.dock.useModule": "Open the {name} module from Encela Hub (hub_open_server) and use it.",
+  "adaptive.dock.useCombo":
+    "Open the '{name}' combination from Encela Hub (hub_open_combo) and work on its roles in parallel.",
+  "adaptive.dock.use": "Put into the prompt box",
+  "adaptive.dock.useShort": "Use",
+  "adaptive.dock.remove": "Take out of the list",
+  "adaptive.dock.addModule": "Add a module",
+  "adaptive.dock.addCombo": "Add a combination",
+  "adaptive.dock.noMore": "Nothing more to add.",
+  "adaptive.dock.findMore": "Find more modules in the catalog →",
+  "adaptive.dock.makeCombo": "Make a new combination →",
+  "adaptive.dock.offHub": "Not in the hub ('Use' turns it on)",
+  "adaptive.dock.notConnected":
+    "The hub server isn't connected to Claude Code yet. Connect it on the Adaptive tools page.",
   "adaptive.description":
     "Keep MCP servers, CLIs and libraries as modules without installing them. Combine them, and Claude starts only what it needs, one at a time or several together.",
   "adaptive.tab.modules": "Modules",

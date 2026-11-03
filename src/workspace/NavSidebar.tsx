@@ -12,6 +12,7 @@ import {
   Wrench,
 } from "lucide-react";
 import { Logo } from "../components/Logo";
+import { ResizeHandle, useResizableWidth } from "../components/Resizer";
 import { IconButton } from "../components/ui";
 import { NoticeStack } from "../features/notices/NoticeStack";
 import { UpdateIndicator } from "../features/update/UpdateIndicator";
@@ -37,15 +38,17 @@ export function NavSidebar() {
   const t = useT();
   const account = useAccountStore((s) => s.info);
   const openAccount = useAccountStore((s) => s.openDialog);
+  const resize = useResizableWidth("navWidth", 216, 180, 360);
   const accountLabel = account?.uid
     ? (account.profile?.email ?? account.profile?.name ?? t("account.title"))
     : t("account.nav.signIn");
 
   return (
     <aside
-      className="flex shrink-0 flex-col bg-sidebar transition-[width] duration-200"
-      style={{ width: collapsed ? 52 : 216 }}
+      className={`relative flex shrink-0 flex-col bg-sidebar ${resize.dragging ? "" : "transition-[width] duration-200"}`}
+      style={{ width: collapsed ? 52 : resize.width }}
     >
+      {!collapsed && <ResizeHandle side="right" label={t("shell.resize")} state={resize} />}
       <div className="flex h-12 shrink-0 items-center gap-1 px-2.5">
         {!collapsed && (
           <button

@@ -1,6 +1,7 @@
-import { ShieldAlert, X } from "lucide-react";
+import { BookOpen, ShieldAlert, X } from "lucide-react";
 import { useEffect } from "react";
-import { PageHeader, Tabs } from "../../components/ui";
+import { Button, PageHeader, Tabs } from "../../components/ui";
+import { AdaptiveHelp, useHelpOpen } from "../../features/adaptive/AdaptiveHelp";
 import { CombosPanel } from "../../features/adaptive/CombosPanel";
 import { Gateway } from "../../features/adaptive/Gateway";
 import { ModuleCatalog } from "../../features/adaptive/ModuleCatalog";
@@ -22,6 +23,7 @@ export function AdaptivePage() {
   const error = useHubStore((s) => s.error);
   const combos = useHubStore((s) => s.combos.length);
   const modules = useHubStore((s) => s.entries.length);
+  const [help, setHelp] = useHelpOpen();
 
   useEffect(() => {
     void useHubStore.getState().load();
@@ -37,7 +39,17 @@ export function AdaptivePage() {
 
   return (
     <div className="mx-auto max-w-4xl px-10 pt-8 pb-16">
-      <PageHeader title={t("shell.nav.adaptive")} description={t("adaptive.description")} />
+      <PageHeader
+        title={t("shell.nav.adaptive")}
+        description={t("adaptive.description")}
+        actions={
+          <Button size="sm" variant={help ? "secondary" : "ghost"} onClick={() => setHelp(!help)}>
+            <BookOpen size={13} />
+            {t("adaptive.help.title")}
+          </Button>
+        }
+      />
+      {help && <AdaptiveHelp onClose={() => setHelp(false)} />}
       <div className="mb-6">
         <Gateway />
       </div>
