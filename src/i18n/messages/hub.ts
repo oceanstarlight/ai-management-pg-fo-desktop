@@ -10,7 +10,7 @@ export const ko = {
     "위의 허브 서버 encela-hub에서 '연결'을 눌러요. Claude Code에는 서버 하나만 등록되고, 모듈의 '허브에 포함'이 켜진 것만 Claude가 쓸 수 있어요.",
   "adaptive.help.one.title": "모듈 하나 쓰기",
   "adaptive.help.one.body":
-    "Claude Code에 그냥 시켜요. 예: \"repomix로 이 저장소 구조를 정리해줘\". Claude가 hub_open_server로 그 모듈만 켜서 써요. 켜기 전에는 실행되지 않고 도구 목록도 차지하지 않아요. 진행 상황 화면의 모듈 칸에서 '쓰기'를 누르면 이 문장이 프롬프트 상자에 들어가요.",
+    "Claude Code에 그냥 시켜요. 예: \"repomix로 이 저장소 구조를 정리해줘\". Claude가 hub_open_server로 그 모듈만 켜서 써요. 켜기 전에는 실행되지 않고 도구 목록도 차지하지 않아요. 진행 상황 화면의 모듈 칸에서 '쓰기'를 누르면 이런 문장이 복사돼요.",
   "adaptive.help.combo.title": "여러 모듈 동시에 쓰기 (조합)",
   "adaptive.help.combo.body":
     '조합 탭에서 목표를 적고 모듈과 각자 역할을 골라요. Claude Code에 "코드베이스 지도 조합으로 진행해줘"처럼 말하면 hub_open_combo로 멤버를 한꺼번에 켜고, 서로 기다릴 필요 없는 역할은 서브에이전트로 동시에 진행해요. CLI·라이브러리 모듈은 사용 가이드를 받아 Claude가 직접 실행해요.',
@@ -21,13 +21,14 @@ export const ko = {
   "adaptive.dock.help1":
     "자주 쓰는 모듈이나 조합을 다섯 개까지 꺼내 둬요. +로 넣고, 마우스를 올려 ✕로 빼요.",
   "adaptive.dock.help2":
-    "'쓰기'를 누르면 Claude에게 그 모듈(조합)을 허브로 열어 쓰라는 문장이 위 프롬프트 상자에 들어가요. 복사해서 Claude Code에 붙여넣어요.",
+    "'쓰기'를 누르면 Claude에게 그 모듈(조합)을 허브로 열어 쓰라는 문장이 복사돼요. Claude Code 입력창에 붙여넣어요.",
   "adaptive.dock.help3":
     "점이 켜진 모듈만 허브에서 쓸 수 있어요. 자세한 사용법은 적응형 도구 페이지의 '사용법'에 있어요.",
   "adaptive.dock.useModule": "엔셀라 허브의 {name} 모듈을 열어서(hub_open_server) 써줘.",
   "adaptive.dock.useCombo":
     "엔셀라 허브의 '{name}' 조합을 열어서(hub_open_combo) 역할대로 동시에 진행해줘.",
-  "adaptive.dock.use": "프롬프트 상자에 넣기",
+  "adaptive.dock.use": "Claude Code에 붙여넣을 문장 복사",
+  "adaptive.dock.copied": "복사됨",
   "adaptive.dock.useShort": "쓰기",
   "adaptive.dock.remove": "목록에서 빼기",
   "adaptive.dock.addModule": "모듈 넣기",
@@ -183,7 +184,7 @@ export const en: Messages<typeof ko> = {
     "Press 'Connect' on the hub server encela-hub above. Claude Code gets one server, and Claude can use the modules marked 'In hub'.",
   "adaptive.help.one.title": "Use one module",
   "adaptive.help.one.body":
-    "Just ask Claude Code, e.g. \"use repomix to outline this repository\". Claude starts only that module with hub_open_server. Until then it doesn't run or take up the tool list. 'Use' in the module slots on the Live page puts that line into the prompt box.",
+    "Just ask Claude Code, e.g. \"use repomix to outline this repository\". Claude starts only that module with hub_open_server. Until then it doesn't run or take up the tool list. 'Use' in the module slots on the Live page copies such a line.",
   "adaptive.help.combo.title": "Use several at once (combinations)",
   "adaptive.help.combo.body":
     'In Combinations, write a goal and pick modules with a role each. Tell Claude Code "go with the Codebase map combination": hub_open_combo starts every member, and roles that don\'t wait on each other run in parallel as subagents. CLI and library modules hand Claude their guide and Claude runs them.',
@@ -194,13 +195,14 @@ export const en: Messages<typeof ko> = {
   "adaptive.dock.help1":
     "Keep up to five modules or combinations at hand. Add with +, hover and ✕ to take one out.",
   "adaptive.dock.help2":
-    "'Use' puts a line into the prompt box above asking Claude to open that module (or combination) through the hub. Copy it into Claude Code.",
+    "'Use' copies a line asking Claude to open that module (or combination) through the hub. Paste it into Claude Code.",
   "adaptive.dock.help3":
     "Only modules with the dot lit can be used through the hub. More in 'How to use' on the Adaptive tools page.",
   "adaptive.dock.useModule": "Open the {name} module from Encela Hub (hub_open_server) and use it.",
   "adaptive.dock.useCombo":
     "Open the '{name}' combination from Encela Hub (hub_open_combo) and work on its roles in parallel.",
-  "adaptive.dock.use": "Put into the prompt box",
+  "adaptive.dock.use": "Copy a line to paste into Claude Code",
+  "adaptive.dock.copied": "Copied",
   "adaptive.dock.useShort": "Use",
   "adaptive.dock.remove": "Take out of the list",
   "adaptive.dock.addModule": "Add a module",

@@ -1,4 +1,4 @@
-import { CornerDownLeft, Plus, X } from "lucide-react";
+import { Check, Copy, Plus, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useT } from "../../i18n";
 import { type ComboView, fitOf, type HubEntry, hubCanRun, useHubStore } from "../../store/hub";
@@ -39,10 +39,10 @@ function usePinned(view: View, all: string[]): [string[], (next: string[]) => vo
 
 /**
  * Home's module dock, under "Claude Code live": up to five modules (or
- * combinations) at hand. Using one puts a line into the prompt box asking
- * Claude to open it through the hub; + adds another.
+ * combinations) at hand. "Use" copies a line asking Claude to open it
+ * through the hub, to paste into Claude Code; + adds another.
  */
-export function ModuleDock({ onUse }: { onUse: (text: string) => void }) {
+export function ModuleDock() {
   const t = useT();
   const entries = useHubStore((s) => s.entries);
   const combos = useHubStore((s) => s.combos);
@@ -72,15 +72,22 @@ export function ModuleDock({ onUse }: { onUse: (text: string) => void }) {
     setPref(VIEW_PREF, v);
   };
 
-  const use = async (name: string) => {
+  /** Copies the request for Claude Code; true once it is on the clipboard. */
+  const use = async (name: string): Promise<boolean> => {
+    const text =
+      view === "modules"
+        ? t("adaptive.dock.useModule", { name })
+        : t("adaptive.dock.useCombo", { name });
+    const copied = await navigator.clipboard.writeText(text).then(
+      () => true,
+      () => false,
+    );
     if (view === "modules") {
       const e = entries.find((x) => x.name === name);
       // Using it means the hub offers it.
       if (e && !e.inHub && hubCanRun(e)) await useHubStore.getState().setInHub(e, true);
-      onUse(t("adaptive.dock.useModule", { name }));
-    } else {
-      onUse(t("adaptive.dock.useCombo", { name }));
     }
+    return copied;
   };
 
   return (
@@ -132,7 +139,7 @@ export function ModuleDock({ onUse }: { onUse: (text: string) => void }) {
               name={name}
               entry={view === "modules" ? entry : undefined}
               combo={view === "combos" ? combo : undefined}
-              onUse={() => void use(name)}
+              onUse={() => use(name)}
               onRemove={() => savePinned(pinned.filter((n) => n !== name))}
             />
           );
@@ -209,10 +216,11 @@ function Slot({
   name: string;
   entry?: HubEntry;
   combo?: ComboView;
-  onUse: () => void;
+  onUse: () => Promise<boolean>;
   onRemove: () => void;
 }) {
   const t = useT();
+  const [copied, setCopied] = useState(false);
   const sub = entry
     ? entry.description
     : combo
@@ -235,13 +243,21 @@ function Slot({
       </div>
       <button
         type="button"
-        onClick={onUse}
+        onClick={() =>
+          void onUse().then((ok) => {
+            if (!ok) return;
+            setCopied(true);
+            setTimeout(() => setCopied(false), 1500);
+          })
+        }
         title={t("adaptive.dock.use")}
         aria-label={t("adaptive.dock.use")}
-        className="flex shrink-0 items-center gap-1 rounded-md px-1.5 py-1 text-fs-11 text-text-muted hover:bg-hover hover:text-text"
+        className={`flex shrink-0 items-center gap-1 rounded-md px-1.5 py-1 text-fs-11 hover:bg-hover ${
+          copied ? "text-success" : "text-text-muted hover:text-text"
+        }`}
       >
-        <CornerDownLeft size={12} />
-        {t("adaptive.dock.useShort")}
+        {copied ? <Check size={12} /> : <Copy size={12} />}
+        {t(copied ? "adaptive.dock.copied" : "adaptive.dock.useShort")}
       </button>
       <button
         type="button"
