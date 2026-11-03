@@ -225,8 +225,11 @@ fn mcp_entries(installed: Option<&[String]>) -> Vec<McpEntry> {
             }
         })
         .collect();
+    // The app's own servers are how suggestions are used, not suggestions:
+    // a prompt that names them would otherwise suggest them again.
+    let own = [crate::claude_mod::MCP_NAME, crate::mcp_hub::HUB_NAME];
     for name in installed.unwrap_or_default() {
-        if !out.iter().any(|e| e.name == *name) {
+        if !own.contains(&name.as_str()) && !out.iter().any(|e| e.name == *name) {
             out.push(McpEntry {
                 id: None,
                 name: name.clone(),
@@ -1245,8 +1248,17 @@ mod tests {
 
     #[test]
     fn mcp_entries_mark_what_claude_code_has() {
-        let installed = vec!["github".to_string(), "my-db".to_string()];
+        let installed = vec![
+            "github".to_string(),
+            "my-db".to_string(),
+            "encela".to_string(),
+            "encela-hub".to_string(),
+        ];
         let entries = mcp_entries(Some(&installed));
+        assert!(
+            !entries.iter().any(|e| e.name.starts_with("encela")),
+            "the app's own servers aren't suggested"
+        );
         let github = entries.iter().find(|e| e.name == "github").unwrap();
         assert!(github.installed && !github.keywords.is_empty());
         let own = entries.iter().find(|e| e.name == "my-db").unwrap();

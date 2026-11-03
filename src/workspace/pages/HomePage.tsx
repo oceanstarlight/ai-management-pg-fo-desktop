@@ -67,12 +67,7 @@ export function HomePage() {
           <SuggestBox />
           <StarterPanel onApply={setDraft} fresh={fresh} />
           <LivePanel />
-          <ModuleDock
-            onUse={(text) => {
-              const draft = useSuggestStore.getState().draft.trimEnd();
-              setDraft(draft ? `${draft}\n${text}` : text);
-            }}
-          />
+          <ModuleDock />
           <DecisionsPanel compact />
           {project && <MemoPanel compact />}
         </aside>

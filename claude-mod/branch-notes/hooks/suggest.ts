@@ -688,6 +688,8 @@ export function draftWith(draft: string, c: Candidate, locale: "ko" | "en"): str
           ? "MCP 서버"
           : "MCP server";
     const ask = locale === "ko" ? `(${c.name} ${what}를 써 줘)` : `(use the ${c.name} ${what})`;
+    // Once is enough: pressing it again leaves the prompt as it is.
+    if (draft.includes(ask)) return draft;
     return `${draft.trimEnd()} ${ask}`;
   }
   const rest = draft.replace(/^\/\S+\s*/, "");

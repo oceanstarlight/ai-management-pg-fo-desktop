@@ -144,8 +144,9 @@ export function SuggestionCard({
       }`}
     >
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <span className="truncate font-mono text-fs-13 font-medium text-text">
+        {/* Narrow side menu: the badges wrap under the name instead of running under the button. */}
+        <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+          <span className="min-w-0 max-w-full truncate font-mono text-fs-13 font-medium text-text">
             {label(c, locale)}
           </span>
           <KindBadge kind={c.kind} />

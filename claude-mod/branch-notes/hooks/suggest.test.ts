@@ -209,6 +209,9 @@ describe("using a suggestion", () => {
     expect(draftWith("왜 실패해? ", agent, "ko")).toBe(
       "왜 실패해? (debugger 서브에이전트를 써 줘)",
     );
+    // Pressing it again doesn't add it twice.
+    const once = draftWith("왜 실패해? ", agent, "ko");
+    expect(draftWith(once, agent, "ko")).toBe(once);
   });
 });
 
