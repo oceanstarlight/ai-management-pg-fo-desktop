@@ -1,3 +1,5 @@
+import { ResizeHandle, useResizableWidth } from "../../components/Resizer";
+import { ModuleDock } from "../../features/adaptive/ModuleDock";
 import { LiveView, SourcePicker, useShownSession } from "../../features/live/LiveView";
 import { RepoLine } from "../../features/live/RepoLine";
 import { MemoPanel } from "../../features/memo/MemoPanel";
@@ -23,6 +25,7 @@ export function HomePage() {
   const mode = useActivityStore((s) => s.mode);
   const fresh = useNewProject();
   const setDraft = useSuggestStore((s) => s.setDraft);
+  const side = useResizableWidth("homeSideWidth", 360, 280, 640);
   const title = session?.project
     ? folder(session.project)
     : mode === "local" && project
@@ -30,7 +33,10 @@ export function HomePage() {
       : null;
 
   return (
-    <div className="grid h-full grid-cols-1 xl:grid-cols-[minmax(0,1fr)_minmax(320px,380px)]">
+    <div
+      className="grid h-full grid-cols-1 xl:grid-cols-[minmax(0,1fr)_var(--side-w)]"
+      style={{ ["--side-w" as string]: `${side.width}px` }}
+    >
       <section className="min-w-0 overflow-y-auto px-10 pt-8 pb-16">
         <header className="mb-10 space-y-3">
           <h1 className="text-fs-20 font-semibold tracking-tight">
@@ -42,21 +48,35 @@ export function HomePage() {
         <LiveView />
       </section>
       {/* Below xl the side menu drops under the work graph: a labelled rule marks where it starts. */}
-      <aside className="min-w-0 space-y-10 overflow-y-auto border-border px-7 pt-8 pb-16 xl:border-l">
-        <div
-          aria-hidden
-          className="-mt-2 flex items-center gap-3 text-fs-11 font-medium tracking-wide text-text-subtle xl:hidden"
-        >
-          <span className="h-px flex-1 bg-border" />
-          {t("home.sideMenu")}
-          <span className="h-px flex-1 bg-border" />
-        </div>
-        <SuggestBox />
-        <StarterPanel onApply={setDraft} fresh={fresh} />
-        <LivePanel />
-        <DecisionsPanel compact />
-        {project && <MemoPanel compact />}
-      </aside>
+      <div className="relative min-h-0 min-w-0 border-border xl:border-l">
+        <ResizeHandle
+          side="left"
+          label={t("shell.resize")}
+          state={side}
+          className="hidden xl:block"
+        />
+        <aside className="h-full space-y-10 overflow-y-auto px-7 pt-8 pb-16">
+          <div
+            aria-hidden
+            className="-mt-2 flex items-center gap-3 text-fs-11 font-medium tracking-wide text-text-subtle xl:hidden"
+          >
+            <span className="h-px flex-1 bg-border" />
+            {t("home.sideMenu")}
+            <span className="h-px flex-1 bg-border" />
+          </div>
+          <SuggestBox />
+          <StarterPanel onApply={setDraft} fresh={fresh} />
+          <LivePanel />
+          <ModuleDock
+            onUse={(text) => {
+              const draft = useSuggestStore.getState().draft.trimEnd();
+              setDraft(draft ? `${draft}\n${text}` : text);
+            }}
+          />
+          <DecisionsPanel compact />
+          {project && <MemoPanel compact />}
+        </aside>
+      </div>
     </div>
   );
 }

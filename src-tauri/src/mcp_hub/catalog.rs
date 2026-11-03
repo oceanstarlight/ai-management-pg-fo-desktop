@@ -247,9 +247,9 @@ fn researched() -> Vec<CatalogModule> {
                 commit: "13497062a980",
                 license: "MIT",
                 needs: "node",
-                tags: &["diagram", "docs"],
+                tags: &["diagram", "docs", "code"],
                 capabilities: &["diagram", "render"],
-                inputs: &["mermaid"],
+                inputs: &["mermaid", "text"],
                 outputs: &["diagram", "svg", "png"],
             },
             mcp::npx(&["-y", "mcp-mermaid"], &[]),
@@ -257,7 +257,10 @@ fn researched() -> Vec<CatalogModule> {
                 "Mermaid 문법으로 다이어그램을 그려 이미지로 만들어요.",
                 "Draws diagrams from Mermaid text and renders them as images."
             ),
-            String::new(),
+            crate::tr!(
+                "구조·흐름을 Mermaid 코드(flowchart, sequenceDiagram, classDiagram…)로 쓴 뒤 generate_mermaid_diagram 도구로 그려요. 출력은 base64 또는 파일로 받아요(svg_url·png_url은 외부 서비스로 보냄).",
+                "Write the structure or flow as Mermaid (flowchart, sequenceDiagram, classDiagram…), then draw it with the generate_mermaid_diagram tool. Take base64 or file output (svg_url and png_url go to an outside service)."
+            ),
             &[],
         ),
         module(
@@ -419,7 +422,7 @@ fn researched() -> Vec<CatalogModule> {
                 commit: "fe02ab760f14",
                 license: "MIT",
                 needs: "node",
-                tags: &["code", "context"],
+                tags: &["code", "context", "docs"],
                 capabilities: &["pack", "repository", "summary"],
                 inputs: &["repository", "source-code"],
                 outputs: &["text", "source-code"],
@@ -429,7 +432,10 @@ fn researched() -> Vec<CatalogModule> {
                 "저장소를 AI가 읽기 좋은 파일 하나로 묶어요.",
                 "Packs a repository into one AI-friendly file."
             ),
-            String::new(),
+            crate::tr!(
+                "pack_codebase 도구로 폴더를 묶고(include·ignore 패턴, compress로 줄이기), 결과 id로 grep_repomix_output·read_repomix_output을 써서 필요한 부분만 읽어요. 원격 저장소는 pack_remote_repository.",
+                "Pack a folder with the pack_codebase tool (include and ignore patterns, compress to shrink it), then read only what you need through grep_repomix_output and read_repomix_output with the result's id. For a remote repository, pack_remote_repository."
+            ),
             &[],
         ),
         module(
@@ -552,9 +558,99 @@ fn researched() -> Vec<CatalogModule> {
     ]
 }
 
+/// What a new user starts with: three modules that feed each other and two
+/// combinations of them (repomix packs the code; ast-grep finds and rewrites
+/// by structure; mcp-mermaid draws what repomix found).
+pub fn starter() -> super::Hub {
+    use super::{Combo, Hub, Member};
+    let all = modules();
+    let pick = |id: &str| {
+        all.iter()
+            .find(|c| c.id == id)
+            .map(|c| c.module.clone())
+            .expect("starter module in the catalog")
+    };
+    let member = |module: &str, role: String| Member {
+        module: module.into(),
+        role,
+    };
+    Hub {
+        modules: vec![pick("repomix"), pick("ast-grep"), pick("mcp-mermaid")],
+        combos: vec![
+            Combo {
+                name: crate::tr!("코드베이스 지도", "Codebase map"),
+                goal: crate::tr!(
+                    "저장소 전체를 읽고 구조와 흐름을 다이어그램으로 정리한다",
+                    "Read the whole repository and lay out its structure and flow as diagrams"
+                ),
+                members: vec![
+                    member(
+                        "repomix",
+                        crate::tr!(
+                            "저장소를 묶어 모듈·의존 관계를 파악한다",
+                            "Pack the repository and work out its modules and dependencies"
+                        ),
+                    ),
+                    member(
+                        "mcp-mermaid",
+                        crate::tr!(
+                            "파악한 구조를 Mermaid 다이어그램으로 그린다",
+                            "Draw what was found as Mermaid diagrams"
+                        ),
+                    ),
+                ],
+                ai_fit: None,
+            },
+            Combo {
+                name: crate::tr!("구조 기반 리팩터링", "Structural refactor"),
+                goal: crate::tr!(
+                    "바꿀 패턴의 영향 범위를 파악하고, 같은 패턴을 구조 검색으로 찾아 한꺼번에 고친다",
+                    "Find where a pattern is used, then rewrite every match by structure in one go"
+                ),
+                members: vec![
+                    member(
+                        "repomix",
+                        crate::tr!(
+                            "관련 코드를 묶어 영향 범위를 확인한다",
+                            "Pack the related code and check what the change touches"
+                        ),
+                    ),
+                    member(
+                        "ast-grep",
+                        crate::tr!(
+                            "패턴을 찾아 미리 보고(--json) 한꺼번에 바꾼다",
+                            "Find the pattern, preview (--json) and rewrite it everywhere"
+                        ),
+                    ),
+                ],
+                ai_fit: None,
+            },
+        ],
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_starter_set_feeds_itself_and_fits_well() {
+        let hub = starter();
+        assert_eq!(hub.modules.len(), 3);
+        assert_eq!(hub.combos.len(), 2);
+        for c in &hub.combos {
+            for m in &c.members {
+                assert!(
+                    hub.modules.iter().any(|e| e.name == m.module),
+                    "{}",
+                    m.module
+                );
+                assert!(!m.role.is_empty());
+            }
+            let fit = super::super::fit::rule_fit(c, &hub.modules);
+            assert!(fit.score >= 75, "{}: {}", c.name, fit.score);
+        }
+    }
 
     #[test]
     fn catalog_modules_are_valid_and_named_uniquely() {

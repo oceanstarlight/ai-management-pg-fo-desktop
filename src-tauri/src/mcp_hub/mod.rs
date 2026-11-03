@@ -212,8 +212,13 @@ fn read_map(path: &Path) -> Result<Map<String, Value>> {
 }
 
 /// The modules and combinations, or why the file can't be read.
+/// A first run (no file yet) starts from [`catalog::starter`].
 pub fn load_all(data_dir: &Path) -> Result<Hub> {
-    let map = read_map(&file(data_dir))?;
+    let path = file(data_dir);
+    if !path.exists() {
+        return Ok(catalog::starter());
+    }
+    let map = read_map(&path)?;
     let get = |key: &str| map.get(key).cloned().unwrap_or(Value::Array(Vec::new()));
     Ok(Hub {
         modules: serde_json::from_value(get("servers")).map_err(|e| e.to_string())?,
@@ -221,7 +226,7 @@ pub fn load_all(data_dir: &Path) -> Result<Hub> {
     })
 }
 
-/// The modules alone (missing file = none).
+/// The modules alone.
 pub fn load(data_dir: &Path) -> Result<Vec<Entry>> {
     load_all(data_dir).map(|h| h.modules)
 }
@@ -422,7 +427,11 @@ pub struct Listing {
 pub async fn hub_list(app: AppHandle) -> Result<Listing> {
     let dir = data_dir(&app)?;
     blocking(move || {
+        let first = !file(&dir).exists();
         let hub = load_all(&dir)?;
+        if first {
+            store_all(&dir, &hub)?;
+        }
         let combos = hub
             .combos
             .iter()
@@ -766,7 +775,8 @@ mod tests {
     fn the_file_round_trips_and_keeps_unknown_fields() {
         let dir = std::env::temp_dir().join(format!("encela-hub-{}", uuid::Uuid::new_v4()));
         fs::create_dir_all(&dir).unwrap();
-        assert!(load(&dir).unwrap().is_empty());
+        // No file yet: the starter set.
+        assert_eq!(load(&dir).unwrap().len(), 3);
         // A version 1 file: servers only.
         fs::write(
             file(&dir),
