@@ -60,7 +60,7 @@ function readCollapsed(): boolean {
   }
 }
 
-export type ToolsTab = "library" | "mcp" | "extensions" | "catalog";
+export type ToolsTab = "library" | "mcp" | "hub" | "extensions" | "catalog";
 export type ProjectTab = "docs" | "map" | "decisions" | "starters";
 
 interface WorkspaceState {

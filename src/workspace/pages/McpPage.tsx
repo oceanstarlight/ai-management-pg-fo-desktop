@@ -2,6 +2,8 @@ import { invoke } from "@tauri-apps/api/core";
 import { ask } from "@tauri-apps/plugin-dialog";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import {
+  Archive,
+  ArchiveRestore,
   ClipboardPaste,
   ExternalLink,
   Eye,
@@ -15,6 +17,7 @@ import {
 import { type ReactNode, useEffect, useState } from "react";
 import { Button, IconButton, PageHeader, Switch } from "../../components/ui";
 import { type MessageKey, useT } from "../../i18n";
+import { useHubStore } from "../../store/hub";
 import {
   type Draft,
   emptyConfig,
@@ -93,6 +96,9 @@ export function McpPage({ embedded = false }: { embedded?: boolean }) {
   useEffect(() => {
     if (toolReady) void load(project, tool);
   }, [project, tool, toolReady, load]);
+  useEffect(() => {
+    void useHubStore.getState().load();
+  }, []);
 
   const newDraft = (): Draft => ({
     original: null,
@@ -281,6 +287,7 @@ function ServerRow({
   const t = useT();
   const { remove, setEnabled } = useMcpStore.getState();
   const editable = s.scope !== "other" && s.config !== null;
+  const stashed = useHubStore((h) => h.entries.some((e) => e.name === s.name));
   const hint =
     s.health === "pending"
       ? t("mcp.pendingHint")
@@ -318,6 +325,30 @@ function ServerRow({
             onChange={(on) => void setEnabled(project, s, on)}
           />
         </span>
+      )}
+      {editable && tool === "claude" && s.config && (
+        <IconButton
+          label={stashed ? t("hub.stashed") : t("hub.stash")}
+          disabled={stashed}
+          onClick={async () => {
+            if (!s.config) return;
+            try {
+              await useHubStore.getState().save(null, {
+                name: s.name,
+                description: "",
+                tags: [],
+                config: s.config,
+                inHub: true,
+                tools: [],
+                checkedAt: null,
+              });
+            } catch (e) {
+              useMcpStore.setState({ error: String(e) });
+            }
+          }}
+        >
+          {stashed ? <ArchiveRestore size={14} /> : <Archive size={14} />}
+        </IconButton>
       )}
       {editable && (
         <>
@@ -408,7 +439,7 @@ function RecommendedList({
   );
 }
 
-function Dialog({
+export function Dialog({
   title,
   onClose,
   children,
@@ -451,11 +482,19 @@ function Dialog({
   );
 }
 
-const box =
+export const box =
   "min-w-0 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-sm outline-none focus:border-accent";
-const input = `w-full ${box}`;
+export const input = `w-full ${box}`;
 
-function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
+export function Field({
+  label,
+  hint,
+  children,
+}: {
+  label: string;
+  hint?: string;
+  children: ReactNode;
+}) {
   return (
     <div>
       <span className="mb-1 block text-xs font-medium text-text-muted">{label}</span>
@@ -489,21 +528,14 @@ function EditDialog({
       ? initial.config
       : { ...initial.config, transport: "http" },
   );
-  const [argsText, setArgsText] = useState(initial.config.args.join("\n"));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const stdio = config.transport === "stdio";
-  const patch = (p: Partial<McpConfig>) => setConfig({ ...config, ...p });
 
   const submit = async () => {
     setBusy(true);
     setError(null);
     try {
-      const args = argsText
-        .split("\n")
-        .map((a) => a.trim())
-        .filter(Boolean);
-      await save(project, { ...initial, scope, name: name.trim(), config: { ...config, args } });
+      await save(project, { ...initial, scope, name: name.trim(), config });
       onClose();
     } catch (e) {
       setError(String(e));
@@ -557,13 +589,49 @@ function EditDialog({
           ))}
         </div>
       </Field>
+      <ConfigFields
+        transports={info.transports}
+        name={name}
+        shared={scope === "project"}
+        config={config}
+        argsApprox={initial.argsApprox}
+        onChange={setConfig}
+      />
+    </Dialog>
+  );
+}
+
+/** Transport, command and arguments or URL, env or headers of a server. */
+export function ConfigFields({
+  transports,
+  name,
+  shared,
+  config,
+  argsApprox,
+  onChange,
+}: {
+  transports: Transport[];
+  /** The server's name, for `${VAR}` suggestions. */
+  name: string;
+  /** Saved where others can read it (a secret is warned about more). */
+  shared: boolean;
+  config: McpConfig;
+  argsApprox?: boolean;
+  onChange: (config: McpConfig) => void;
+}) {
+  const t = useT();
+  const [argsText, setArgsText] = useState(config.args.join("\n"));
+  const stdio = config.transport === "stdio";
+  const patch = (p: Partial<McpConfig>) => onChange({ ...config, ...p });
+  return (
+    <>
       <Field label={t("mcp.form.transport")}>
         <select
           value={config.transport}
           onChange={(e) => patch({ transport: e.target.value as Transport })}
           className={input}
         >
-          {info.transports.map((tr) => (
+          {transports.map((tr) => (
             <option key={tr} value={tr}>
               {t(`mcp.form.transport.${tr}` as MessageKey)}
             </option>
@@ -583,11 +651,19 @@ function EditDialog({
           </Field>
           <Field
             label={t("mcp.form.args")}
-            hint={initial.argsApprox ? t("mcp.form.argsApprox") : undefined}
+            hint={argsApprox ? t("mcp.form.argsApprox") : undefined}
           >
             <textarea
               value={argsText}
-              onChange={(e) => setArgsText(e.target.value)}
+              onChange={(e) => {
+                setArgsText(e.target.value);
+                patch({
+                  args: e.target.value
+                    .split("\n")
+                    .map((a) => a.trim())
+                    .filter(Boolean),
+                });
+              }}
               rows={3}
               placeholder={"-y\n@scope/package"}
               spellCheck={false}
@@ -598,7 +674,7 @@ function EditDialog({
             label={t("mcp.form.env")}
             kind="env"
             server={name}
-            shared={scope === "project"}
+            shared={shared}
             value={config.env}
             onChange={(env) => patch({ env })}
           />
@@ -618,13 +694,13 @@ function EditDialog({
             label={t("mcp.form.headers")}
             kind="header"
             server={name}
-            shared={scope === "project"}
+            shared={shared}
             value={config.headers}
             onChange={(headers) => patch({ headers })}
           />
         </>
       )}
-    </Dialog>
+    </>
   );
 }
 
@@ -733,7 +809,13 @@ function Pairs({
   );
 }
 
-function ImportDialog({ onClose, onPick }: { onClose: () => void; onPick: (p: Parsed) => void }) {
+export function ImportDialog({
+  onClose,
+  onPick,
+}: {
+  onClose: () => void;
+  onPick: (p: Parsed) => void;
+}) {
   const t = useT();
   const [text, setText] = useState("");
   const [found, setFound] = useState<Parsed[] | null>(null);

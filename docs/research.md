@@ -476,3 +476,12 @@ AGPL 프로젝트는 아이디어만 참고하고 코드는 가져오지 않는�
 - 대화상자 행: **Network access**, **Setup script**, **Environment variables**, 저장은 **Save changes**(새 환경은 **Add environment**).
 - Network access 단계: None / Trusted(기본, 패키지 저장소 등 허용 목록) / Full / Custom(**Allowed domains** 한 줄에 하나, "Also include default list of common package managers" 체크로 기본 목록 유지). Firebase RTDB 호스트는 Trusted에 없으니 Full 또는 Custom 필요.
 - CLI는 환경을 만들거나 고칠 수 없음: `/remote-env`는 `claude --cloud`의 기본 환경만 고름(`remote.defaultEnvironmentId`), `/web-setup`은 GitHub 연결과 함께 Default 환경을 만듦.
+
+## 20. MCP 허브 서버 (2026-11-03, MCP 사양 2025-06-18 기준, 실기 확인 전)
+
+- 허브(`encela-hub`)는 MCP 서버이면서 보관함 서버들의 클라이언트다. 하위 서버와는 `initialize` → `notifications/initialized` → `tools/list`(nextCursor로 페이지) → `tools/call` 순서로 말한다. 하위 서버가 묻는 `ping`, `roots/list`(프로젝트 폴더 하나)는 허브가 답하고, `sampling/createMessage`·`elicitation/create`는 지원 안 함(-32601)으로 답한다.
+- 서버를 열면 허브가 `notifications/tools/list_changed`를 보내고 `tools/list`에 `<서버>__<도구>`를 더한다. Claude Code가 이 알림으로 도구 목록을 새로 읽는지는 이 세션에서 직접 확인하지 못했다. 그래서 `hub_list_tools`(스키마)와 `hub_call`(이름으로 호출)을 같이 둔다.
+- 도구 이름: API 제한 64자에서 Claude Code 접두사 `mcp__encela-hub__`(17자)를 뺀 47자 안으로 맞추고, 넘으면 자르고 해시 6자리를 붙인다. 허용 문자는 영문·숫자·`_`·`-`.
+- streamable HTTP: POST에 `Accept: application/json, text/event-stream`, 답의 `Mcp-Session-Id`를 다음 요청에 붙이고 `initialize` 뒤에는 `MCP-Protocol-Version`을 보낸다. 답이 SSE면 같은 id의 `data:`가 나올 때까지 읽는다. 401·403은 OAuth가 필요한 서버로 보고, 허브는 OAuth를 하지 않는다(헤더에 `${VAR}` 토큰 또는 프로젝트에 넣어 `/mcp`로 로그인).
+- `${VAR}`·`${VAR:-기본값}`은 허브 프로세스의 환경 변수(= Claude Code가 넘긴 환경)로 펼친다. 값이 없고 기본값도 없으면 그 서버를 열 때 오류.
+- Windows: 앱 실행 파일이 GUI 서브시스템이라 하위 서버마다 콘솔 창이 뜨지 않게 `CREATE_NO_WINDOW`로 띄우고, `npx`처럼 확장자 없는 명령은 PATH와 PATHEXT로 `.cmd`까지 찾는다. 실기 테스트 필요.
