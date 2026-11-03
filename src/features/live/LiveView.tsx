@@ -1,4 +1,4 @@
-import { ChevronDown, Pin } from "lucide-react";
+import { ChevronDown, LoaderCircle, Pin } from "lucide-react";
 import { useEffect } from "react";
 import { timeAgo, useT } from "../../i18n";
 import {
@@ -248,9 +248,27 @@ export function LiveView({ compact = false }: { compact?: boolean }) {
   const t = useT();
   const { session } = useShownSession();
 
+  const loading = useActivityStore((s) => s.loading);
+
   useEffect(() => {
     useActivityStore.getState().init();
   }, []);
+
+  // Catching up on what happened while the app was away: one notice instead
+  // of the work graph redrawing for every old step.
+  if (loading) {
+    return (
+      <div className="flex items-center gap-3 py-6" role="status" aria-live="polite">
+        <LoaderCircle size={compact ? 18 : 22} className="shrink-0 animate-spin text-text-subtle" />
+        <div>
+          <div className={`${compact ? "text-sm" : "text-fs-17"} font-semibold`}>
+            {t("live.loading.title")}
+          </div>
+          <p className="mt-0.5 text-xs text-text-muted">{t("live.loading.description")}</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!session) {
     return (

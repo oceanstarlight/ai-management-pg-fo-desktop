@@ -5,8 +5,9 @@
 //! memory and never synced; written to `<app data>/resume.json` just before
 //! an update restarts the app (and on quit) so the home page comes back as it was.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Mutex;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, Manager};
@@ -15,6 +16,42 @@ use tauri::{AppHandle, Emitter, Manager};
 pub const EVENT: &str = "session-activity";
 /// Emitted with `{ session }` when a session is dropped.
 pub const GONE_EVENT: &str = "session-activity-gone";
+/// Emitted with `true` while a backlog of earlier events is caught up on
+/// (the relay's queue after the app was off), `false` once it is done.
+pub const LOADING_EVENT: &str = "session-activity-loading";
+
+/// Catch-ups running now: while above 0, changes are only noted, so the
+/// windows don't redraw the work graph for each old event.
+static CATCHING_UP: AtomicUsize = AtomicUsize::new(0);
+/// Sessions changed during a catch-up, sent once it ends.
+static CHANGED: Mutex<BTreeSet<String>> = Mutex::new(BTreeSet::new());
+
+/// Starts catching up on a backlog: the windows show "loading" until
+/// [`end_catch_up`].
+pub fn begin_catch_up(app: &AppHandle) {
+    if CATCHING_UP.fetch_add(1, Ordering::SeqCst) == 0 {
+        let _ = app.emit(LOADING_EVENT, true);
+    }
+}
+
+/// Ends a catch-up: each session it changed is sent once, as it is now.
+pub fn end_catch_up(app: &AppHandle) {
+    if CATCHING_UP.fetch_sub(1, Ordering::SeqCst) != 1 {
+        return;
+    }
+    let changed = std::mem::take(&mut *CHANGED.lock().unwrap_or_else(|e| e.into_inner()));
+    let list = SESSIONS.lock().unwrap_or_else(|e| e.into_inner()).clone();
+    for s in list.into_iter().filter(|s| changed.contains(&s.session)) {
+        let _ = app.emit(EVENT, s);
+    }
+    let _ = app.emit(LOADING_EVENT, false);
+}
+
+/// Whether a catch-up is running.
+#[tauri::command]
+pub fn activity_loading() -> bool {
+    CATCHING_UP.load(Ordering::SeqCst) > 0
+}
 
 /// Steps kept per session (the timeline).
 const MAX_STEPS: usize = 200;
@@ -358,6 +395,13 @@ fn with_session(app: &AppHandle, session: &str, f: impl FnOnce(&mut Session)) {
         }
         list[index].clone()
     };
+    if CATCHING_UP.load(Ordering::SeqCst) > 0 {
+        CHANGED
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .insert(snapshot.session);
+        return;
+    }
     let _ = app.emit(EVENT, snapshot);
 }
 

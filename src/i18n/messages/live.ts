@@ -24,6 +24,9 @@ export const ko = {
   "live.rename": "세션 이름 바꾸기 (비우면 원래 이름)",
   "live.surface.cloud": "클라우드",
   "live.surface.terminal": "터미널",
+  "live.loading.title": "세션 불러오는 중…",
+  "live.loading.description":
+    "앱이 꺼져 있던 동안의 세션 기록을 불러오고 있어요. 다 불러오면 작업 그래프가 한 번에 보여요.",
   "live.none.title": "실행 중인 Claude Code가 없어요",
   "live.none.description":
     "Claude Code를 실행하면 읽고 고치는 파일, 실행하는 명령이 여기에 실시간으로 그려져요.",
@@ -160,6 +163,9 @@ export const en: Messages<typeof ko> = {
   "live.rename": "Rename session (empty for the default name)",
   "live.surface.cloud": "cloud",
   "live.surface.terminal": "terminal",
+  "live.loading.title": "Loading sessions…",
+  "live.loading.description":
+    "Catching up on what the sessions did while the app was away. The work graph shows once it's done.",
   "live.none.title": "No Claude Code running",
   "live.none.description":
     "Start Claude Code and the files it reads and edits, and the commands it runs, are drawn here live.",
