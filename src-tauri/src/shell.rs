@@ -6,6 +6,7 @@
 
 use std::path::PathBuf;
 use std::sync::Mutex;
+use std::time::{Duration, Instant};
 
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, Manager, WebviewWindowBuilder};
@@ -30,6 +31,8 @@ pub struct Shell {
     /// succession (double launch, repeated shortcut) cannot build two windows
     /// with the same label.
     creating: Mutex<()>,
+    /// When the user last switched to the main window themselves.
+    chose_main: Mutex<Option<Instant>>,
 }
 
 #[derive(Default, Serialize, Deserialize)]
@@ -54,7 +57,16 @@ impl Shell {
             mode: Mutex::new(saved.mode),
             file,
             creating: Mutex::new(()),
+            chose_main: Mutex::new(None),
         });
+    }
+
+    /// Whether the user switched to the main window within `window`.
+    pub fn chose_main_within(&self, window: Duration) -> bool {
+        self.chose_main
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .is_some_and(|at| at.elapsed() < window)
     }
 
     pub fn mode(&self) -> ViewMode {
@@ -198,6 +210,9 @@ pub fn view_mode(shell: tauri::State<'_, Shell>) -> ViewMode {
 /// Async so that opening the main window never runs on the main thread.
 #[tauri::command]
 pub async fn view_switch(app: AppHandle, mode: ViewMode) {
+    let shell = app.state::<Shell>();
+    *shell.chose_main.lock().unwrap_or_else(|e| e.into_inner()) =
+        (mode == ViewMode::Main).then(Instant::now);
     match mode {
         ViewMode::Main => show_main(&app),
         ViewMode::Sidebar => show_sidebar(&app),

@@ -187,6 +187,8 @@ function readNames(raw: string | null): Record<string, string> {
 
 interface ActivityState {
   sessions: Session[];
+  /** Earlier events (queued while the app was away) are being caught up on. */
+  loading: boolean;
   mode: LiveMode;
   setMode: (mode: LiveMode) => void;
   /** The session the user picked; `null` follows the latest. */
@@ -206,6 +208,7 @@ let started = false;
 
 export const useActivityStore = create<ActivityState>((set, get) => ({
   sessions: [],
+  loading: false,
   mode: getPref(MODE_KEY) === "cloud" ? "cloud" : "local",
   setMode: (mode) => {
     setPref(MODE_KEY, mode);
@@ -241,6 +244,8 @@ export const useActivityStore = create<ActivityState>((set, get) => ({
       return;
     }
     void invoke<Session[]>("activity_sessions").then((sessions) => set({ sessions }));
+    void invoke<boolean>("activity_loading").then((loading) => set({ loading }));
+    void listen<boolean>("session-activity-loading", ({ payload }) => set({ loading: payload }));
     void listen<Session>("session-activity", ({ payload }) => {
       const rest = get().sessions.filter((s) => s.session !== payload.session);
       set({ sessions: [...rest, payload] });

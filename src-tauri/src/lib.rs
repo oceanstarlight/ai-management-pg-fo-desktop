@@ -84,6 +84,7 @@ pub fn run() {
             library::library_forget,
             library::config_set_enabled,
             activity::activity_sessions,
+            activity::activity_loading,
             activity::activity_save,
             catalog::catalog_list,
             catalog::catalog_apply,

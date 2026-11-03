@@ -683,10 +683,16 @@ fn drop_outbox(app: &AppHandle, session: &str) {
     }
 }
 
-/// A Claude Code session started: the sidebar comes up beside it, on its project.
+/// A Claude Code session started: the sidebar comes up beside it, on its
+/// project. Not when the user just chose the main window themselves: a
+/// session starting mustn't keep taking it away from them.
 fn session_started(app: &AppHandle, project: String) {
     let _ = app.emit(SESSION_EVENT, serde_json::json!({ "project": project }));
-    if !auto_dock(app) {
+    if !auto_dock(app)
+        || app
+            .state::<crate::shell::Shell>()
+            .chose_main_within(AUTO_DOCK_PAUSE)
+    {
         return;
     }
     let app = app.clone();
@@ -701,6 +707,24 @@ fn session_started(app: &AppHandle, project: String) {
 // Cloud sessions (`sync::relay`): the prompt arrives after it was sent, the
 // app picks the suggestions, and what is allowed goes into the next prompt.
 
+/// After the user opens the main window themselves, starting sessions leave
+/// it alone this long.
+const AUTO_DOCK_PAUSE: Duration = Duration::from_secs(10 * 60);
+
+/// Sessions that are not the user's: `claude -p` runs (the app's own, from
+/// a mod older than 0.1.11 that still reported them). Nothing from them is
+/// shown.
+static IGNORED: Mutex<Vec<String>> = Mutex::new(Vec::new());
+
+/// Whether a session's requests are to be dropped (see [`IGNORED`]).
+pub fn ignored(session: &str) -> bool {
+    IGNORED
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .iter()
+        .any(|s| s == session)
+}
+
 /// Session → (id of its latest prompt, whether a window took it to pick for).
 static CLOUD: Mutex<Option<HashMap<String, (u64, bool)>>> = Mutex::new(None);
 static CLOUD_ID: AtomicU64 = AtomicU64::new(0);
@@ -713,28 +737,31 @@ pub fn is_cloud(session: &str) -> bool {
 
 /// A prompt sent in a cloud session: shown at once, suggestions to follow.
 /// What was allowed for the last one has gone into it, so it starts over.
-pub fn cloud_prompt(app: &AppHandle, session: &str, project: String, prompt: &str) {
+/// An old one (`fresh` false: caught up on after the app was away) is only
+/// shown: nothing is picked for it and the sidebar doesn't come up.
+pub fn cloud_prompt(app: &AppHandle, session: &str, project: String, prompt: &str, fresh: bool) {
     let first = !LIVE
         .lock()
         .unwrap_or_else(|e| e.into_inner())
         .iter()
         .any(|l| l.session == session);
     let id = CLOUD_ID.fetch_add(1, Ordering::Relaxed) + 1;
+    // An old prompt is marked as already taken, so no window picks for it.
     CLOUD
         .lock()
         .unwrap_or_else(|e| e.into_inner())
         .get_or_insert_default()
-        .insert(session.to_string(), (id, false));
+        .insert(session.to_string(), (id, !fresh));
     with_live(app, session, |l| {
         l.project = project.clone();
         l.surface = CLOUD_SURFACE.into();
         l.draft = crate::redact::prompt_text(prompt);
         l.by = String::new();
-        l.pending = true;
+        l.pending = fresh;
         l.items.clear();
         l.picked.clear();
     });
-    if first && Path::new(&project).is_dir() {
+    if fresh && first && Path::new(&project).is_dir() {
         session_started(app, project);
     }
 }
@@ -847,6 +874,15 @@ pub fn apply_request(app: &AppHandle, request: crate::bridge::Request) {
             project,
             surface,
         } => {
+            // No surface: a `claude -p` run, nobody at a prompt. The app's
+            // own runs were reported this way by mods before 0.1.11.
+            if surface.is_empty() {
+                let mut ignored = IGNORED.lock().unwrap_or_else(|e| e.into_inner());
+                ignored.push(session);
+                let extra = ignored.len().saturating_sub(200);
+                ignored.drain(..extra);
+                return;
+            }
             crate::activity::start(app, &session, &project, &surface, false);
             with_live(app, &session, |l| {
                 l.project = project.clone();

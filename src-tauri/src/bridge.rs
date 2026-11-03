@@ -363,6 +363,17 @@ pub fn manage(app: &AppHandle) {
         loop {
             if let Ok(store) = app.state::<Memo>().store() {
                 for request in take_requests(&inbox) {
+                    // A `claude -p` run's reports (see suggest::ignored).
+                    let from_ignored = match &request {
+                        Request::Activity { session, .. }
+                        | Request::SuggestLive { session, .. }
+                        | Request::SessionEnd { session }
+                        | Request::TurnAnswer { session, .. } => crate::suggest::ignored(session),
+                        _ => false,
+                    };
+                    if from_ignored {
+                        continue;
+                    }
                     if matches!(
                         request,
                         Request::SaveAutomation { .. }

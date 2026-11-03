@@ -337,6 +337,13 @@ fn stream(app: &AppHandle, agent: &Agent, token: &str) -> firebase::Result<&'sta
             "put" | "patch" => {
                 let mut events = events_in(&name, &data);
                 events.sort_by_key(|(_, e)| e["at"].as_i64().unwrap_or_default());
+                // A batch is what queued up while the app was away: caught
+                // up on quietly, the work graph drawn once at the end.
+                let batch = events.len() > 1;
+                if batch {
+                    crate::activity::begin_catch_up(app);
+                }
+                let now = now_ms();
                 for (id, event) in events {
                     let _ = request(
                         app,
@@ -347,7 +354,11 @@ fn stream(app: &AppHandle, agent: &Agent, token: &str) -> firebase::Result<&'sta
                     if let Some(at) = event["at"].as_i64() {
                         update_status(app, |s| s.last_event = Some(at));
                     }
-                    handle(app, &event);
+                    let fresh = event["at"].as_i64().is_some_and(|at| now - at <= FRESH_MS);
+                    handle(app, &event, fresh);
+                }
+                if batch {
+                    crate::activity::end_catch_up(app);
                 }
             }
             "cancel" => return Err(Error::Forbidden),
@@ -419,7 +430,12 @@ fn project_for(app: &AppHandle, key: &str) -> String {
     key.replacen("__", "/", 1)
 }
 
-fn handle(app: &AppHandle, event: &Value) {
+/// An event older than this is history being caught up on, not something
+/// happening now: it is shown, but nothing is suggested, extracted or docked
+/// for it.
+const FRESH_MS: i64 = 90 * 1000;
+
+fn handle(app: &AppHandle, event: &Value, fresh: bool) {
     let s = |k: &str| event[k].as_str().unwrap_or_default().to_string();
     let repo = s("repo");
     if repo.is_empty() {
@@ -457,7 +473,7 @@ fn handle(app: &AppHandle, event: &Value) {
                 ..step("turn")
             };
             crate::activity::record(app, &session, &project, &branch, true, vec![turn]);
-            crate::suggest::cloud_prompt(app, &session, project, &text);
+            crate::suggest::cloud_prompt(app, &session, project, &text, fresh);
         }
         "answer" => {
             let turn = crate::activity::Step {
@@ -466,6 +482,9 @@ fn handle(app: &AppHandle, event: &Value) {
                 ..step("turn")
             };
             crate::activity::record(app, &session, &project, &branch, true, vec![turn]);
+            if !fresh {
+                return;
+            }
             crate::decisions::apply_request(
                 app,
                 crate::bridge::Request::TurnAnswer {
