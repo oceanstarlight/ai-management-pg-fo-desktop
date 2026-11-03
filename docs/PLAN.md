@@ -325,7 +325,7 @@ Claude Code 같은 AI 코딩 도구로 작업할 때, 터미널 옆에 붙어서
     - 카탈로그: 기존 추천 MCP 12개 + 조사한 15개(MCP 9, CLI 6, `docs/research.md` 21). Supabase는 OAuth 로그인 필요라 카탈로그에서 뺐다.
     - 작업 그래프: `mcp__encela-hub__…` 호출을 모듈 노드(Claude 노드와 같은 크기, MCP 색)로 그리고 그 모듈의 도구 호출을 아래에 단다. 조합을 열면 멤버가 다 뜬다. mod 0.1.12가 허브 도구의 대상(모듈·조합 이름)을 보낸다.
     - 다음 후보: 패키지 CLI(npm i -g 등) 설치까지 앱에서, 조합 실행 기록, Codex.
-    - 2026-11-03 추가: 처음 쓰는 사람용 기본값(모듈 파일이 없을 때) 모듈 3개 repomix·ast-grep·mcp-mermaid(repomix가 내놓는 source-code·text를 ast-grep·mcp-mermaid가 받음)와 조합 2개 '코드베이스 지도'(repomix+mcp-mermaid)·'구조 기반 리팩터링'(repomix+ast-grep). 적응형 도구 페이지에 '사용법'(처음엔 펼침, 닫으면 기억). 진행 상황 오른쪽 사이드 메뉴의 'Claude Code 실시간' 아래에 모듈 목록: 모듈/조합 전환, 칸 5개(빈 칸은 테두리만), +로 넣기·✕로 빼기(prefs `dockModules`·`dockCombos`, 고르기 전엔 앞의 다섯 개), '쓰기'는 허브로 열라는 문장을 프롬프트 상자에 붙이고 허브에 포함을 켠다.
+    - 2026-11-03 추가: 처음 쓰는 사람용 기본값(모듈 파일이 없을 때, 그리고 기본값 이전에 만든 파일에는 한 번만 같은 이름이 없는 것만 더함. 파일의 `starter` 표시로 다시 넣지 않음) 모듈 3개 repomix·ast-grep·mcp-mermaid(repomix가 내놓는 source-code·text를 ast-grep·mcp-mermaid가 받음)와 조합 2개 '코드베이스 지도'(repomix+mcp-mermaid)·'구조 기반 리팩터링'(repomix+ast-grep). 적응형 도구 페이지에 '사용법'(처음엔 펼침, 닫으면 기억). 진행 상황 오른쪽 사이드 메뉴의 'Claude Code 실시간' 아래에 모듈 목록: 모듈/조합 전환, 칸 5개(빈 칸은 테두리만), +로 넣기·✕로 빼기(prefs `dockModules`·`dockCombos`, 고르기 전엔 앞의 다섯 개), '쓰기'는 허브로 열라는 문장을 프롬프트 상자에 붙이고 허브에 포함을 켠다.
     - 왼쪽 메뉴(180-360px)와 진행 상황의 오른쪽 사이드 메뉴(280-640px)는 가장자리를 끌어 너비 조절, 두 번 누르면 원래대로(prefs `navWidth`·`homeSideWidth`).
   4. [ ] **프로필**: skills·agents·hooks·MCP 묶음을 이름 붙여 저장하고 프로젝트에 한 번에 적용.
   5. [~] **설정 점검**: 깨진 설정 JSON·가려진 항목·꺼진 항목 표시는 설정 지도에 있음(완료). 없는 hook 경로 검사는 아직.

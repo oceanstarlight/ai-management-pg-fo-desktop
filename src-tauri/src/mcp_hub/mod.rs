@@ -36,6 +36,10 @@ type Result<T> = std::result::Result<T, String>;
 /// The name the hub server is registered under in Claude Code.
 pub const HUB_NAME: &str = "encela-hub";
 const FILE: &str = "mcp-hub.json";
+/// Set in the file once the starter set was offered, so modules the user
+/// deleted don't come back.
+const STARTER_KEY: &str = "starter";
+const STARTER_VERSION: u64 = 1;
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -211,8 +215,9 @@ fn read_map(path: &Path) -> Result<Map<String, Value>> {
     })
 }
 
-/// The modules and combinations, or why the file can't be read.
-/// A first run (no file yet) starts from [`catalog::starter`].
+/// The modules and combinations, or why the file can't be read. The starter
+/// set ([`catalog::starter`]) is added once: to a new file, and to a file
+/// from before it existed, skipping names the user already has.
 pub fn load_all(data_dir: &Path) -> Result<Hub> {
     let path = file(data_dir);
     if !path.exists() {
@@ -220,10 +225,46 @@ pub fn load_all(data_dir: &Path) -> Result<Hub> {
     }
     let map = read_map(&path)?;
     let get = |key: &str| map.get(key).cloned().unwrap_or(Value::Array(Vec::new()));
-    Ok(Hub {
+    let mut hub = Hub {
         modules: serde_json::from_value(get("servers")).map_err(|e| e.to_string())?,
         combos: serde_json::from_value(get("combos")).map_err(|e| e.to_string())?,
-    })
+    };
+    if !starter_offered(&map) {
+        add_starter(&mut hub);
+    }
+    Ok(hub)
+}
+
+fn starter_offered(map: &Map<String, Value>) -> bool {
+    map.get(STARTER_KEY)
+        .and_then(Value::as_u64)
+        .is_some_and(|v| v >= STARTER_VERSION)
+}
+
+/// Adds the starter modules and combinations whose names aren't taken.
+fn add_starter(hub: &mut Hub) {
+    let starter = catalog::starter();
+    for m in starter.modules {
+        if !hub.modules.iter().any(|e| e.name == m.name) {
+            hub.modules.push(m);
+        }
+    }
+    for c in starter.combos {
+        let members_there = c
+            .members
+            .iter()
+            .all(|m| hub.modules.iter().any(|e| e.name == m.module));
+        if members_there && !hub.combos.iter().any(|x| x.name == c.name) {
+            hub.combos.push(c);
+        }
+    }
+}
+
+/// Whether the file still has to take in the starter set (missing, or from
+/// before the starter set).
+fn needs_starter(data_dir: &Path) -> bool {
+    let path = file(data_dir);
+    !path.exists() || read_map(&path).is_ok_and(|m| !starter_offered(&m))
 }
 
 /// The modules alone.
@@ -236,6 +277,8 @@ pub fn store_all(data_dir: &Path, hub: &Hub) -> Result<()> {
     let path = file(data_dir);
     let mut map = read_map(&path).unwrap_or_default();
     map.insert("version".into(), 2.into());
+    // Whatever is written was loaded with the starter set already offered.
+    map.insert(STARTER_KEY.into(), STARTER_VERSION.into());
     map.insert(
         "servers".into(),
         serde_json::to_value(&hub.modules).map_err(|e| e.to_string())?,
@@ -427,7 +470,7 @@ pub struct Listing {
 pub async fn hub_list(app: AppHandle) -> Result<Listing> {
     let dir = data_dir(&app)?;
     blocking(move || {
-        let first = !file(&dir).exists();
+        let first = needs_starter(&dir);
         let hub = load_all(&dir)?;
         if first {
             store_all(&dir, &hub)?;
@@ -772,6 +815,38 @@ mod tests {
     }
 
     #[test]
+    fn an_older_file_gets_the_starter_set_once() {
+        let dir = std::env::temp_dir().join(format!("encela-hub-{}", uuid::Uuid::new_v4()));
+        fs::create_dir_all(&dir).unwrap();
+        // A file from before the starter set, with the user's own module
+        // and one that shares a starter's name.
+        fs::write(
+            file(&dir),
+            r#"{"version":2,"servers":[{"name":"mine","config":{"transport":"stdio","command":"x"}},{"name":"repomix","description":"my own","config":{"transport":"stdio","command":"y"}}]}"#,
+        )
+        .unwrap();
+        assert!(needs_starter(&dir));
+        let hub = load_all(&dir).unwrap();
+        let names: Vec<&str> = hub.modules.iter().map(|e| e.name.as_str()).collect();
+        assert_eq!(names, ["mine", "repomix", "ast-grep", "mcp-mermaid"]);
+        assert_eq!(
+            hub.modules[1].description, "my own",
+            "the user's module is kept"
+        );
+        assert_eq!(hub.combos.len(), 2);
+        store_all(&dir, &hub).unwrap();
+        assert!(!needs_starter(&dir));
+
+        // Deleted starter modules don't come back.
+        let mut hub = load_all(&dir).unwrap();
+        hub.modules.retain(|e| e.name == "mine");
+        hub.combos.clear();
+        store_all(&dir, &hub).unwrap();
+        assert_eq!(load(&dir).unwrap().len(), 1);
+        fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
     fn the_file_round_trips_and_keeps_unknown_fields() {
         let dir = std::env::temp_dir().join(format!("encela-hub-{}", uuid::Uuid::new_v4()));
         fs::create_dir_all(&dir).unwrap();
@@ -790,8 +865,10 @@ mod tests {
         upsert_combo(&mut hub, None, combo("c", &["old", "a"])).unwrap();
         store_all(&dir, &hub).unwrap();
         let back = load_all(&dir).unwrap();
-        assert_eq!(back.modules.len(), 2);
-        assert_eq!(back.combos[0].members.len(), 2);
+        // old + the starter set (3) + a; the starter combos, then c.
+        assert_eq!(back.modules.len(), 5);
+        let c = back.combos.iter().find(|c| c.name == "c").unwrap();
+        assert_eq!(c.members.len(), 2);
         let raw: Value = serde_json::from_str(&fs::read_to_string(file(&dir)).unwrap()).unwrap();
         assert_eq!(raw["future"], 1);
         fs::remove_dir_all(dir).unwrap();
