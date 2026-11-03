@@ -1,4 +1,5 @@
 import {
+  Blocks,
   Bot,
   Check,
   FileText,
@@ -12,6 +13,7 @@ import {
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { type MessageKey, useT } from "../../i18n";
 import { type Category, type Session, turnsOf } from "../../store/activity";
+import { useHubStore } from "../../store/hub";
 import {
   ALPHA_ALIVE,
   ALPHA_MIN,
@@ -22,7 +24,13 @@ import {
   seed,
   step,
 } from "./forceLayout";
-import { type AgentNode, buildGraph, type ResourceKind, type ResourceNode } from "./graph";
+import {
+  type AgentNode,
+  buildGraph,
+  type ModuleNode,
+  type ResourceKind,
+  type ResourceNode,
+} from "./graph";
 import {
   Blended,
   blendStyle,
@@ -38,6 +46,9 @@ const MAIN_W = 200;
 const MAIN_H = 56;
 const HEAD_W = 152;
 const HEAD_H = 46;
+/** An Encela Hub module: as big as Claude, an orchestrator of its own work. */
+const MODULE_W = 196;
+const MODULE_H = 56;
 const RES_W = 138;
 const RES_H = 30;
 /** Narrower than this and the graph lays out as if it had this much room. */
@@ -67,6 +78,7 @@ type GraphNode = SimNode &
   (
     | { kind: "main" }
     | { kind: "head"; agent: AgentNode | null; hidden: number; active: boolean }
+    | { kind: "module"; module: ModuleNode; hidden: number }
     | { kind: "res"; node: ResourceNode }
   );
 
@@ -78,9 +90,10 @@ interface Edge {
   active: boolean;
 }
 
-/** Claude, its subagents (and its own work when it has some), and what each works on. */
+/** Claude, its subagents and modules (and its own work when it has some), and what each works on. */
 function nodesOf(
   agents: AgentNode[],
+  modules: ModuleNode[],
   resources: ResourceNode[],
   hidden: Record<string, number>,
 ): { nodes: GraphNode[]; edges: Edge[] } {
@@ -90,7 +103,7 @@ function nodesOf(
   const edges: Edge[] = [];
   const own = resources.filter((r) => r.parent === "main");
 
-  if (agents.length === 0) {
+  if (agents.length === 0 && modules.length === 0) {
     for (const node of own) {
       nodes.push({ id: node.id, kind: "res", node, w: RES_W, h: RES_H, parent: "main", depth: 1 });
       edges.push({
@@ -129,6 +142,36 @@ function nodesOf(
       active,
     });
     for (const node of mine) {
+      nodes.push({ id: node.id, kind: "res", node, w: RES_W, h: RES_H, parent: id, depth: 2 });
+      edges.push({
+        id: `e:${node.id}`,
+        from: id,
+        to: node.id,
+        color: stateColor(node.category),
+        active: node.active,
+      });
+    }
+  }
+  for (const module of modules) {
+    const id = `h:${module.id}`;
+    nodes.push({
+      id,
+      kind: "module",
+      module,
+      hidden: hidden[module.id] ?? 0,
+      w: MODULE_W,
+      h: MODULE_H,
+      parent: "main",
+      depth: 1,
+    });
+    edges.push({
+      id: `e:${id}`,
+      from: "main",
+      to: id,
+      color: stateColor("mcp"),
+      active: module.active,
+    });
+    for (const node of resources.filter((r) => r.parent === module.id)) {
       nodes.push({ id: node.id, kind: "res", node, w: RES_W, h: RES_H, parent: id, depth: 2 });
       edges.push({
         id: `e:${node.id}`,
@@ -233,9 +276,18 @@ export function WorkGraph({ session }: { session: Session }) {
     return () => clearInterval(timer);
   }, [running]);
 
-  const graph = useMemo(() => buildGraph(session, now), [session, now]);
+  // Opening an Encela Hub combination starts its modules.
+  const hubCombos = useHubStore((s) => s.combos);
+  useEffect(() => {
+    if (!useHubStore.getState().loaded) void useHubStore.getState().load();
+  }, []);
+  const combos = useMemo(
+    () => Object.fromEntries(hubCombos.map((c) => [c.name, c.members.map((m) => m.module)])),
+    [hubCombos],
+  );
+  const graph = useMemo(() => buildGraph(session, now, combos), [session, now, combos]);
   const { nodes: current, edges: currentEdges } = useMemo(
-    () => nodesOf(graph.agents, graph.resources, graph.hidden),
+    () => nodesOf(graph.agents, graph.modules, graph.resources, graph.hidden),
     [graph],
   );
   const nodes = usePresence(current);
@@ -401,8 +453,12 @@ export function WorkGraph({ session }: { session: Session }) {
                 {n.kind === "main" ? (
                   <MainNode
                     session={session}
-                    more={graph.agents.length ? 0 : (graph.hidden.main ?? 0)}
+                    more={
+                      graph.agents.length || graph.modules.length ? 0 : (graph.hidden.main ?? 0)
+                    }
                   />
+                ) : n.kind === "module" ? (
+                  <ModuleCard module={n.module} hidden={n.hidden} />
                 ) : n.kind === "head" ? (
                   n.agent ? (
                     <AgentCard agent={n.agent} hidden={n.hidden} />
@@ -450,6 +506,7 @@ function LegendCorner({ graph, width }: { graph: ReturnType<typeof buildGraph>; 
   const t = useT();
   const counts = new Map<Category, number>();
   if (graph.agents.length) counts.set("agent", graph.agents.length);
+  if (graph.modules.length) counts.set("mcp", graph.modules.length);
   for (const r of graph.resources) counts.set(r.category, (counts.get(r.category) ?? 0) + 1);
   if (!counts.size) return null;
   return (
@@ -494,6 +551,50 @@ function MainNode({ session, more }: { session: Session; more: number }) {
           {more > 0 && (
             <span className="text-text-subtle"> · {t("live.graph.more", { n: more })}</span>
           )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** An Encela Hub module Claude opened: drawn like Claude, it runs its own tools. */
+function ModuleCard({ module: m, hidden }: { module: ModuleNode; hidden: number }) {
+  const t = useT();
+  const color = stateColor("mcp");
+  return (
+    <div
+      className={`flex h-full items-center gap-2.5 rounded-xl bg-surface-raised px-3 shadow-card ${m.active ? "anim-glow" : ""}`}
+      style={{
+        ...blendStyle(400),
+        ["--glow" as string]: color,
+        boxShadow: `inset 0 0 0 ${m.active ? 1.5 : 1}px ${m.active ? color : "var(--c-border-strong)"}`,
+      }}
+      title={m.combo ? t("live.graph.moduleOf", { combo: m.combo }) : t("live.graph.module")}
+    >
+      <span
+        className="flex size-8 shrink-0 items-center justify-center rounded-full"
+        style={{ background: `color-mix(in srgb, ${color} 16%, transparent)` }}
+      >
+        <Blocks size={16} className={m.active ? "anim-breathe" : ""} style={{ color }} />
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="truncate text-sm font-semibold">{m.name}</div>
+        <div className="truncate text-fs-11 text-text-subtle">
+          <Blended
+            text={m.active ? t("live.graph.working") : t("live.graph.module")}
+            ms={400}
+            style={m.active ? { color } : undefined}
+          />
+          {m.calls > 0 && (
+            <>
+              {" · "}
+              <span key={m.calls} className="anim-tick inline-block">
+                {t("live.graph.calls", { n: m.calls })}
+              </span>
+            </>
+          )}
+          {m.combo && ` · ${m.combo}`}
+          {hidden > 0 && ` · ${t("live.graph.more", { n: hidden })}`}
         </div>
       </div>
     </div>

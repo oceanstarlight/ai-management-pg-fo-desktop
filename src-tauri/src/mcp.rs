@@ -1109,11 +1109,11 @@ pub(crate) fn npx(args: &[&str], env: &[(&str, &str)]) -> Config {
     }
 }
 
-fn uvx(args: &[&str]) -> Config {
+pub(crate) fn uvx(args: &[&str]) -> Config {
     uvx_env(args, &[])
 }
 
-fn uvx_env(args: &[&str], env: &[(&str, &str)]) -> Config {
+pub(crate) fn uvx_env(args: &[&str], env: &[(&str, &str)]) -> Config {
     Config {
         transport: "stdio".into(),
         command: "uvx".into(),
@@ -1126,7 +1126,7 @@ fn uvx_env(args: &[&str], env: &[(&str, &str)]) -> Config {
     }
 }
 
-fn http(url: &str, headers: &[(&str, &str)]) -> Config {
+pub(crate) fn http(url: &str, headers: &[(&str, &str)]) -> Config {
     Config {
         transport: "http".into(),
         url: url.into(),

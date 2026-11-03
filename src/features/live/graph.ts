@@ -31,12 +31,25 @@ export interface ResourceNode {
   at: number;
 }
 
+/** A module of Encela Hub (adaptive tools) Claude opened or used this turn. */
+export interface ModuleNode {
+  /** `mod:<name>`, the parent of its resources. */
+  id: string;
+  name: string;
+  /** The combination it was opened with, if any. */
+  combo: string;
+  active: boolean;
+  calls: number;
+  at: number;
+}
+
 export interface Graph {
   /** The prompt's start, or null before the first one. */
   turnAt: number | null;
   prompt: string;
   running: boolean;
   agents: AgentNode[];
+  modules: ModuleNode[];
   resources: ResourceNode[];
   /** Resources not drawn, per parent. */
   hidden: Record<string, number>;
@@ -84,8 +97,42 @@ function resourceOf(step: Step): { kind: ResourceKind; key: string; label: strin
   return null;
 }
 
-/** Builds the graph of the session's current (or last) prompt at `now`. */
-export function buildGraph(session: Session, now: number): Graph {
+const HUB = "mcp__encela-hub__";
+
+/**
+ * What an Encela Hub tool call is about: the module(s) and, for a tool of a
+ * module, the tool's own name. Listing calls are about no module.
+ */
+export function hubCall(
+  step: Pick<Step, "tool" | "target">,
+  combos: Record<string, string[]>,
+): { modules: string[]; tool: string; combo: string } | null {
+  if (!step.tool.startsWith(HUB)) return null;
+  const rest = step.tool.slice(HUB.length);
+  if (rest === "hub_open_combo") {
+    return { modules: combos[step.target] ?? [], tool: "", combo: step.target };
+  }
+  if (rest === "hub_open_server" || rest === "hub_close_server" || rest === "hub_list_tools") {
+    return step.target ? { modules: [step.target], tool: "", combo: "" } : null;
+  }
+  if (rest === "hub_call") {
+    return step.target ? { modules: [step.target], tool: "hub_call", combo: "" } : null;
+  }
+  if (rest.startsWith("hub_")) return null;
+  const at = rest.indexOf("__");
+  if (at <= 0) return null;
+  return { modules: [rest.slice(0, at)], tool: rest.slice(at + 2), combo: "" };
+}
+
+/**
+ * Builds the graph of the session's current (or last) prompt at `now`.
+ * `combos` (Encela Hub combination → its modules) shows what opening one starts.
+ */
+export function buildGraph(
+  session: Session,
+  now: number,
+  combos: Record<string, string[]> = {},
+): Graph {
   const steps = session.steps;
   let start = -1;
   for (let i = steps.length - 1; i >= 0; i--) {
@@ -162,13 +209,41 @@ export function buildGraph(session: Session, now: number): Graph {
   }
   agents.sort((a, b) => a.at - b.at);
 
+  // Encela Hub modules: opened, or their tools called.
+  const mods = new Map<string, ModuleNode>();
+  const hubOf = new Map<string, ReturnType<typeof hubCall>>();
+  for (const s of tail) {
+    if (s.kind !== "tool") continue;
+    const h = hubCall(s, combos);
+    if (!h) continue;
+    hubOf.set(s.id, h);
+    for (const name of h.modules) {
+      const id = `mod:${name}`;
+      const prev = mods.get(id);
+      const active = running && !ended.has(s.id);
+      mods.set(id, {
+        id,
+        name,
+        combo: h.combo || prev?.combo || "",
+        active: (prev?.active ?? false) || active,
+        calls: (prev?.calls ?? 0) + (h.tool ? 1 : 0),
+        at: prev?.at ?? s.at,
+      });
+    }
+  }
+  const modules = [...mods.values()].sort((a, b) => a.at - b.at);
+
   // What each one works on, merged by target.
   const byKey = new Map<string, ResourceNode>();
   for (const s of tail) {
     if (s.kind !== "tool") continue;
-    const r = resourceOf(s);
+    const h = hubOf.get(s.id);
+    // Opening or closing a module draws the module itself, and listing what
+    // the hub has draws nothing.
+    if ((h && !h.tool) || (!h && s.tool.startsWith(HUB))) continue;
+    const r = h ? { kind: "mcp" as ResourceKind, key: h.tool, label: h.tool } : resourceOf(s);
     if (!r) continue;
-    const parent = s.agent ?? "main";
+    const parent = h ? `mod:${h.modules[0]}` : (s.agent ?? "main");
     const id = `${parent}|${r.kind}|${r.key}`;
     const active = running && !ended.has(s.id);
     const prev = byKey.get(id);
@@ -195,7 +270,8 @@ export function buildGraph(session: Session, now: number): Graph {
     const mine = [...byKey.values()]
       .filter((r) => r.parent === parent)
       .sort((a, b) => Number(b.active) - Number(a.active) || b.at - a.at);
-    const cap = parent === "main" && agents.length === 0 ? MAIN_ALONE : PER_PARENT;
+    const cap =
+      parent === "main" && agents.length === 0 && modules.length === 0 ? MAIN_ALONE : PER_PARENT;
     const keep = mine.filter(
       (r, i) => r.active || (i < cap && (!running || now - r.at < LINGER_MS)),
     );
@@ -209,6 +285,7 @@ export function buildGraph(session: Session, now: number): Graph {
     prompt: turn?.detail ?? "",
     running,
     agents,
+    modules,
     resources: resources.sort((a, b) => a.at - b.at),
     hidden,
   };

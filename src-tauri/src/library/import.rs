@@ -69,7 +69,7 @@ pub struct Preview {
 }
 
 /// `owner/repo` and the segments after it (`tree|blob`, ref and path).
-fn parse_url(input: &str) -> Result<(String, Vec<String>), String> {
+pub(crate) fn parse_url(input: &str) -> Result<(String, Vec<String>), String> {
     let bad = || {
         crate::tr!(
             "GitHub 주소를 읽지 못했어요. 예: https://github.com/owner/repo/tree/main/skills/name",

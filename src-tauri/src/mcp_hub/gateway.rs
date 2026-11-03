@@ -16,7 +16,7 @@ use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 
 use super::client::{self, Client};
-use super::{Entry, load};
+use super::{Combo, Entry, ModuleKind, load_all};
 
 const PROTOCOL_VERSIONS: &[&str] = &["2025-06-18", "2025-03-26", "2024-11-05"];
 
@@ -115,13 +115,25 @@ impl Hub {
         }
     }
 
-    /// Servers offered through the hub.
+    /// Modules offered through the hub.
     fn entries(&self) -> Vec<Entry> {
-        load(&self.data_dir)
-            .unwrap_or_default()
+        self.everything().0
+    }
+
+    /// Modules offered through the hub, and the combinations of them.
+    fn everything(&self) -> (Vec<Entry>, Vec<Combo>) {
+        let hub = load_all(&self.data_dir).unwrap_or_default();
+        let modules: Vec<Entry> = hub.modules.into_iter().filter(|e| e.in_hub).collect();
+        let combos = hub
+            .combos
             .into_iter()
-            .filter(|e| e.in_hub)
-            .collect()
+            .filter(|c| {
+                c.members
+                    .iter()
+                    .all(|m| modules.iter().any(|e| e.name == m.module))
+            })
+            .collect();
+        (modules, combos)
     }
 
     /// The reply to a request; notifications and responses get none.
@@ -154,11 +166,12 @@ impl Hub {
             .iter()
             .find(|v| **v == asked)
             .unwrap_or(&PROTOCOL_VERSIONS[0]);
+        let (modules, combos) = self.everything();
         json!({
             "protocolVersion": version,
             "capabilities": { "tools": { "listChanged": true } },
             "serverInfo": { "name": super::HUB_NAME, "version": env!("CARGO_PKG_VERSION") },
-            "instructions": instructions(&self.entries()),
+            "instructions": instructions(&modules, &combos),
         })
     }
 
@@ -213,6 +226,8 @@ impl Hub {
                 args["arguments"].clone(),
             ),
             "hub_close_server" => self.close_server(args["name"].as_str().unwrap_or_default()),
+            "hub_list_combos" => self.list_combos(),
+            "hub_open_combo" => self.open_combo(args["name"].as_str().unwrap_or_default()),
             other => match self.route(other) {
                 Some(r) => self.forward(&r.server, &r.tool, args.clone()),
                 None => Err(format!(
@@ -252,11 +267,15 @@ impl Hub {
                 };
                 json!({
                     "name": e.name,
+                    "kind": e.kind,
                     "description": e.description,
                     "tags": e.tags,
-                    "transport": e.config.transport,
+                    "capabilities": e.capabilities,
+                    "inputs": e.inputs,
+                    "outputs": e.outputs,
+                    "transport": if e.kind == ModuleKind::Mcp { e.config.transport.as_str() } else { "" },
                     "open": open.contains_key(&e.name),
-                    "canOpen": client::supported(&e.config),
+                    "canOpen": e.runnable(),
                     "tools": tools,
                 })
             })
@@ -271,15 +290,19 @@ impl Hub {
             .entries()
             .into_iter()
             .find(|e| e.name == name)
-            .ok_or_else(|| format!("No server named {name:?} in the hub. See hub_list_servers."))?;
+            .ok_or_else(|| format!("No module named {name:?} in the hub. See hub_list_servers."))?;
+        if entry.kind != ModuleKind::Mcp {
+            return Ok(Value::String(guide_text(&entry)));
+        }
         let client = {
             let _one = self.starting.lock().unwrap();
             let existing = self.open.lock().unwrap().get(name).cloned();
             match existing {
                 Some(c) => c,
                 None => {
-                    let c = Client::start(&entry.config, &self.cwd, Some(self.on_change()))
-                        .map_err(|e| format!("Couldn't start {name}: {e}"))?;
+                    let c =
+                        Client::start(&entry.runtime_config(), &self.cwd, Some(self.on_change()))
+                            .map_err(|e| format!("Couldn't start {name}: {e}"))?;
                     self.open
                         .lock()
                         .unwrap()
@@ -303,13 +326,79 @@ impl Hub {
                 format!("- {} (tool {tool}): {about}", exposed(name, tool))
             })
             .collect();
-        Ok(Value::String(format!(
+        let mut text = format!(
             "{name} is running with {} tools. They are now in your tool list under these names; \
              if they don't show up, get a tool's input schema with hub_list_tools and call it \
              with hub_call {{server, tool, arguments}}.\n{}",
             tools.len(),
             tools.join("\n")
-        )))
+        );
+        if !entry.guide.trim().is_empty() {
+            text.push_str(&format!("\n\nHow to use it:\n{}", entry.guide.trim()));
+        }
+        Ok(Value::String(text))
+    }
+
+    fn list_combos(&self) -> Result<Value, String> {
+        let (modules, combos) = self.everything();
+        let list: Vec<Value> = combos
+            .iter()
+            .map(|c| {
+                let fit = c.ai_fit.clone().unwrap_or_else(|| super::fit::rule_fit(c, &modules));
+                json!({
+                    "name": c.name,
+                    "goal": c.goal,
+                    "fit": fit.score,
+                    "members": c.members.iter().map(|m| json!({ "module": m.module, "role": m.role })).collect::<Vec<_>>(),
+                })
+            })
+            .collect();
+        Ok(Value::String(
+            serde_json::to_string_pretty(&list).unwrap_or_default(),
+        ))
+    }
+
+    /// Opens every module of a combination and says how to split the work.
+    fn open_combo(&self, name: &str) -> Result<Value, String> {
+        let (_, combos) = self.everything();
+        let combo = combos
+            .iter()
+            .find(|c| c.name == name)
+            .ok_or_else(|| format!("No combination named {name:?}. See hub_list_combos."))?;
+        let mut text = format!("Combination {:?}", combo.name);
+        if !combo.goal.is_empty() {
+            text.push_str(&format!("\nGoal: {}", combo.goal));
+        }
+        text.push_str(
+            "\nEach module below has a role. Work on the roles that don't depend on each other \
+             at the same time (one subagent per role, each using its module's tools or \
+             commands), and pass what one role produces to the role that needs it.\n",
+        );
+        let mut failed = Vec::new();
+        for m in &combo.members {
+            text.push_str(&format!(
+                "\n## {} — role: {}\n",
+                m.module,
+                if m.role.is_empty() {
+                    "(not set)"
+                } else {
+                    &m.role
+                }
+            ));
+            match self.open_server(&m.module) {
+                Ok(Value::String(t)) => text.push_str(&t),
+                Ok(_) => {}
+                Err(e) => {
+                    text.push_str(&e);
+                    failed.push(m.module.clone());
+                }
+            }
+            text.push('\n');
+        }
+        if failed.len() == combo.members.len() {
+            return Err(text);
+        }
+        Ok(Value::String(text))
     }
 
     /// Called from a server's reader thread when its tools change: Claude is
@@ -368,14 +457,54 @@ impl Hub {
     }
 }
 
-/// What Claude is told at the start: what the hub is, and what it keeps.
-fn instructions(entries: &[Entry]) -> String {
-    let mut text = String::from(
-        "Encela Hub keeps MCP servers the user collected without installing them. None of them \
-         run until you open one: when a task needs a capability listed below, call \
-         hub_open_server with its name, then use its tools (named <server>__<tool>), and \
-         hub_close_server when done. hub_list_servers searches them.",
+/// A CLI or library module: how to use it.
+fn guide_text(e: &Entry) -> String {
+    let what = if e.kind == ModuleKind::Cli {
+        "command line tool"
+    } else {
+        "library"
+    };
+    let mut text = format!(
+        "{} is a {what}: use it yourself (Bash or code) as described below; there are no MCP tools to call.\n",
+        e.name
     );
+    if let Some(dir) = &e.installed_dir {
+        text.push_str(&format!("It was built in: {dir}\n"));
+    }
+    if !e.install.is_empty() {
+        text.push_str(&format!("Set up with: {}\n", e.install.join(" && ")));
+    }
+    text.push('\n');
+    text.push_str(if e.guide.trim().is_empty() {
+        &e.description
+    } else {
+        e.guide.trim()
+    });
+    text
+}
+
+/// What Claude is told at the start: what the hub is, and what it keeps.
+fn instructions(entries: &[Entry], combos: &[Combo]) -> String {
+    let mut text = String::from(
+        "Encela Hub keeps modules (MCP servers, command line tools, libraries) the user collected \
+         without installing them. None of them run until you open one: when a task needs a \
+         capability listed below, call hub_open_server with its name. An MCP module's tools \
+         then appear as <server>__<tool> (hub_close_server when done); a command line tool or \
+         library gives you its usage guide. hub_list_servers searches them. Combinations are \
+         modules meant to be used together: hub_open_combo opens all of them with their roles.",
+    );
+    if !combos.is_empty() {
+        text.push_str("\nCombinations:");
+        for c in combos.iter().take(20) {
+            let members: Vec<&str> = c.members.iter().map(|m| m.module.as_str()).collect();
+            text.push_str(&format!(
+                "\n- {} ({}): {}",
+                c.name,
+                members.join(" + "),
+                c.goal
+            ));
+        }
+    }
     if entries.is_empty() {
         text.push_str("\nThe hub is empty right now.");
     } else {
@@ -391,7 +520,12 @@ fn instructions(entries: &[Entry]) -> String {
             } else {
                 e.description.clone()
             };
-            text.push_str(&format!("\n- {}: {about}", e.name));
+            let kind = match e.kind {
+                ModuleKind::Mcp => "",
+                ModuleKind::Cli => " [cli]",
+                ModuleKind::Library => " [library]",
+            };
+            text.push_str(&format!("\n- {}{kind}: {about}", e.name));
         }
     }
     text
@@ -455,6 +589,21 @@ fn own_tools() -> Vec<Value> {
             schema(json!({ "name": name }), &["name"]),
             false,
         ),
+        tool(
+            "hub_list_combos",
+            "Lists combinations of hub modules: name, goal, fit (0-100) and each module's role.",
+            schema(json!({}), &[]),
+            true,
+        ),
+        tool(
+            "hub_open_combo",
+            "Opens every module of a combination at once and returns each one's role, tools and usage guide, to work on the roles in parallel.",
+            schema(
+                json!({ "name": { "type": "string", "description": "The combination's name" } }),
+                &["name"],
+            ),
+            false,
+        ),
     ]
 }
 
@@ -493,12 +642,20 @@ fn error(id: Value, code: i64, message: &str) -> Value {
 mod tests {
     use super::*;
     use crate::mcp::Config;
-    use crate::mcp_hub::{ToolInfo, store};
+    use crate::mcp_hub::{Member, ToolInfo, store_all};
 
     fn hub(entries: &[Entry]) -> (Hub, PathBuf) {
+        hub_with(entries, &[])
+    }
+
+    fn hub_with(entries: &[Entry], combos: &[Combo]) -> (Hub, PathBuf) {
         let dir = std::env::temp_dir().join(format!("encela-gw-{}", uuid::Uuid::new_v4()));
         std::fs::create_dir_all(&dir).unwrap();
-        store(&dir, entries).unwrap();
+        let all = super::super::Hub {
+            modules: entries.to_vec(),
+            combos: combos.to_vec(),
+        };
+        store_all(&dir, &all).unwrap();
         let out = Arc::new(Mutex::new(std::io::stdout()));
         (Hub::new(dir.clone(), std::env::temp_dir(), out), dir)
     }
@@ -518,7 +675,7 @@ mod tests {
                 name: "scan".into(),
                 description: String::new(),
             }],
-            checked_at: None,
+            ..Entry::default()
         }
     }
 
@@ -597,7 +754,9 @@ mod tests {
                 "hub_open_server",
                 "hub_list_tools",
                 "hub_call",
-                "hub_close_server"
+                "hub_close_server",
+                "hub_list_combos",
+                "hub_open_combo"
             ]
         );
         for t in hub.tool_list() {
@@ -640,7 +799,87 @@ done
         let via = call(&hub, "hub_call", json!({ "server": "rea", "tool": "scan" }));
         assert_eq!(via["content"][0]["text"], "done");
         call(&hub, "hub_close_server", json!({ "name": "rea" }));
-        assert_eq!(hub.tool_list().len(), 5);
+        assert_eq!(hub.tool_list().len(), own_tools().len());
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn a_cli_module_opens_as_its_guide() {
+        let cli = Entry {
+            name: "jq".into(),
+            kind: ModuleKind::Cli,
+            guide: "Run `jq '.x' file`".into(),
+            install: vec!["brew install jq".into()],
+            in_hub: true,
+            ..Entry::default()
+        };
+        let (hub, dir) = hub(&[cli]);
+        let r = call(&hub, "hub_open_server", json!({ "name": "jq" }));
+        assert_eq!(r["isError"], false);
+        let text = r["content"][0]["text"].as_str().unwrap();
+        assert!(
+            text.contains("command line tool") && text.contains("jq '.x'"),
+            "{text}"
+        );
+        assert_eq!(
+            hub.tool_list().len(),
+            own_tools().len(),
+            "no tools for a CLI"
+        );
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn a_combination_opens_its_members_with_their_roles() {
+        let cli = Entry {
+            name: "jq".into(),
+            kind: ModuleKind::Cli,
+            guide: "filter json".into(),
+            in_hub: true,
+            ..Entry::default()
+        };
+        let combo = Combo {
+            name: "rebuild".into(),
+            goal: "Rebuild and test".into(),
+            members: vec![
+                Member {
+                    module: "rea".into(),
+                    role: "reverse it".into(),
+                },
+                Member {
+                    module: "jq".into(),
+                    role: "shape the output".into(),
+                },
+            ],
+            ai_fit: None,
+        };
+        let (hub, dir) = hub_with(&[entry("rea", true), cli], &[combo]);
+        let init = hub
+            .handle(&json!({ "jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {} }))
+            .unwrap();
+        assert!(
+            init["result"]["instructions"]
+                .as_str()
+                .unwrap()
+                .contains("rebuild (rea + jq)")
+        );
+        let list = call(&hub, "hub_list_combos", json!({}));
+        assert!(
+            list["content"][0]["text"]
+                .as_str()
+                .unwrap()
+                .contains("\"fit\"")
+        );
+        // rea can't start here, jq can: the combination still opens, saying so.
+        let r = call(&hub, "hub_open_combo", json!({ "name": "rebuild" }));
+        assert_eq!(r["isError"], false, "{r}");
+        let text = r["content"][0]["text"].as_str().unwrap();
+        assert!(text.contains("role: reverse it") && text.contains("Couldn't start rea"));
+        assert!(text.contains("filter json"));
+        assert_eq!(
+            call(&hub, "hub_open_combo", json!({ "name": "x" }))["isError"],
+            true
+        );
         std::fs::remove_dir_all(dir).unwrap();
     }
 }

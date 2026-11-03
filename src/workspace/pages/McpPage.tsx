@@ -17,7 +17,7 @@ import {
 import { type ReactNode, useEffect, useState } from "react";
 import { Button, IconButton, PageHeader, Switch } from "../../components/ui";
 import { type MessageKey, useT } from "../../i18n";
-import { useHubStore } from "../../store/hub";
+import { emptyModule, useHubStore } from "../../store/hub";
 import {
   type Draft,
   emptyConfig,
@@ -333,15 +333,9 @@ function ServerRow({
           onClick={async () => {
             if (!s.config) return;
             try {
-              await useHubStore.getState().save(null, {
-                name: s.name,
-                description: "",
-                tags: [],
-                config: s.config,
-                inHub: true,
-                tools: [],
-                checkedAt: null,
-              });
+              await useHubStore
+                .getState()
+                .save(null, emptyModule({ name: s.name, config: s.config }));
             } catch (e) {
               useMcpStore.setState({ error: String(e) });
             }

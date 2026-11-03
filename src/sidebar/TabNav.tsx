@@ -4,6 +4,7 @@ import { type TabId, useUiStore } from "../store/ui";
 const TABS: { id: TabId; label: MessageKey }[] = [
   { id: "live", label: "shell.tab.live" },
   { id: "suggest", label: "shell.tab.suggest" },
+  { id: "adaptive", label: "shell.tab.adaptive" },
   { id: "memo", label: "shell.tab.memo" },
   { id: "docs", label: "shell.tab.docs" },
 ];

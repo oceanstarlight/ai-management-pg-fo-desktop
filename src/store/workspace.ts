@@ -4,7 +4,7 @@ import { create } from "zustand";
 import { getPref, setPref } from "./prefs";
 import { switchView } from "./view";
 
-export type Page = "home" | "tools" | "project" | "automations" | "memo" | "settings";
+export type Page = "home" | "adaptive" | "tools" | "project" | "automations" | "memo" | "settings";
 
 /** The settings section with the Claude connection, to scroll to. */
 export const CONNECT_SECTION = "connect";
@@ -20,7 +20,7 @@ export function scrollToSection(id: string) {
   setTimeout(() => document.getElementById(id)?.scrollIntoView({ block: "start" }), 60);
 }
 
-const PAGES: Page[] = ["home", "tools", "project", "automations", "memo", "settings"];
+const PAGES: Page[] = ["home", "adaptive", "tools", "project", "automations", "memo", "settings"];
 const PROJECT_TABS: ProjectTab[] = ["docs", "map", "decisions", "starters"];
 
 /**
@@ -60,7 +60,8 @@ function readCollapsed(): boolean {
   }
 }
 
-export type ToolsTab = "library" | "mcp" | "hub" | "extensions" | "catalog";
+export type ToolsTab = "library" | "extensions" | "catalog";
+export type AdaptiveTab = "modules" | "combos" | "catalog" | "installed";
 export type ProjectTab = "docs" | "map" | "decisions" | "starters";
 
 interface WorkspaceState {
@@ -68,6 +69,8 @@ interface WorkspaceState {
   toolsTab: ToolsTab;
   projectTab: ProjectTab;
   setToolsTab: (tab: ToolsTab) => void;
+  adaptiveTab: AdaptiveTab;
+  setAdaptiveTab: (tab: AdaptiveTab) => void;
   /** Opens the project page on a tab. */
   goProject: (tab: ProjectTab) => void;
   /** The left navigation shows icons only. */
@@ -83,6 +86,8 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   toolsTab: "library",
   projectTab: first.projectTab,
   setToolsTab: (toolsTab) => set({ toolsTab }),
+  adaptiveTab: "modules",
+  setAdaptiveTab: (adaptiveTab) => set({ adaptiveTab }),
   goProject: (projectTab) => {
     if (inSidebar()) void openInMain(`project:${projectTab}`);
     else set({ page: "project", projectTab });
