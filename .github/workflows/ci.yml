@@ -43,6 +43,8 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
+          # Only main saves; branches restore main's cache instead of uploading their own.
+          save-if: ${{ github.ref == 'refs/heads/main' }}
       - name: cargo fmt
         working-directory: src-tauri
         run: cargo fmt --check
@@ -53,16 +55,18 @@ jobs:
         working-directory: src-tauri
         run: cargo test
 
-  # Runs alongside the Linux checks instead of after them. Branch builds skip
-  # the slow whole-program optimization (smaller, faster installer); main keeps
-  # the full release profile from Cargo.toml.
+  # Runs alongside the Linux checks instead of after them. CI always skips the
+  # slow whole-program optimization: the shipped installer comes from
+  # release.yml, which keeps the full release profile from Cargo.toml. Using
+  # the same settings on main and branches gives them the same cache key, so a
+  # new branch starts from main's cache (branches can only read main's caches).
   windows-build:
     name: Windows installer (NSIS)
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository
     runs-on: windows-latest
     env:
-      CARGO_PROFILE_RELEASE_LTO: ${{ github.ref == 'refs/heads/main' && 'true' || 'false' }}
-      CARGO_PROFILE_RELEASE_CODEGEN_UNITS: ${{ github.ref == 'refs/heads/main' && '1' || '16' }}
+      CARGO_PROFILE_RELEASE_LTO: "false"
+      CARGO_PROFILE_RELEASE_CODEGEN_UNITS: "16"
     steps:
       - uses: actions/checkout@v5
       - uses: pnpm/action-setup@v4
@@ -74,6 +78,8 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
+          # Only main saves; branches restore main's cache instead of uploading their own.
+          save-if: ${{ github.ref == 'refs/heads/main' }}
       - run: pnpm install --frozen-lockfile
       # Also runs clippy for the Windows-only code paths (cfg(windows)) that the Linux job cannot see.
       - name: cargo clippy (windows)
