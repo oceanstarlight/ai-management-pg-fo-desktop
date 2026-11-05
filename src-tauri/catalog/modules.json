@@ -1,0 +1,1685 @@
+{
+  "$comment": "Ready-made modules for the app (src-tauri/src/mcp_hub/catalog.rs) and the encela npm package (packages/encela). Sources and license checks: docs/research.md §11, §21. MCP configs are written for macOS/Linux (npx); Windows wraps npx in cmd /c.",
+  "modules": [
+    {
+      "id": "filesystem",
+      "name": "filesystem",
+      "kind": "mcp",
+      "needs": "node",
+      "description": {
+        "ko": "프로젝트 폴더의 파일을 읽고 쓰는 도구 (공식 레퍼런스)",
+        "en": "Read and write files in the project folder (official reference)"
+      },
+      "tags": [
+        "files"
+      ],
+      "capabilities": [
+        "read",
+        "write",
+        "files"
+      ],
+      "inputs": [
+        "path"
+      ],
+      "outputs": [
+        "text",
+        "files"
+      ],
+      "config": {
+        "transport": "stdio",
+        "command": "npx",
+        "args": [
+          "-y",
+          "@modelcontextprotocol/server-filesystem",
+          "{project}"
+        ],
+        "env": {},
+        "url": "",
+        "headers": {}
+      },
+      "source": {
+        "repo": "modelcontextprotocol/servers",
+        "commit": "",
+        "license": "MIT",
+        "licenseOk": true
+      },
+      "install": [],
+      "guide": {
+        "ko": "",
+        "en": ""
+      },
+      "warnings": {
+        "ko": [],
+        "en": []
+      }
+    },
+    {
+      "id": "git",
+      "name": "git",
+      "kind": "mcp",
+      "needs": "uv",
+      "description": {
+        "ko": "git 기록·차이·커밋을 다루는 도구 (공식 레퍼런스)",
+        "en": "Git history, diffs and commits (official reference)"
+      },
+      "tags": [
+        "git",
+        "code"
+      ],
+      "capabilities": [
+        "history",
+        "diff"
+      ],
+      "inputs": [
+        "repository"
+      ],
+      "outputs": [
+        "diff",
+        "history"
+      ],
+      "config": {
+        "transport": "stdio",
+        "command": "uvx",
+        "args": [
+          "mcp-server-git",
+          "--repository",
+          "{project}"
+        ],
+        "env": {},
+        "url": "",
+        "headers": {}
+      },
+      "source": {
+        "repo": "modelcontextprotocol/servers",
+        "commit": "",
+        "license": "MIT",
+        "licenseOk": true
+      },
+      "install": [],
+      "guide": {
+        "ko": "",
+        "en": ""
+      },
+      "warnings": {
+        "ko": [],
+        "en": []
+      }
+    },
+    {
+      "id": "fetch",
+      "name": "fetch",
+      "kind": "mcp",
+      "needs": "uv",
+      "description": {
+        "ko": "웹 페이지를 가져와 Markdown으로 읽는 도구 (공식 레퍼런스)",
+        "en": "Fetch web pages as Markdown (official reference)"
+      },
+      "tags": [
+        "web"
+      ],
+      "capabilities": [
+        "fetch",
+        "web"
+      ],
+      "inputs": [
+        "url"
+      ],
+      "outputs": [
+        "markdown",
+        "html"
+      ],
+      "config": {
+        "transport": "stdio",
+        "command": "uvx",
+        "args": [
+          "mcp-server-fetch"
+        ],
+        "env": {},
+        "url": "",
+        "headers": {}
+      },
+      "source": {
+        "repo": "modelcontextprotocol/servers",
+        "commit": "",
+        "license": "MIT",
+        "licenseOk": true
+      },
+      "install": [],
+      "guide": {
+        "ko": "",
+        "en": ""
+      },
+      "warnings": {
+        "ko": [],
+        "en": []
+      }
+    },
+    {
+      "id": "memory",
+      "name": "memory",
+      "kind": "mcp",
+      "needs": "node",
+      "description": {
+        "ko": "대화를 넘어 기억할 내용을 지식 그래프로 저장 (공식 레퍼런스)",
+        "en": "Remember things across conversations as a knowledge graph (official reference)"
+      },
+      "tags": [
+        "memory"
+      ],
+      "capabilities": [
+        "knowledge",
+        "graph"
+      ],
+      "inputs": [
+        "text"
+      ],
+      "outputs": [
+        "knowledge"
+      ],
+      "config": {
+        "transport": "stdio",
+        "command": "npx",
+        "args": [
+          "-y",
+          "@modelcontextprotocol/server-memory"
+        ],
+        "env": {},
+        "url": "",
+        "headers": {}
+      },
+      "source": {
+        "repo": "modelcontextprotocol/servers",
+        "commit": "",
+        "license": "MIT",
+        "licenseOk": true
+      },
+      "install": [],
+      "guide": {
+        "ko": "",
+        "en": ""
+      },
+      "warnings": {
+        "ko": [],
+        "en": []
+      }
+    },
+    {
+      "id": "time",
+      "name": "time",
+      "kind": "mcp",
+      "needs": "uv",
+      "description": {
+        "ko": "현재 시각과 시간대 변환 (공식 레퍼런스)",
+        "en": "Current time and time zone conversion (official reference)"
+      },
+      "tags": [
+        "time"
+      ],
+      "capabilities": [
+        "time"
+      ],
+      "inputs": [
+        "text"
+      ],
+      "outputs": [
+        "time"
+      ],
+      "config": {
+        "transport": "stdio",
+        "command": "uvx",
+        "args": [
+          "mcp-server-time",
+          "--local-timezone=Asia/Seoul"
+        ],
+        "env": {},
+        "url": "",
+        "headers": {}
+      },
+      "source": {
+        "repo": "modelcontextprotocol/servers",
+        "commit": "",
+        "license": "MIT",
+        "licenseOk": true
+      },
+      "install": [],
+      "guide": {
+        "ko": "",
+        "en": ""
+      },
+      "warnings": {
+        "ko": [],
+        "en": []
+      }
+    },
+    {
+      "id": "github",
+      "name": "github",
+      "kind": "mcp",
+      "needs": "token",
+      "description": {
+        "ko": "GitHub 이슈·PR·저장소 작업 (GitHub 공식). GITHUB_PAT 환경변수에 토큰을 넣어 두세요",
+        "en": "GitHub issues, PRs and repositories (official). Put a token in the GITHUB_PAT environment variable"
+      },
+      "tags": [
+        "github",
+        "code"
+      ],
+      "capabilities": [
+        "issues",
+        "pull requests"
+      ],
+      "inputs": [
+        "repository"
+      ],
+      "outputs": [
+        "issues",
+        "source-code"
+      ],
+      "config": {
+        "transport": "http",
+        "command": "",
+        "args": [],
+        "env": {},
+        "url": "https://api.githubcopilot.com/mcp/",
+        "headers": {
+          "Authorization": "Bearer ${GITHUB_PAT}"
+        }
+      },
+      "source": {
+        "repo": "github/github-mcp-server",
+        "commit": "",
+        "license": "MIT",
+        "licenseOk": true
+      },
+      "install": [],
+      "guide": {
+        "ko": "",
+        "en": ""
+      },
+      "warnings": {
+        "ko": [],
+        "en": []
+      }
+    },
+    {
+      "id": "playwright",
+      "name": "playwright",
+      "kind": "mcp",
+      "needs": "node",
+      "description": {
+        "ko": "브라우저를 띄워 페이지를 조작·테스트 (Microsoft)",
+        "en": "Drive a browser to use and test pages (Microsoft)"
+      },
+      "tags": [
+        "browser",
+        "testing",
+        "web"
+      ],
+      "capabilities": [
+        "browser",
+        "automation",
+        "testing"
+      ],
+      "inputs": [
+        "url",
+        "app"
+      ],
+      "outputs": [
+        "screenshot",
+        "html",
+        "test-results"
+      ],
+      "config": {
+        "transport": "stdio",
+        "command": "npx",
+        "args": [
+          "@playwright/mcp@latest",
+          "--isolated"
+        ],
+        "env": {},
+        "url": "",
+        "headers": {}
+      },
+      "source": {
+        "repo": "microsoft/playwright-mcp",
+        "commit": "",
+        "license": "Apache-2.0",
+        "licenseOk": true
+      },
+      "install": [],
+      "guide": {
+        "ko": "",
+        "en": ""
+      },
+      "warnings": {
+        "ko": [],
+        "en": []
+      }
+    },
+    {
+      "id": "chrome-devtools",
+      "name": "chrome-devtools",
+      "kind": "mcp",
+      "needs": "node",
+      "description": {
+        "ko": "Chrome 개발자 도구로 디버깅·성능 분석 (Google)",
+        "en": "Debug and profile with Chrome DevTools (Google)"
+      },
+      "tags": [
+        "browser",
+        "web",
+        "performance"
+      ],
+      "capabilities": [
+        "browser",
+        "debugging",
+        "performance"
+      ],
+      "inputs": [
+        "url",
+        "app"
+      ],
+      "outputs": [
+        "screenshot",
+        "performance-report"
+      ],
+      "config": {
+        "transport": "stdio",
+        "command": "npx",
+        "args": [
+          "-y",
+          "chrome-devtools-mcp@latest",
+          "--no-usage-statistics",
+          "--no-performance-crux"
+        ],
+        "env": {
+          "CHROME_DEVTOOLS_MCP_NO_UPDATE_CHECKS": "1"
+        },
+        "url": "",
+        "headers": {}
+      },
+      "source": {
+        "repo": "ChromeDevTools/chrome-devtools-mcp",
+        "commit": "",
+        "license": "Apache-2.0",
+        "licenseOk": true
+      },
+      "install": [],
+      "guide": {
+        "ko": "",
+        "en": ""
+      },
+      "warnings": {
+        "ko": [],
+        "en": []
+      }
+    },
+    {
+      "id": "context7",
+      "name": "context7",
+      "kind": "mcp",
+      "needs": "",
+      "description": {
+        "ko": "라이브러리의 최신 문서를 찾아 넣어 줘요 (Upstash)",
+        "en": "Up-to-date library docs on demand (Upstash)"
+      },
+      "tags": [
+        "docs"
+      ],
+      "capabilities": [
+        "documentation",
+        "lookup"
+      ],
+      "inputs": [
+        "library-name"
+      ],
+      "outputs": [
+        "docs"
+      ],
+      "config": {
+        "transport": "http",
+        "command": "",
+        "args": [],
+        "env": {},
+        "url": "https://mcp.context7.com/mcp",
+        "headers": {}
+      },
+      "source": {
+        "repo": "upstash/context7",
+        "commit": "",
+        "license": "MIT",
+        "licenseOk": true
+      },
+      "install": [],
+      "guide": {
+        "ko": "",
+        "en": ""
+      },
+      "warnings": {
+        "ko": [],
+        "en": []
+      }
+    },
+    {
+      "id": "notion",
+      "name": "notion",
+      "kind": "mcp",
+      "needs": "signin",
+      "description": {
+        "ko": "Notion 페이지 검색·편집. /mcp 에서 로그인 (Notion 운영)",
+        "en": "Search and edit Notion pages. Sign in with /mcp (hosted by Notion)"
+      },
+      "tags": [],
+      "capabilities": [],
+      "inputs": [],
+      "outputs": [],
+      "config": {
+        "transport": "http",
+        "command": "",
+        "args": [],
+        "env": {},
+        "url": "https://mcp.notion.com/mcp",
+        "headers": {}
+      },
+      "source": null,
+      "install": [],
+      "guide": {
+        "ko": "",
+        "en": ""
+      },
+      "warnings": {
+        "ko": [],
+        "en": []
+      }
+    },
+    {
+      "id": "linear",
+      "name": "linear",
+      "kind": "mcp",
+      "needs": "signin",
+      "description": {
+        "ko": "Linear 이슈 읽기 전용. /mcp 에서 로그인 (Linear 운영)",
+        "en": "Read Linear issues. Sign in with /mcp (hosted by Linear)"
+      },
+      "tags": [],
+      "capabilities": [],
+      "inputs": [],
+      "outputs": [],
+      "config": {
+        "transport": "http",
+        "command": "",
+        "args": [],
+        "env": {},
+        "url": "https://mcp.linear.app/mcp/readonly",
+        "headers": {}
+      },
+      "source": null,
+      "install": [],
+      "guide": {
+        "ko": "",
+        "en": ""
+      },
+      "warnings": {
+        "ko": [],
+        "en": []
+      }
+    },
+    {
+      "id": "cloudflare",
+      "name": "cloudflare",
+      "kind": "mcp",
+      "needs": "signin",
+      "description": {
+        "ko": "Cloudflare 계정의 Workers·DNS·R2 등을 다뤄요. /mcp 에서 로그인 (Cloudflare 공식)",
+        "en": "Workers, DNS, R2 and more in your Cloudflare account. Sign in with /mcp (official, Cloudflare)"
+      },
+      "tags": [],
+      "capabilities": [],
+      "inputs": [],
+      "outputs": [],
+      "config": {
+        "transport": "http",
+        "command": "",
+        "args": [],
+        "env": {},
+        "url": "https://mcp.cloudflare.com/mcp",
+        "headers": {}
+      },
+      "source": {
+        "repo": "cloudflare/mcp",
+        "commit": "",
+        "license": "Apache-2.0",
+        "licenseOk": true
+      },
+      "install": [],
+      "guide": {
+        "ko": "",
+        "en": ""
+      },
+      "warnings": {
+        "ko": [],
+        "en": []
+      }
+    },
+    {
+      "id": "supabase",
+      "name": "supabase",
+      "kind": "mcp",
+      "needs": "signin",
+      "description": {
+        "ko": "Supabase DB 조회·스키마·문서. 읽기 전용으로 넣어요(read_only=true). /mcp 에서 로그인 (Supabase 공식)",
+        "en": "Query Supabase databases, schemas and docs. Added read-only (read_only=true). Sign in with /mcp (official, Supabase)"
+      },
+      "tags": [],
+      "capabilities": [],
+      "inputs": [],
+      "outputs": [],
+      "config": {
+        "transport": "http",
+        "command": "",
+        "args": [],
+        "env": {},
+        "url": "https://mcp.supabase.com/mcp?read_only=true",
+        "headers": {}
+      },
+      "source": {
+        "repo": "supabase-community/supabase-mcp",
+        "commit": "",
+        "license": "Apache-2.0",
+        "licenseOk": true
+      },
+      "install": [],
+      "guide": {
+        "ko": "",
+        "en": ""
+      },
+      "warnings": {
+        "ko": [],
+        "en": []
+      }
+    },
+    {
+      "id": "stripe",
+      "name": "stripe",
+      "kind": "mcp",
+      "needs": "signin",
+      "description": {
+        "ko": "Stripe 결제·고객·구독 조회와 변경. 실제 결제 데이터를 바꿀 수 있으니 테스트 계정 권장. /mcp 에서 로그인 (Stripe 공식)",
+        "en": "Look up and change Stripe payments, customers and subscriptions. It can change live billing data, so a test account is safer. Sign in with /mcp (official, Stripe)"
+      },
+      "tags": [],
+      "capabilities": [],
+      "inputs": [],
+      "outputs": [],
+      "config": {
+        "transport": "http",
+        "command": "",
+        "args": [],
+        "env": {},
+        "url": "https://mcp.stripe.com",
+        "headers": {}
+      },
+      "source": {
+        "repo": "stripe/agent-toolkit",
+        "commit": "",
+        "license": "MIT",
+        "licenseOk": true
+      },
+      "install": [],
+      "guide": {
+        "ko": "",
+        "en": ""
+      },
+      "warnings": {
+        "ko": [],
+        "en": []
+      }
+    },
+    {
+      "id": "aws-docs",
+      "name": "aws-docs",
+      "kind": "mcp",
+      "needs": "uv",
+      "description": {
+        "ko": "AWS 공식 문서를 검색해 읽어 와요 (AWS Labs)",
+        "en": "Search and read the official AWS documentation (AWS Labs)"
+      },
+      "tags": [],
+      "capabilities": [],
+      "inputs": [],
+      "outputs": [],
+      "config": {
+        "transport": "stdio",
+        "command": "uvx",
+        "args": [
+          "awslabs.aws-documentation-mcp-server@latest"
+        ],
+        "env": {
+          "FASTMCP_LOG_LEVEL": "ERROR"
+        },
+        "url": "",
+        "headers": {}
+      },
+      "source": {
+        "repo": "awslabs/mcp",
+        "commit": "",
+        "license": "Apache-2.0",
+        "licenseOk": true
+      },
+      "install": [],
+      "guide": {
+        "ko": "",
+        "en": ""
+      },
+      "warnings": {
+        "ko": [],
+        "en": []
+      }
+    },
+    {
+      "id": "postgres",
+      "name": "postgres",
+      "kind": "mcp",
+      "needs": "token",
+      "description": {
+        "ko": "PostgreSQL 쿼리·스키마·성능 분석. 읽기 전용 모드로 넣어요. DATABASE_URI 환경변수에 접속 주소를 넣어 두세요 (커뮤니티)",
+        "en": "PostgreSQL queries, schemas and performance analysis, added in read-only mode. Put the connection string in the DATABASE_URI environment variable (community)"
+      },
+      "tags": [],
+      "capabilities": [],
+      "inputs": [],
+      "outputs": [],
+      "config": {
+        "transport": "stdio",
+        "command": "uvx",
+        "args": [
+          "postgres-mcp",
+          "--access-mode=restricted"
+        ],
+        "env": {
+          "DATABASE_URI": "${DATABASE_URI}"
+        },
+        "url": "",
+        "headers": {}
+      },
+      "source": {
+        "repo": "crystaldba/postgres-mcp",
+        "commit": "",
+        "license": "MIT",
+        "licenseOk": true
+      },
+      "install": [],
+      "guide": {
+        "ko": "",
+        "en": ""
+      },
+      "warnings": {
+        "ko": [],
+        "en": []
+      }
+    },
+    {
+      "id": "next-devtools",
+      "name": "next-devtools",
+      "kind": "mcp",
+      "needs": "node",
+      "description": {
+        "ko": "실행 중인 Next.js 16+ 개발 서버의 오류·라우트를 살펴봐요. 사용 통계는 꺼서 넣어요 (Vercel 공식)",
+        "en": "Errors and routes of a running Next.js 16+ dev server. Added with usage statistics off (official, Vercel)"
+      },
+      "tags": [
+        "web",
+        "nextjs"
+      ],
+      "capabilities": [
+        "nextjs",
+        "debugging"
+      ],
+      "inputs": [
+        "app"
+      ],
+      "outputs": [
+        "errors"
+      ],
+      "config": {
+        "transport": "stdio",
+        "command": "npx",
+        "args": [
+          "-y",
+          "next-devtools-mcp@latest"
+        ],
+        "env": {
+          "NEXT_TELEMETRY_DISABLED": "1"
+        },
+        "url": "",
+        "headers": {}
+      },
+      "source": {
+        "repo": "vercel/next-devtools-mcp",
+        "commit": "",
+        "license": "MIT",
+        "licenseOk": true
+      },
+      "install": [],
+      "guide": {
+        "ko": "",
+        "en": ""
+      },
+      "warnings": {
+        "ko": [],
+        "en": []
+      }
+    },
+    {
+      "id": "atlassian",
+      "name": "atlassian",
+      "kind": "mcp",
+      "needs": "token",
+      "description": {
+        "ko": "Jira 이슈와 Confluence 문서. JIRA_URL·JIRA_USERNAME·JIRA_API_TOKEN 등 환경변수가 필요해요 (커뮤니티)",
+        "en": "Jira issues and Confluence pages. Needs JIRA_URL, JIRA_USERNAME, JIRA_API_TOKEN and similar environment variables (community)"
+      },
+      "tags": [
+        "issues",
+        "docs"
+      ],
+      "capabilities": [
+        "jira",
+        "confluence"
+      ],
+      "inputs": [
+        "text"
+      ],
+      "outputs": [
+        "issues",
+        "docs"
+      ],
+      "config": {
+        "transport": "stdio",
+        "command": "uvx",
+        "args": [
+          "mcp-atlassian"
+        ],
+        "env": {
+          "CONFLUENCE_API_TOKEN": "${CONFLUENCE_API_TOKEN}",
+          "CONFLUENCE_URL": "${CONFLUENCE_URL}",
+          "CONFLUENCE_USERNAME": "${CONFLUENCE_USERNAME}",
+          "JIRA_API_TOKEN": "${JIRA_API_TOKEN}",
+          "JIRA_URL": "${JIRA_URL}",
+          "JIRA_USERNAME": "${JIRA_USERNAME}"
+        },
+        "url": "",
+        "headers": {}
+      },
+      "source": {
+        "repo": "sooperset/mcp-atlassian",
+        "commit": "",
+        "license": "MIT",
+        "licenseOk": true
+      },
+      "install": [],
+      "guide": {
+        "ko": "",
+        "en": ""
+      },
+      "warnings": {
+        "ko": [],
+        "en": []
+      }
+    },
+    {
+      "id": "figma",
+      "name": "figma",
+      "kind": "mcp",
+      "needs": "token",
+      "description": {
+        "ko": "Figma 디자인의 레이아웃·스타일을 읽어 와요. FIGMA_API_KEY 환경변수가 필요하고, 사용 통계는 꺼서 넣어요 (커뮤니티)",
+        "en": "Reads layout and styles from Figma designs. Needs the FIGMA_API_KEY environment variable; added with usage statistics off (community)"
+      },
+      "tags": [
+        "design"
+      ],
+      "capabilities": [
+        "design",
+        "layout"
+      ],
+      "inputs": [
+        "figma-url"
+      ],
+      "outputs": [
+        "design-data"
+      ],
+      "config": {
+        "transport": "stdio",
+        "command": "npx",
+        "args": [
+          "-y",
+          "figma-developer-mcp",
+          "--stdio"
+        ],
+        "env": {
+          "DO_NOT_TRACK": "1",
+          "FIGMA_API_KEY": "${FIGMA_API_KEY}",
+          "FRAMELINK_TELEMETRY": "off"
+        },
+        "url": "",
+        "headers": {}
+      },
+      "source": {
+        "repo": "GLips/Figma-Context-MCP",
+        "commit": "",
+        "license": "MIT",
+        "licenseOk": true
+      },
+      "install": [],
+      "guide": {
+        "ko": "",
+        "en": ""
+      },
+      "warnings": {
+        "ko": [],
+        "en": []
+      }
+    },
+    {
+      "id": "markitdown",
+      "name": "markitdown",
+      "kind": "mcp",
+      "needs": "uv",
+      "description": {
+        "ko": "PDF·Word·Excel·PowerPoint·HTML 같은 파일을 Markdown으로 바꿔요.",
+        "en": "Turns PDF, Word, Excel, PowerPoint, HTML and similar files into Markdown."
+      },
+      "tags": [
+        "documents",
+        "conversion"
+      ],
+      "capabilities": [
+        "convert",
+        "pdf",
+        "office",
+        "documents"
+      ],
+      "inputs": [
+        "pdf",
+        "docx",
+        "xlsx",
+        "pptx",
+        "html",
+        "image",
+        "url"
+      ],
+      "outputs": [
+        "markdown"
+      ],
+      "config": {
+        "transport": "stdio",
+        "command": "uvx",
+        "args": [
+          "markitdown-mcp"
+        ],
+        "env": {},
+        "url": "",
+        "headers": {}
+      },
+      "source": {
+        "repo": "microsoft/markitdown",
+        "commit": "7482c092d9c0",
+        "license": "MIT",
+        "licenseOk": true
+      },
+      "install": [],
+      "guide": {
+        "ko": "",
+        "en": ""
+      },
+      "warnings": {
+        "ko": [
+          "인증이 없고 사용자가 읽을 수 있는 파일은 다 읽어요. stdio로만 쓰세요."
+        ],
+        "en": [
+          "No authentication; it reads any file you can. Use it over stdio only."
+        ]
+      }
+    },
+    {
+      "id": "mcp-mermaid",
+      "name": "mcp-mermaid",
+      "kind": "mcp",
+      "needs": "node",
+      "description": {
+        "ko": "Mermaid 문법으로 다이어그램을 그려 이미지로 만들어요.",
+        "en": "Draws diagrams from Mermaid text and renders them as images."
+      },
+      "tags": [
+        "diagram",
+        "docs",
+        "code"
+      ],
+      "capabilities": [
+        "diagram",
+        "render"
+      ],
+      "inputs": [
+        "mermaid",
+        "text"
+      ],
+      "outputs": [
+        "diagram",
+        "svg",
+        "png"
+      ],
+      "config": {
+        "transport": "stdio",
+        "command": "npx",
+        "args": [
+          "-y",
+          "mcp-mermaid"
+        ],
+        "env": {},
+        "url": "",
+        "headers": {}
+      },
+      "source": {
+        "repo": "hustcc/mcp-mermaid",
+        "commit": "13497062a980",
+        "license": "MIT",
+        "licenseOk": true
+      },
+      "install": [],
+      "guide": {
+        "ko": "구조·흐름을 Mermaid 코드(flowchart, sequenceDiagram, classDiagram…)로 쓴 뒤 generate_mermaid_diagram 도구로 그려요. 출력은 base64 또는 파일로 받아요(svg_url·png_url은 외부 서비스로 보냄).",
+        "en": "Write the structure or flow as Mermaid (flowchart, sequenceDiagram, classDiagram…), then draw it with the generate_mermaid_diagram tool. Take base64 or file output (svg_url and png_url go to an outside service)."
+      },
+      "warnings": {
+        "ko": [
+          "svg_url·png_url 출력은 다이어그램 내용을 공개 서비스 mermaid.ink로 보내요."
+        ],
+        "en": [
+          "The svg_url and png_url outputs send the diagram text to the public mermaid.ink service."
+        ]
+      }
+    },
+    {
+      "id": "drawio",
+      "name": "drawio",
+      "kind": "mcp",
+      "needs": "node",
+      "description": {
+        "ko": "draw.io 다이어그램을 만들고 고쳐요.",
+        "en": "Creates and edits draw.io diagrams."
+      },
+      "tags": [
+        "diagram",
+        "design"
+      ],
+      "capabilities": [
+        "diagram",
+        "edit"
+      ],
+      "inputs": [
+        "text",
+        "mermaid"
+      ],
+      "outputs": [
+        "diagram"
+      ],
+      "config": {
+        "transport": "stdio",
+        "command": "npx",
+        "args": [
+          "-y",
+          "@drawio/mcp"
+        ],
+        "env": {
+          "DRAWIO_ICON_SERVICE_URL": "${DRAWIO_ICON_SERVICE_URL:-off}"
+        },
+        "url": "",
+        "headers": {}
+      },
+      "source": {
+        "repo": "jgraph/drawio-mcp",
+        "commit": "2a0f57032862",
+        "license": "Apache-2.0",
+        "licenseOk": true
+      },
+      "install": [],
+      "guide": {
+        "ko": "",
+        "en": ""
+      },
+      "warnings": {
+        "ko": [
+          "도형 목록과 코드를 diagrams.net에서 받아요(다이어그램 내용은 안 보냄). 아이콘 조회는 꺼 두었어요."
+        ],
+        "en": [
+          "Fetches shapes and code from diagrams.net (not your diagrams). Icon lookups are turned off."
+        ]
+      }
+    },
+    {
+      "id": "qdrant",
+      "name": "qdrant",
+      "kind": "mcp",
+      "needs": "uv",
+      "description": {
+        "ko": "Qdrant 벡터 DB에 내용을 저장하고 의미로 찾아요.",
+        "en": "Stores text in a Qdrant vector database and finds it by meaning."
+      },
+      "tags": [
+        "database",
+        "search",
+        "memory"
+      ],
+      "capabilities": [
+        "vector search",
+        "store",
+        "memory"
+      ],
+      "inputs": [
+        "text"
+      ],
+      "outputs": [
+        "search-results",
+        "knowledge"
+      ],
+      "config": {
+        "transport": "stdio",
+        "command": "uvx",
+        "args": [
+          "mcp-server-qdrant"
+        ],
+        "env": {
+          "COLLECTION_NAME": "${COLLECTION_NAME:-encela}",
+          "QDRANT_API_KEY": "${QDRANT_API_KEY:-}",
+          "QDRANT_URL": "${QDRANT_URL}"
+        },
+        "url": "",
+        "headers": {}
+      },
+      "source": {
+        "repo": "qdrant/mcp-server-qdrant",
+        "commit": "c56ae5adf62b",
+        "license": "Apache-2.0",
+        "licenseOk": true
+      },
+      "install": [],
+      "guide": {
+        "ko": "",
+        "en": ""
+      },
+      "warnings": {
+        "ko": [],
+        "en": []
+      }
+    },
+    {
+      "id": "jupyter",
+      "name": "jupyter",
+      "kind": "mcp",
+      "needs": "uv",
+      "description": {
+        "ko": "실행 중인 Jupyter에서 노트북 셀을 만들고 실행해요.",
+        "en": "Creates and runs notebook cells in a running Jupyter."
+      },
+      "tags": [
+        "data",
+        "notebook",
+        "python"
+      ],
+      "capabilities": [
+        "notebook",
+        "execute",
+        "data analysis"
+      ],
+      "inputs": [
+        "code",
+        "data"
+      ],
+      "outputs": [
+        "notebook",
+        "chart",
+        "data"
+      ],
+      "config": {
+        "transport": "stdio",
+        "command": "uvx",
+        "args": [
+          "jupyter-mcp-server@latest"
+        ],
+        "env": {
+          "JUPYTER_TOKEN": "${JUPYTER_TOKEN}",
+          "JUPYTER_URL": "${JUPYTER_URL:-http://localhost:8888}"
+        },
+        "url": "",
+        "headers": {}
+      },
+      "source": {
+        "repo": "datalayer/jupyter-mcp-server",
+        "commit": "ec66cb82f10b",
+        "license": "BSD-3-Clause",
+        "licenseOk": true
+      },
+      "install": [],
+      "guide": {
+        "ko": "",
+        "en": ""
+      },
+      "warnings": {
+        "ko": [],
+        "en": []
+      }
+    },
+    {
+      "id": "kubernetes",
+      "name": "kubernetes",
+      "kind": "mcp",
+      "needs": "node",
+      "description": {
+        "ko": "kubeconfig로 Kubernetes 리소스·로그·Pod를 다뤄요.",
+        "en": "Works with Kubernetes resources, logs and pods through your kubeconfig."
+      },
+      "tags": [
+        "devops",
+        "kubernetes"
+      ],
+      "capabilities": [
+        "cluster",
+        "deploy",
+        "logs"
+      ],
+      "inputs": [
+        "manifest"
+      ],
+      "outputs": [
+        "logs",
+        "status"
+      ],
+      "config": {
+        "transport": "stdio",
+        "command": "npx",
+        "args": [
+          "-y",
+          "kubernetes-mcp-server@latest"
+        ],
+        "env": {},
+        "url": "",
+        "headers": {}
+      },
+      "source": {
+        "repo": "containers/kubernetes-mcp-server",
+        "commit": "91cbf349d6cc",
+        "license": "Apache-2.0",
+        "licenseOk": true
+      },
+      "install": [],
+      "guide": {
+        "ko": "",
+        "en": ""
+      },
+      "warnings": {
+        "ko": [
+          "현재 kubeconfig의 클러스터를 다뤄요. 운영 클러스터는 조심하세요."
+        ],
+        "en": [
+          "Works on the cluster in your current kubeconfig. Take care with production."
+        ]
+      }
+    },
+    {
+      "id": "postgres-pro",
+      "name": "postgres-pro",
+      "kind": "mcp",
+      "needs": "uv",
+      "description": {
+        "ko": "PostgreSQL을 조회하고 인덱스·성능을 점검해요 (기본은 읽기 전용).",
+        "en": "Queries PostgreSQL and checks indexes and performance (read-only by default)."
+      },
+      "tags": [
+        "database",
+        "sql"
+      ],
+      "capabilities": [
+        "sql",
+        "query",
+        "tuning"
+      ],
+      "inputs": [
+        "sql"
+      ],
+      "outputs": [
+        "data",
+        "query-plan"
+      ],
+      "config": {
+        "transport": "stdio",
+        "command": "uvx",
+        "args": [
+          "postgres-mcp",
+          "--access-mode=restricted"
+        ],
+        "env": {
+          "DATABASE_URI": "${DATABASE_URI}"
+        },
+        "url": "",
+        "headers": {}
+      },
+      "source": {
+        "repo": "crystaldba/postgres-mcp",
+        "commit": "15c8e3335354",
+        "license": "MIT",
+        "licenseOk": true
+      },
+      "install": [],
+      "guide": {
+        "ko": "",
+        "en": ""
+      },
+      "warnings": {
+        "ko": [
+          "읽기 전용(restricted)으로 넣었어요. 쓰기가 필요하면 --access-mode=unrestricted로 바꾸세요."
+        ],
+        "en": [
+          "Added read-only (restricted). Change to --access-mode=unrestricted to allow writes."
+        ]
+      }
+    },
+    {
+      "id": "ghidra",
+      "name": "ghidra",
+      "kind": "mcp",
+      "needs": "app",
+      "description": {
+        "ko": "Ghidra로 바이너리를 디컴파일하고 함수·심볼을 분석해요. Ghidra와 GhidraMCP 확장이 먼저 켜져 있어야 해요.",
+        "en": "Decompiles binaries and analyses functions and symbols with Ghidra. Ghidra with the GhidraMCP extension must be running first."
+      },
+      "tags": [
+        "reverse engineering",
+        "binary"
+      ],
+      "capabilities": [
+        "decompile",
+        "disassemble",
+        "analysis"
+      ],
+      "inputs": [
+        "binary"
+      ],
+      "outputs": [
+        "source-code",
+        "functions"
+      ],
+      "config": {
+        "transport": "stdio",
+        "command": "uvx",
+        "args": [
+          "--from",
+          "git+https://github.com/LaurieWired/GhidraMCP",
+          "ghidra-mcp",
+          "--ghidra-server",
+          "http://127.0.0.1:8080/"
+        ],
+        "env": {},
+        "url": "",
+        "headers": {}
+      },
+      "source": {
+        "repo": "LaurieWired/GhidraMCP",
+        "commit": "1e980252087b",
+        "license": "Apache-2.0",
+        "licenseOk": true
+      },
+      "install": [],
+      "guide": {
+        "ko": "",
+        "en": ""
+      },
+      "warnings": {
+        "ko": [
+          "Ghidra와 GhidraMCP 확장을 먼저 설치하고 켜야 해요. git 최신 버전을 받아요."
+        ],
+        "en": [
+          "Install and start Ghidra with the GhidraMCP extension first. It fetches the latest from git."
+        ]
+      }
+    },
+    {
+      "id": "repomix",
+      "name": "repomix",
+      "kind": "mcp",
+      "needs": "node",
+      "description": {
+        "ko": "저장소를 AI가 읽기 좋은 파일 하나로 묶어요.",
+        "en": "Packs a repository into one AI-friendly file."
+      },
+      "tags": [
+        "code",
+        "context",
+        "docs"
+      ],
+      "capabilities": [
+        "pack",
+        "repository",
+        "summary"
+      ],
+      "inputs": [
+        "repository",
+        "source-code"
+      ],
+      "outputs": [
+        "text",
+        "source-code"
+      ],
+      "config": {
+        "transport": "stdio",
+        "command": "npx",
+        "args": [
+          "-y",
+          "repomix",
+          "--mcp"
+        ],
+        "env": {},
+        "url": "",
+        "headers": {}
+      },
+      "source": {
+        "repo": "yamadashy/repomix",
+        "commit": "fe02ab760f14",
+        "license": "MIT",
+        "licenseOk": true
+      },
+      "install": [],
+      "guide": {
+        "ko": "pack_codebase 도구로 폴더를 묶고(include·ignore 패턴, compress로 줄이기), 결과 id로 grep_repomix_output·read_repomix_output을 써서 필요한 부분만 읽어요. 원격 저장소는 pack_remote_repository.",
+        "en": "Pack a folder with the pack_codebase tool (include and ignore patterns, compress to shrink it), then read only what you need through grep_repomix_output and read_repomix_output with the result's id. For a remote repository, pack_remote_repository."
+      },
+      "warnings": {
+        "ko": [],
+        "en": []
+      }
+    },
+    {
+      "id": "ast-grep",
+      "name": "ast-grep",
+      "kind": "cli",
+      "needs": "node",
+      "description": {
+        "ko": "코드 구조(AST)로 찾고 한꺼번에 바꿔요.",
+        "en": "Searches and rewrites code by its structure (AST)."
+      },
+      "tags": [
+        "code",
+        "refactor",
+        "search"
+      ],
+      "capabilities": [
+        "structural search",
+        "rewrite",
+        "lint"
+      ],
+      "inputs": [
+        "source-code"
+      ],
+      "outputs": [
+        "matches",
+        "source-code"
+      ],
+      "config": null,
+      "source": {
+        "repo": "ast-grep/ast-grep",
+        "commit": "e83806463b5f",
+        "license": "MIT",
+        "licenseOk": true
+      },
+      "install": [
+        "npm install --global @ast-grep/cli"
+      ],
+      "guide": {
+        "ko": "명령: `ast-grep run -p '<패턴>' -l <언어> [경로]`, 바꾸기는 `-r '<바꿀 코드>'`(먼저 `--json`으로 확인). 패턴의 `$A`는 아무 노드.",
+        "en": "Command: `ast-grep run -p '<pattern>' -l <lang> [path]`; rewrite with `-r '<replacement>'` (check with `--json` first). `$A` in a pattern matches any node."
+      },
+      "warnings": {
+        "ko": [],
+        "en": []
+      }
+    },
+    {
+      "id": "mermaid-cli",
+      "name": "mermaid-cli",
+      "kind": "cli",
+      "needs": "node",
+      "description": {
+        "ko": "Mermaid 파일을 SVG·PNG·PDF로 렌더링해요.",
+        "en": "Renders Mermaid files to SVG, PNG or PDF."
+      },
+      "tags": [
+        "diagram",
+        "docs"
+      ],
+      "capabilities": [
+        "render",
+        "diagram"
+      ],
+      "inputs": [
+        "mermaid"
+      ],
+      "outputs": [
+        "svg",
+        "png",
+        "pdf"
+      ],
+      "config": null,
+      "source": {
+        "repo": "mermaid-js/mermaid-cli",
+        "commit": "1423a0d7967d",
+        "license": "MIT",
+        "licenseOk": true
+      },
+      "install": [
+        "npm install -g @mermaid-js/mermaid-cli"
+      ],
+      "guide": {
+        "ko": "명령: `mmdc -i 입력.mmd -o 출력.svg` (`-o`의 확장자로 형식이 정해져요).",
+        "en": "Command: `mmdc -i input.mmd -o output.svg` (the `-o` extension picks the format)."
+      },
+      "warnings": {
+        "ko": [],
+        "en": []
+      }
+    },
+    {
+      "id": "lighthouse",
+      "name": "lighthouse",
+      "kind": "cli",
+      "needs": "node",
+      "description": {
+        "ko": "웹 페이지의 성능·접근성·SEO를 점검해 보고서를 만들어요.",
+        "en": "Audits a web page's performance, accessibility and SEO and writes a report."
+      },
+      "tags": [
+        "web",
+        "performance",
+        "testing"
+      ],
+      "capabilities": [
+        "audit",
+        "performance",
+        "accessibility"
+      ],
+      "inputs": [
+        "url"
+      ],
+      "outputs": [
+        "performance-report",
+        "test-results"
+      ],
+      "config": null,
+      "source": {
+        "repo": "GoogleChrome/lighthouse",
+        "commit": "df282a603063",
+        "license": "Apache-2.0",
+        "licenseOk": true
+      },
+      "install": [
+        "npm install -g lighthouse"
+      ],
+      "guide": {
+        "ko": "명령: `lighthouse <URL> --no-enable-error-reporting --output json --output-path ./report.json --chrome-flags=\"--headless\"`. Node 22 이상과 Chrome이 있어야 해요.",
+        "en": "Command: `lighthouse <URL> --no-enable-error-reporting --output json --output-path ./report.json --chrome-flags=\"--headless\"`. Needs Node 22+ and Chrome."
+      },
+      "warnings": {
+        "ko": [
+          "처음 실행 때 오류 보고를 물어봐요. --no-enable-error-reporting으로 꺼요."
+        ],
+        "en": [
+          "Asks to report errors on first run; --no-enable-error-reporting turns it off."
+        ]
+      }
+    },
+    {
+      "id": "ripgrep",
+      "name": "ripgrep",
+      "kind": "cli",
+      "needs": "",
+      "description": {
+        "ko": "빠른 텍스트 검색 (.gitignore를 따라요).",
+        "en": "Fast text search that follows .gitignore."
+      },
+      "tags": [
+        "code",
+        "search"
+      ],
+      "capabilities": [
+        "text search"
+      ],
+      "inputs": [
+        "source-code",
+        "text"
+      ],
+      "outputs": [
+        "matches"
+      ],
+      "config": null,
+      "source": {
+        "repo": "BurntSushi/ripgrep",
+        "commit": "91f5d22ef48b",
+        "license": "MIT OR Unlicense",
+        "licenseOk": true
+      },
+      "install": [
+        "cargo install ripgrep"
+      ],
+      "guide": {
+        "ko": "명령: `rg -n '<정규식>' [경로]`, 파일 종류는 `-t rust`, JSON 결과는 `--json`.",
+        "en": "Command: `rg -n '<regex>' [path]`; file types with `-t rust`, JSON with `--json`."
+      },
+      "warnings": {
+        "ko": [],
+        "en": []
+      }
+    },
+    {
+      "id": "jq",
+      "name": "jq",
+      "kind": "cli",
+      "needs": "",
+      "description": {
+        "ko": "JSON을 거르고 바꿔요.",
+        "en": "Filters and transforms JSON."
+      },
+      "tags": [
+        "data",
+        "json"
+      ],
+      "capabilities": [
+        "json",
+        "transform",
+        "filter"
+      ],
+      "inputs": [
+        "json"
+      ],
+      "outputs": [
+        "json",
+        "data"
+      ],
+      "config": null,
+      "source": {
+        "repo": "jqlang/jq",
+        "commit": "5c001b18d723",
+        "license": "MIT",
+        "licenseOk": true
+      },
+      "install": [],
+      "guide": {
+        "ko": "명령: `jq '<필터>' 파일.json` (예: `jq '.items[] | .name'`), 한 줄씩은 `-c`.",
+        "en": "Command: `jq '<filter>' file.json` (e.g. `jq '.items[] | .name'`); one per line with `-c`."
+      },
+      "warnings": {
+        "ko": [],
+        "en": []
+      }
+    }
+  ],
+  "starter": {
+    "modules": [
+      "repomix",
+      "ast-grep",
+      "mcp-mermaid"
+    ],
+    "combos": [
+      {
+        "name": {
+          "ko": "코드베이스 지도",
+          "en": "Codebase map"
+        },
+        "goal": {
+          "ko": "저장소 전체를 읽고 구조와 흐름을 다이어그램으로 정리한다",
+          "en": "Read the whole repository and lay out its structure and flow as diagrams"
+        },
+        "members": [
+          {
+            "module": "repomix",
+            "role": {
+              "ko": "저장소를 묶어 모듈·의존 관계를 파악한다",
+              "en": "Pack the repository and work out its modules and dependencies"
+            }
+          },
+          {
+            "module": "mcp-mermaid",
+            "role": {
+              "ko": "파악한 구조를 Mermaid 다이어그램으로 그린다",
+              "en": "Draw what was found as Mermaid diagrams"
+            }
+          }
+        ]
+      },
+      {
+        "name": {
+          "ko": "구조 기반 리팩터링",
+          "en": "Structural refactor"
+        },
+        "goal": {
+          "ko": "바꿀 패턴의 영향 범위를 파악하고, 같은 패턴을 구조 검색으로 찾아 한꺼번에 고친다",
+          "en": "Find where a pattern is used, then rewrite every match by structure in one go"
+        },
+        "members": [
+          {
+            "module": "repomix",
+            "role": {
+              "ko": "관련 코드를 묶어 영향 범위를 확인한다",
+              "en": "Pack the related code and check what the change touches"
+            }
+          },
+          {
+            "module": "ast-grep",
+            "role": {
+              "ko": "패턴을 찾아 미리 보고(--json) 한꺼번에 바꾼다",
+              "en": "Find the pattern, preview (--json) and rewrite it everywhere"
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

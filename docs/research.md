@@ -511,3 +511,13 @@ AGPL 프로젝트는 아이디어만 참고하고 코드는 가져오지 않는�
 - 제외: ktanaka101/mcp-server-duckdb·chroma-core/chroma-mcp(6개월 넘게 커밋 없음), oraios/serena(GPL-3.0), makenotion/notion-mcp-server(README에 유지보수 중단), stripe/ai(호스팅 전용, Stripe 계정 OAuth).
 - 확인 못 한 것: 실행해 보지 않아서 네트워크로 나가는 데이터가 없다는 증명은 아니다. kubernetes README는 앞 100k자만 읽음.
 - GitHub에서 추가하는 모듈은 사용자 책임으로 추가한다. 앱이 라이선스 파일을 직접 판정하고(`catalog::fetch::classify_license`), 허용 목록 밖이거나 없으면 경고만 띄운다(번들하지 않으므로 막지 않음).
+
+## 22. npm 패키지로 배포하는 엔셀라 (2026-11-05 조사, 웹 검색)
+
+- MCP 프롬프트는 Claude Code에서 `/mcp__<서버>__<프롬프트> [인자]` 슬래시 명령으로 보인다. 연결된 서버에서 그때그때 읽고, 이름의 공백·특수문자는 `_`로 바뀐다. 출처: https://docs.anthropic.com/en/docs/claude-code/slash-commands
+- 플러그인은 skills·agents·hooks·MCP 서버·LSP·monitors를 묶는다. 매니페스트 `.claude-plugin/plugin.json`, MCP는 플러그인 루트 `.mcp.json`(npx 명령 가능, 플러그인을 켜면 자동 시작), 훅은 `hooks/hooks.json`. 플러그인 MCP 도구 이름은 `mcp__plugin_<플러그인>_<서버>__<도구>`. 출처: https://code.claude.com/docs/en/plugins-reference
+- `claude plugin install`은 `--scope user|project|local`, `--marketplace <경로>`를 받고 `<패키지>@npm` 설치도 지원한다(claude 2.1.318 `--help`로 확인). 앱의 mod처럼 로컬 마켓플레이스(`marketplace add <폴더>`)로 설치한다.
+- npm Trusted Publishing: 워크플로에 `id-token: write`, `npm publish --provenance`, npm 11.5.1 이상(Node 24). 패키지가 먼저 있어야 npmjs.com에서 Trusted Publisher를 등록할 수 있고, package.json의 repository.url이 GitHub 저장소와 정확히 같아야 한다. `NODE_AUTH_TOKEN`은 두지 않는다. 2025년 7월 정식. 출처: https://glebbahmutov.com/blog/npm-publish-from-github/ , https://codenote.net/en/posts/npm-trusted-publishing-oidc-staged-hardened-release/ , https://dev.to/zhangjintao/from-deprecated-npm-classic-tokens-to-oidc-trusted-publishing-a-cicd-troubleshooting-journey-4h8b (공식 문서 docs.npmjs.com은 첫 배포 때 다시 확인)
+- Rust 바이너리를 npm으로 배포하려면 OS·CPU별 패키지를 optionalDependencies로 두는 방식(esbuild·napi-rs)이 일반적이지만 패키지 수와 릴리스 자동화 부담이 커서 TypeScript로 정했다. 출처: https://napi.rs/docs/deep-dive/release , https://engineered.at/articles/packaging-rust-applications-for-the-npm-registry
+- npm 이름 `encela`, `encela-sas`, `encela-mcp`, `@encela/cli`는 2026-11-05에 비어 있었다(`npm view` 404).
+- 실기로 확인한 것(이 컨테이너, claude 2.1.318): `claude plugin validate`로 마켓플레이스·플러그인 검증 통과, 훅과 MCP 서버를 실제 실행 파일로 실행. 확인 못 한 것: 로그인된 Claude Code 세션에서 훅의 additionalContext와 `/encela:go`가 실제로 쓰이는지, Windows.

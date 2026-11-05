@@ -26,6 +26,11 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
       - run: pnpm build
+      - name: encela npm package (typecheck, build, test)
+        run: |
+          pnpm exec tsc -p packages/encela/tsconfig.json
+          node packages/encela/build.mjs --test
+          node --test packages/encela/test/encela.test.mjs
 
   rust:
     name: Rust (fmt, clippy, test)

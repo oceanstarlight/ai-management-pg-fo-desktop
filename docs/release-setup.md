@@ -38,3 +38,27 @@ an error while the public key or the secret is missing.
   the releases must be public.
 - Updates start working from the first version installed with the updater in
   it; install that one by hand from the Releases page.
+
+## npm package (`packages/encela`)
+
+`.github/workflows/npm.yml` publishes `encela` to npm when `packages/encela/package.json`'s version
+is new and reaches `main`. It uses npm Trusted Publishing (GitHub Actions OIDC): no npm token is
+stored, and each version gets a provenance statement. The package keeps its own version (raise it
+in `packages/encela/package.json` for each change to the package).
+
+One-time setup (the package has to exist on npm before a trusted publisher can be added):
+
+1. Sign in to npmjs.com (two-factor on) and publish the first version from your computer:
+   ```bash
+   pnpm install
+   node packages/encela/build.mjs
+   cd packages/encela && npm publish --access public
+   ```
+2. On npmjs.com: package `encela` → Settings → Trusted Publisher → GitHub Actions. Organization
+   or user `oceanstarlight`, repository `ai-management-pg-fo-desktop`, workflow `npm.yml`, no
+   environment.
+3. Optional: in the same settings, require two-factor and disallow tokens, so only the workflow
+   publishes.
+
+The repository URL in `packages/encela/package.json` must match the GitHub repository exactly, or
+npm refuses the workflow's publish.

@@ -1,0 +1,5 @@
+dist/
+test/.build/
+# Copied from the repository root by build.mjs.
+LICENSE
+THIRD_PARTY_NOTICES.md

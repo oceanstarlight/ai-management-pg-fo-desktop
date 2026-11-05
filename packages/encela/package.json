@@ -1,0 +1,38 @@
+{
+  "name": "encela",
+  "version": "0.1.0",
+  "description": "Encela for Claude Code without the app: finds the modules (MCP servers, CLIs), skills and rules a prompt needs, asks before applying them, and runs modules on demand through one MCP hub.",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/oceanstarlight/ai-management-pg-fo-desktop.git",
+    "directory": "packages/encela"
+  },
+  "homepage": "https://github.com/oceanstarlight/ai-management-pg-fo-desktop/tree/main/packages/encela#readme",
+  "keywords": [
+    "claude-code",
+    "mcp",
+    "mcp-server",
+    "skills",
+    "plugin",
+    "cli"
+  ],
+  "type": "module",
+  "bin": {
+    "encela": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "THIRD_PARTY_NOTICES.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "node build.mjs --test && node --test test/encela.test.mjs"
+  }
+}
