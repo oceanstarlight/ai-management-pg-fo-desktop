@@ -48,12 +48,16 @@ in `packages/encela/package.json` for each change to the package).
 
 One-time setup (the package has to exist on npm before a trusted publisher can be added):
 
-1. Sign in to npmjs.com (two-factor on) and publish the first version from your computer:
+1. Sign in to npmjs.com (two-factor on; npm refuses to publish without it) and publish the first
+   version from your computer. `npm publish` builds the package first and refuses to publish one
+   without `dist/` (`prepublishOnly`), so run it after `pnpm install`:
    ```bash
    pnpm install
-   node packages/encela/build.mjs
-   cd packages/encela && npm publish --access public
+   cd packages/encela
+   npm publish --access public
    ```
+   If npm stages the publish, approve it on npmjs.com, then check with `npm view encela version`
+   and `npx encela@<version> --version`.
 2. On npmjs.com: package `encela` → Settings → Trusted Publisher → GitHub Actions. Organization
    or user `oceanstarlight`, repository `ai-management-pg-fo-desktop`, workflow `npm.yml`, no
    environment.
@@ -62,3 +66,6 @@ One-time setup (the package has to exist on npm before a trusted publisher can b
 
 The repository URL in `packages/encela/package.json` must match the GitHub repository exactly, or
 npm refuses the workflow's publish.
+
+History: 0.1.0 was published without `dist/` (published before building) and is deprecated; 0.1.1
+is the first working version.

@@ -1,6 +1,6 @@
 {
   "name": "encela",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Encela for Claude Code without the app: finds the modules (MCP servers, CLIs), skills and rules a prompt needs, asks before applying them, and runs modules on demand through one MCP hub.",
   "license": "Apache-2.0",
   "repository": {
@@ -33,6 +33,8 @@
   "scripts": {
     "build": "node build.mjs",
     "typecheck": "tsc -p tsconfig.json",
-    "test": "node build.mjs --test && node --test test/encela.test.mjs"
+    "test": "node build.mjs --test && node --test test/encela.test.mjs",
+    "prepublishOnly": "node build.mjs && node check-pack.mjs",
+    "check-pack": "node check-pack.mjs"
   }
 }
