@@ -18,19 +18,31 @@ export const APP_HUB = "encela-hub";
 
 /** How the plugin starts this package: `encela` on PATH, this install, or npx. */
 export function launcher(): { command: string; args: string[] } {
-  return launcherFor(
-    process.platform,
-    onPath("encela"),
-    realpathSync(fileURLToPath(import.meta.url)),
-    process.execPath,
-  );
+  return launcherFor(process.platform, ...installed());
+}
+
+/** Whether `encela` is on PATH, this file and Node: what picks how to start it. */
+function installed(): [boolean, string, string] {
+  return [onPath("encela"), realpathSync(fileURLToPath(import.meta.url)), process.execPath];
+}
+
+/** The command that starts this install, before any wrapping for the OS. */
+function bareLauncher(
+  encelaOnPath: boolean,
+  cli: string,
+  execPath: string,
+): { command: string; args: string[] } {
+  if (encelaOnPath) return { command: "encela", args: [] };
+  // npx runs from a cache folder that can be cleared: point at the registry instead.
+  if (/[\\/]_npx[\\/]/.test(cli)) return { command: "npx", args: ["-y", `encela@${VERSION}`] };
+  return { command: execPath, args: [cli] };
 }
 
 /**
  * [`launcher`] for a given OS. On Windows `encela` and `npx` are `.cmd`
  * files, which Claude Code can't start directly (the MCP server's
  * connection just closes): they go through `cmd /c`, as Claude Code's docs
- * say for npx servers. Hooks run in a shell, so this changes nothing there.
+ * say for npx servers.
  */
 export function launcherFor(
   platform: string,
@@ -38,12 +50,31 @@ export function launcherFor(
   cli: string,
   execPath: string,
 ): { command: string; args: string[] } {
-  const viaCmd = (command: string, args: string[]) =>
-    platform === "win32" ? { command: "cmd", args: ["/c", command, ...args] } : { command, args };
-  if (encelaOnPath) return viaCmd("encela", []);
-  // npx runs from a cache folder that can be cleared: point at the registry instead.
-  if (/[\\/]_npx[\\/]/.test(cli)) return viaCmd("npx", ["-y", `encela@${VERSION}`]);
-  return { command: execPath, args: [cli] };
+  const run = bareLauncher(encelaOnPath, cli, execPath);
+  return platform === "win32" && run.command !== execPath
+    ? { command: "cmd", args: ["/c", run.command, ...run.args] }
+    : run;
+}
+
+/**
+ * The command line for hooks.json. Claude Code runs hooks in a POSIX shell,
+ * Git Bash on Windows, so `cmd /c` must stay out of it: Git Bash turns `/c`
+ * into a path, cmd opens interactively and runs the hook's stdin, the user's
+ * prompt included, as commands. The shell finds npm's `encela` and `npx` by
+ * itself, and it would eat a path's backslashes.
+ */
+export function hookCommandFor(
+  platform: string,
+  encelaOnPath: boolean,
+  cli: string,
+  execPath: string,
+): string {
+  const run = bareLauncher(encelaOnPath, cli, execPath);
+  const parts = [run.command, ...run.args, "hook"];
+  return parts
+    .map((p) => (platform === "win32" ? p.replaceAll("\\", "/") : p))
+    .map((p) => (/^[\w@%+=:,./-]+$/.test(p) ? p : `'${p.replaceAll("'", `'\\''`)}'`))
+    .join(" ");
 }
 
 function onPath(name: string): boolean {
@@ -53,11 +84,6 @@ function onPath(name: string): boolean {
     .split(delimiter)
     .filter(Boolean)
     .some((dir) => exts.some((e) => existsSync(join(dir, name + e.toLowerCase()))));
-}
-
-/** A command line for hooks.json (a shell runs it). */
-function commandLine(parts: string[]): string {
-  return parts.map((p) => (/[\s"'&|<>^]/.test(p) ? JSON.stringify(p) : p)).join(" ");
 }
 
 const GO_COMMAND = `---
@@ -109,7 +135,7 @@ export function writePlugin(root = join(encelaHome(), "claude-plugin"), auto = t
             hooks: [
               {
                 type: "command",
-                command: commandLine([run.command, ...run.args, "hook"]),
+                command: hookCommandFor(process.platform, ...installed()),
                 timeout: 10,
               },
             ],

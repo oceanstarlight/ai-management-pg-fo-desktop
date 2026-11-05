@@ -1,6 +1,7 @@
 // Run with `pnpm test` in packages/encela (builds test/.build/lib.js first).
 import assert from "node:assert/strict";
-import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -251,4 +252,46 @@ test("on Windows the plugin starts encela and npx through cmd /c", () => {
     command: "C:\\node.exe",
     args: ["D:\\repo\\dist\\cli.js"],
   });
+});
+
+test("the hook command never goes through cmd, and keeps its paths in a shell", () => {
+  const npxCli = "C:\\Users\\u\\AppData\\npm-cache\\_npx\\abc\\dist\\cli.js";
+  assert.equal(lib.hookCommandFor("win32", true, npxCli, "C:\\node.exe"), "encela hook");
+  assert.match(lib.hookCommandFor("win32", false, npxCli, "x"), /^npx -y encela@\S+ hook$/);
+  assert.equal(
+    lib.hookCommandFor("win32", false, "D:\\repo\\cli.js", "C:\\Program Files\\node.exe"),
+    "'C:/Program Files/node.exe' D:/repo/cli.js hook",
+  );
+  assert.equal(lib.hookCommandFor("linux", false, "/a b/cli.js", "/n"), "/n '/a b/cli.js' hook");
+  assert.equal(
+    lib.hookCommandFor("linux", false, "/it's/cli.js", "/n"),
+    "/n '/it'\\''s/cli.js' hook",
+  );
+
+  // Git Bash on Windows, sh elsewhere: what a real shell makes of it.
+  const dir = join(fresh(), "it's a dir");
+  mkdirSync(dir);
+  const cli = join(dir, "cli.js");
+  writeFileSync(cli, "console.log(process.argv[2]);");
+  const line = lib.hookCommandFor(process.platform, false, cli, process.execPath);
+  const run = spawnSync("sh", ["-c", line], { encoding: "utf8" });
+  if (run.error) return; // No sh here.
+  assert.equal(run.status, 0, run.stderr);
+  assert.equal(run.stdout.trim(), "hook");
+});
+
+test("a broken modules file names itself and stays as it is", () => {
+  const dir = fresh();
+  writeFileSync(lib.hubFile(dir), "{broken");
+  assert.throws(() => lib.loadHub(dir), /mcp-hub\.json isn't valid JSON/);
+  assert.throws(() => lib.ensureHub(dir), /isn't valid JSON/);
+  assert.equal(readFileSync(lib.hubFile(dir), "utf8"), "{broken");
+});
+
+test("an English flowchart request finds the diagram modules and their combination", () => {
+  const context = lib.hookContext(
+    "make a flowchart of this repository architecture",
+    lib.loadHub(fresh()),
+  );
+  assert.match(context, /combination "코드베이스 지도"/);
 });

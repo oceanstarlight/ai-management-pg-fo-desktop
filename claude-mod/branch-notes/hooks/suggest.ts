@@ -337,6 +337,8 @@ export function buildCandidates(installed: Candidate[], exp?: SuggestExport | nu
 
 /** Korean words a prompt may use, and the English ones skills describe themselves with. */
 const SYNONYMS: Record<string, string[]> = {
+  flowchart: ["diagram"],
+  순서도: ["diagram", "flowchart"],
   리뷰: ["review"],
   검토: ["review"],
   테스트: ["test", "tdd"],

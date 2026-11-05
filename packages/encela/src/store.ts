@@ -20,7 +20,12 @@ function readMap(file: string): Record<string, unknown> | null {
   if (!existsSync(file)) return null;
   const text = readFileSync(file, "utf8").replace(/^﻿/, "");
   if (!text.trim()) return {};
-  const value = JSON.parse(text);
+  let value: unknown;
+  try {
+    value = JSON.parse(text);
+  } catch (e) {
+    throw new Error(`${file} isn't valid JSON (${e instanceof Error ? e.message : e})`);
+  }
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     throw new Error(`${file} isn't a JSON object`);
   }

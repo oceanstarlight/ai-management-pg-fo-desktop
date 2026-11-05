@@ -1,2 +1,5 @@
+# The repo keeps LF (Biome checks for it), also with core.autocrlf on Windows.
+* text=auto eol=lf
+
 # Catalog blocks are compared and hashed as text; keep LF on every checkout.
 src-tauri/catalog/** text eol=lf
