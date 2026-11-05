@@ -16,11 +16,32 @@ export const PLUGIN_ID = `${PLUGIN}@${MARKETPLACE}`;
 
 /** How the plugin starts this package: `encela` on PATH, this install, or npx. */
 export function launcher(): { command: string; args: string[] } {
-  if (onPath("encela")) return { command: "encela", args: [] };
-  const cli = realpathSync(fileURLToPath(import.meta.url));
+  return launcherFor(
+    process.platform,
+    onPath("encela"),
+    realpathSync(fileURLToPath(import.meta.url)),
+    process.execPath,
+  );
+}
+
+/**
+ * [`launcher`] for a given OS. On Windows `encela` and `npx` are `.cmd`
+ * files, which Claude Code can't start directly (the MCP server's
+ * connection just closes): they go through `cmd /c`, as Claude Code's docs
+ * say for npx servers. Hooks run in a shell, so this changes nothing there.
+ */
+export function launcherFor(
+  platform: string,
+  encelaOnPath: boolean,
+  cli: string,
+  execPath: string,
+): { command: string; args: string[] } {
+  const viaCmd = (command: string, args: string[]) =>
+    platform === "win32" ? { command: "cmd", args: ["/c", command, ...args] } : { command, args };
+  if (encelaOnPath) return viaCmd("encela", []);
   // npx runs from a cache folder that can be cleared: point at the registry instead.
-  if (/[\\/]_npx[\\/]/.test(cli)) return { command: "npx", args: ["-y", `encela@${VERSION}`] };
-  return { command: process.execPath, args: [cli] };
+  if (/[\\/]_npx[\\/]/.test(cli)) return viaCmd("npx", ["-y", `encela@${VERSION}`]);
+  return { command: execPath, args: [cli] };
 }
 
 function onPath(name: string): boolean {
