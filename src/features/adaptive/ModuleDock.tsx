@@ -6,6 +6,7 @@ import { getPref, onPrefChanged, setPref } from "../../store/prefs";
 import { useWorkspaceStore } from "../../store/workspace";
 import { InfoTip } from "../suggest/KindBadge";
 import { FitMeter } from "./CombosPanel";
+import { hubReady } from "./Gateway";
 import { KindBadge } from "./ModulesPanel";
 
 /** Slots shown at most; empty ones stay as outlines. */
@@ -64,7 +65,7 @@ export function ModuleDock() {
   );
   const [pinned, savePinned] = usePinned(view, names);
   const rest = names.filter((n) => !pinned.includes(n));
-  const connected = !!server?.registered;
+  const connected = hubReady(server);
 
   const switchView = (v: View) => {
     setView(v);

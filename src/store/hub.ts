@@ -82,6 +82,8 @@ export interface HubServerStatus {
   claudeFound: boolean;
   registered: boolean;
   current: boolean;
+  /** The npm package's `encela` plugin is installed: it has its own hub. */
+  plugin: boolean;
 }
 
 /** The hub can start stdio and HTTP servers, and hand out any CLI or library guide. */

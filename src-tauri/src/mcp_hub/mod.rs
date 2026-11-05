@@ -683,11 +683,31 @@ fn first_line(text: &str) -> String {
 
 // Registering the hub server with Claude Code (user scope), like `encela`.
 
+/// The npm package's Claude Code plugin (`packages/encela`): it brings its
+/// own hub over the same modules file, so the app's `encela-hub` isn't needed.
+pub const PACKAGE_PLUGIN: &str = "encela@encela";
+
+#[derive(Clone, Debug, Default, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HubStatus {
+    #[serde(flatten)]
+    pub server: crate::claude_mod::McpStatus,
+    /// The `encela` plugin from the npm package is installed.
+    pub plugin: bool,
+}
+
 #[tauri::command]
-pub async fn hub_server_status() -> crate::claude_mod::McpStatus {
-    tauri::async_runtime::spawn_blocking(|| crate::claude_mod::server_status(HUB_NAME))
-        .await
-        .unwrap_or_default()
+pub async fn hub_server_status() -> HubStatus {
+    tauri::async_runtime::spawn_blocking(|| {
+        let server = crate::claude_mod::server_status(HUB_NAME);
+        let plugin = server.claude_found
+            && crate::claude_mod::installed()
+                .iter()
+                .any(|id| id == PACKAGE_PLUGIN);
+        HubStatus { server, plugin }
+    })
+    .await
+    .unwrap_or_default()
 }
 
 #[tauri::command]

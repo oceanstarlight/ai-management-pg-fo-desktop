@@ -13,6 +13,8 @@ import { ensureHub, hubFile, loadHub } from "./store";
 export const MARKETPLACE = "encela";
 export const PLUGIN = "encela";
 export const PLUGIN_ID = `${PLUGIN}@${MARKETPLACE}`;
+/** The Encela app's hub server (src-tauri/src/mcp_hub), replaced by the plugin's. */
+export const APP_HUB = "encela-hub";
 
 /** How the plugin starts this package: `encela` on PATH, this install, or npx. */
 export function launcher(): { command: string; args: string[] } {
@@ -173,6 +175,16 @@ export function setup(opts: SetupOptions, log: (s: string) => void = console.log
     return 1;
   }
   claude(["plugin", "update", PLUGIN_ID, "--scope", "user"]);
+  // The app's own hub server serves the same modules file: with the plugin
+  // installed, Claude would see every hub tool twice.
+  if (claude(["mcp", "get", APP_HUB]).ok) {
+    const dropped = claude(["mcp", "remove", APP_HUB, "--scope", "user"]);
+    log(
+      dropped.ok
+        ? `Removed the Encela app's ${APP_HUB} server from Claude Code: the plugin's hub uses the same modules.`
+        : `Couldn't remove the Encela app's ${APP_HUB} server (Claude would see the hub tools twice):\n${dropped.out}`,
+    );
+  }
   log(
     `Done. Start a new Claude Code session (or run /reload-plugins).\n- Just write your request: Encela adds what fits${opts.auto ? "" : " (automatic hook off: use the command)"}.\n- Or run /encela:go <request> for the whole flow.`,
   );
@@ -185,7 +197,7 @@ export function uninstall(log: (s: string) => void = console.log): number {
   rmSync(join(encelaHome(), "claude-plugin"), { recursive: true, force: true });
   log(
     removed.ok
-      ? `Removed the Claude Code plugin. Your modules stay in ${hubFile()}.`
+      ? `Removed the Claude Code plugin. Your modules stay in ${hubFile()}. With the Encela app, connect its hub again under Adaptive tools.`
       : `The plugin wasn't installed (or claude isn't available):\n${removed.out}`,
   );
   return 0;
