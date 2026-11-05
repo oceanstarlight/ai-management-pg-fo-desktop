@@ -3,20 +3,32 @@ import { Button } from "../../components/ui";
 import { type MessageKey, useT } from "../../i18n";
 import { type HubServerStatus, useHubStore } from "../../store/hub";
 
-export type GatewayState = "connected" | "stale" | "off" | "noClaude";
+/**
+ * `plugin`: the npm package's `encela` plugin serves the hub (same modules
+ * file), so the app's registration isn't needed; `both`: it is still there
+ * too, and Claude sees every hub tool twice.
+ */
+export type GatewayState = "connected" | "stale" | "off" | "noClaude" | "plugin" | "both";
 
 export function gatewayState(server: HubServerStatus | null): GatewayState | null {
   if (!server) return null;
   if (!server.claudeFound) return "noClaude";
+  if (server.plugin) return server.registered ? "both" : "plugin";
   if (server.registered && server.current) return "connected";
   return server.registered ? "stale" : "off";
 }
+
+/** Claude Code has a hub, the app's or the plugin's. */
+export const hubReady = (server: HubServerStatus | null) =>
+  !!server && (server.plugin || server.registered);
 
 export const GATEWAY_DOT: Record<GatewayState, string> = {
   connected: "bg-success",
   stale: "bg-warning",
   off: "bg-border-strong",
   noClaude: "bg-border-strong",
+  plugin: "bg-success",
+  both: "bg-warning",
 };
 
 /** encela-hub in Claude Code: connected or not, and how many modules it offers. */
@@ -52,7 +64,14 @@ export function Gateway({ compact = false }: { compact?: boolean }) {
         <div className="mt-1 flex items-center gap-2 text-xs">
           <span className={`size-2 shrink-0 rounded-full ${GATEWAY_DOT[state]}`} />
           <span className="text-text-muted">{t(`hub.gateway.${state}` as MessageKey)}</span>
-          {state !== "noClaude" && (
+          {state === "both" && (
+            <span className="ml-auto flex gap-1.5">
+              <Button size="sm" disabled={busy} onClick={() => void run(disconnectServer)}>
+                {t("hub.gateway.dropApp")}
+              </Button>
+            </span>
+          )}
+          {state !== "noClaude" && state !== "plugin" && state !== "both" && (
             <span className="ml-auto flex gap-1.5">
               {state !== "connected" && (
                 <Button size="sm" disabled={busy} onClick={() => void run(connectServer)}>

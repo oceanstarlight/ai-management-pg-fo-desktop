@@ -135,6 +135,10 @@ export const ko = {
   "hub.gateway.stale": "다른 설치 경로로 연결돼 있어요. 다시 연결하세요.",
   "hub.gateway.off": "연결 안 됨",
   "hub.gateway.noClaude": "claude 명령을 찾지 못해서 연결할 수 없어요.",
+  "hub.gateway.plugin": "npm 패키지의 encela 플러그인으로 연결됨 (같은 모듈을 써요)",
+  "hub.gateway.both":
+    "encela 플러그인과 앱 허브가 둘 다 연결돼 있어 허브 도구가 두 번 보여요. 앱 허브 연결을 끊으세요.",
+  "hub.gateway.dropApp": "앱 허브 끊기",
   "hub.gateway.connect": "연결",
   "hub.gateway.reconnect": "다시 연결",
   "hub.gateway.disconnect": "연결 끊기",
@@ -309,6 +313,10 @@ export const en: Messages<typeof ko> = {
   "hub.gateway.stale": "Connected with another install's path. Connect again.",
   "hub.gateway.off": "Not connected",
   "hub.gateway.noClaude": "Couldn't find the claude command, so it can't be connected.",
+  "hub.gateway.plugin": "Connected through the npm package's encela plugin (same modules)",
+  "hub.gateway.both":
+    "Both the encela plugin and the app's hub are connected, so Claude sees every hub tool twice. Disconnect the app's hub.",
+  "hub.gateway.dropApp": "Disconnect app hub",
   "hub.gateway.connect": "Connect",
   "hub.gateway.reconnect": "Connect again",
   "hub.gateway.disconnect": "Disconnect",
