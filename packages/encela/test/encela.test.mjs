@@ -225,3 +225,30 @@ test("setup writes a plugin with the MCP server, the hook and the command", () =
   const quiet = lib.writePlugin(join(fresh(), "plugin"), false);
   assert.equal(existsSync(join(quiet, "plugins", "encela", "hooks")), false);
 });
+
+test("on Windows the plugin starts encela and npx through cmd /c", () => {
+  const npxCli =
+    "C:\\Users\\u\\AppData\\Local\\npm-cache\\_npx\\abc\\node_modules\\encela\\dist\\cli.js";
+  const win = lib.launcherFor("win32", false, npxCli, "C:\\node.exe");
+  assert.equal(win.command, "cmd");
+  assert.deepEqual(win.args.slice(0, 3), ["/c", "npx", "-y"]);
+  assert.match(win.args[3], /^encela@/);
+  assert.deepEqual(lib.launcherFor("win32", true, npxCli, "x"), {
+    command: "cmd",
+    args: ["/c", "encela"],
+  });
+  // Elsewhere, and for a plain checkout, nothing is wrapped.
+  assert.deepEqual(lib.launcherFor("linux", true, "/x/cli.js", "/usr/bin/node"), {
+    command: "encela",
+    args: [],
+  });
+  assert.equal(
+    lib.launcherFor("darwin", false, "/home/u/.npm/_npx/1/node_modules/encela/dist/cli.js", "n")
+      .command,
+    "npx",
+  );
+  assert.deepEqual(lib.launcherFor("win32", false, "D:\\repo\\dist\\cli.js", "C:\\node.exe"), {
+    command: "C:\\node.exe",
+    args: ["D:\\repo\\dist\\cli.js"],
+  });
+});
