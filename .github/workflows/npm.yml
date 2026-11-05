@@ -1,0 +1,57 @@
+# Publishes packages/encela to npm when its version changes on main, with
+# npm Trusted Publishing (GitHub Actions OIDC): no npm token is stored, and
+# the package gets a provenance statement. Setup: docs/release-setup.md
+# ("npm package"). A version already on npm is skipped.
+name: npm
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "packages/encela/**"
+      - "src-tauri/catalog/**"
+      - "claude-mod/branch-notes/hooks/suggest.ts"
+      - ".github/workflows/npm.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: npm-publish
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    name: Publish encela
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      # npm 11.5.1 or newer is needed for Trusted Publishing; Node 24 ships it.
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+      - run: pnpm install --frozen-lockfile
+      - name: Test
+        run: |
+          pnpm exec tsc -p packages/encela/tsconfig.json
+          node packages/encela/build.mjs --test
+          node --test packages/encela/test/encela.test.mjs
+          node packages/encela/check-pack.mjs
+      - name: Already published?
+        id: version
+        run: |
+          version=$(node -p "require('./packages/encela/package.json').version")
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if npm view "encela@$version" version > /dev/null 2>&1; then
+            echo "encela@$version is already on npm; nothing to do."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Publish
+        if: steps.version.outputs.skip != 'true'
+        working-directory: packages/encela
+        run: npm publish --provenance --access public
