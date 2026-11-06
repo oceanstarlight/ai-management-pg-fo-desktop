@@ -8,6 +8,7 @@
 
 [![最新版本](https://img.shields.io/github/v/release/oceanstarlight/ai-management-pg-fo-desktop?label=download)](https://github.com/oceanstarlight/ai-management-pg-fo-desktop/releases/latest)
 ![平台](https://img.shields.io/badge/platform-Windows-0078d4)
+[![npm](https://img.shields.io/npm/v/encela?label=npm)](https://www.npmjs.com/package/encela)
 [![许可证](https://img.shields.io/badge/license-Apache--2.0-green)](LICENSE)
 
 <img src="docs/images/live-en.png" alt="实时页面：中间是 Claude，周围是 5 个子代理，更外侧是各自正在处理的网页和文档" width="900">
@@ -18,6 +19,16 @@
 > 项目处于早期开发阶段。目前优先支持 Windows，Linux 和 macOS 计划在之后支持。
 >
 > 应用界面目前提供英文和韩文。
+
+## 下载
+
+| 你想要 | 方法 |
+|---|---|
+| **桌面应用**（Windows） | 从 **[Releases](https://github.com/oceanstarlight/ai-management-pg-fo-desktop/releases/latest)** 下载最新的 `*-setup.exe` 并运行（[详情](#安装)） |
+| 不装应用，**只要 Claude Code 插件**（Windows、Linux、macOS；Node.js 20+） | `npm install --global encela` 然后 `encela setup`，或不安装直接运行：`npx encela setup`（[详情](packages/encela/README.md)） |
+
+> [!IMPORTANT]
+> 正在使用 `encela` 0.1.2 或 0.1.3？请更新并重新运行 `encela setup`：在 Windows 上，这些版本写入的提示词 hook 可能会把你的提示词当作 `cmd` 命令执行。
 
 ## 为什么做这个
 

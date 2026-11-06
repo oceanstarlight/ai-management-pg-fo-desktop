@@ -8,6 +8,7 @@
 
 [![최신 버전](https://img.shields.io/github/v/release/oceanstarlight/ai-management-pg-fo-desktop?label=download)](https://github.com/oceanstarlight/ai-management-pg-fo-desktop/releases/latest)
 ![플랫폼](https://img.shields.io/badge/platform-Windows-0078d4)
+[![npm](https://img.shields.io/npm/v/encela?label=npm)](https://www.npmjs.com/package/encela)
 [![라이선스](https://img.shields.io/badge/license-Apache--2.0-green)](LICENSE)
 
 <img src="docs/images/live-en.png" alt="진행 상황 화면: 가운데 Claude, 둘레에 서브에이전트 5개, 그 바깥에 각자 작업 중인 웹 페이지와 문서" width="900">
@@ -16,6 +17,16 @@
 
 > [!NOTE]
 > 개발 초기 단계예요. Windows를 먼저 지원하고, Linux·macOS는 나중에 지원할 예정이에요.
+
+## 다운로드
+
+| 원하는 것 | 방법 |
+|---|---|
+| **데스크탑 앱** (Windows) | **[Releases](https://github.com/oceanstarlight/ai-management-pg-fo-desktop/releases/latest)**에서 최신 `*-setup.exe`를 받아 실행해요 ([자세히](#설치)) |
+| 앱 없이 **Claude Code 플러그인만** (Windows, Linux, macOS; Node.js 20 이상) | `npm install --global encela` 후 `encela setup`, 설치 없이는 `npx encela setup` ([자세히](packages/encela/README.md)) |
+
+> [!IMPORTANT]
+> `encela` 0.1.2나 0.1.3을 쓰고 있다면 업데이트하고 `encela setup`을 다시 실행해요. Windows에서 이 버전들이 만든 프롬프트 hook은 프롬프트를 `cmd` 명령으로 실행할 수 있어요.
 
 ## 왜 만들었나요
 
