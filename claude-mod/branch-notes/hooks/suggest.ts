@@ -142,6 +142,15 @@ const RECURRING = [
   "automation",
 ];
 
+/** Messages Claude Code delivers as a prompt: a session's or a task's output, not a request. */
+const RELAYED = /^(<(agent-message|task-notification)[\s>]|Another Claude session sent a message:)/;
+/** Keyword matching reads this much of a prompt: more only adds chance matches. */
+const MAX_MATCHED = 1500;
+/** A request for work, not talk about something: an imperative in Korean or English. */
+const ASKS_FOR_WORK = [
+  /(작성|추가|구현|수정|고쳐|고치|만들|설계|리뷰|검토|분석|리팩[터토]링?|디버그|디버깅|점검|그려|그리|정리|배포|테스트)(을|를)?\s*(해\s*|하\s*|어\s*|어서\s*)?(줘|주세요|주실|줄래|줄\s*수|달라|봐|볼래|(?<=[하들치])자|할래|부탁|해야)/,
+  /(^|[.!?\n]\s*)(please\s+|can you\s+|could you\s+)?(write|add|fix|implement|create|make|refactor|review|build|design|generate|debug|update|migrate)\b/i,
+];
 /** Drafts shorter than this get no suggestions. */
 export const MIN_CHARS = 8;
 /** At most this many suggestions show. */
@@ -180,7 +189,7 @@ export function keywordConfidence(score: number): number {
 /** Whether a draft is worth suggesting for: not a command or a shell line. */
 export function wantsSuggestions(draft: string): boolean {
   const text = draft.trim();
-  return text.length >= MIN_CHARS && !/^[/!#]/.test(text);
+  return text.length >= MIN_CHARS && !/^[/!#]/.test(text) && !RELAYED.test(text);
 }
 
 /** `name` and `description` from a Markdown file's YAML frontmatter. */
@@ -341,7 +350,8 @@ const SYNONYMS: Record<string, string[]> = {
   순서도: ["diagram", "flowchart"],
   리뷰: ["review"],
   검토: ["review"],
-  테스트: ["test", "tdd"],
+  테스트: ["test"],
+  tdd: ["test"],
   디버그: ["debug", "bug"],
   디버깅: ["debug", "bug"],
   버그: ["bug", "debug", "fix"],
@@ -416,11 +426,42 @@ const STOP = new Set([
   "from",
   "into",
   "add",
+  "an",
+  "in",
+  "on",
+  "at",
+  "to",
+  "of",
+  "or",
+  "is",
+  "it",
+  "its",
+  "be",
+  "as",
+  "by",
+  "if",
+  "so",
+  "no",
+  "not",
+  "are",
+  "was",
+  "my",
+  "me",
+  "we",
+  "do",
+  "all",
+  "when",
+  "what",
+  "how",
+  "why",
+  "there",
+  "here",
 ]);
 
-/** Lower-case words of `text`, Korean endings dropped, synonyms added. */
-export function tokens(text: string): string[] {
-  const out = new Set<string>();
+/** One entry per thing the text says: a word and its synonyms, so 테스트 with its
+ * test and tdd count once, and 에이전트 and 에이전트들 are the same entry. */
+export function concepts(text: string): string[][] {
+  const out = new Map<string, Set<string>>();
   for (const raw of text.toLowerCase().split(/[^\p{L}\p{N}+#.]+/u)) {
     let word = raw.replace(/^\.+|\.+$/g, "");
     if (/[가-힣]/.test(word)) {
@@ -428,29 +469,53 @@ export function tokens(text: string): string[] {
       if (stem.length >= 1) word = stem;
     }
     if (word.length < 2 || STOP.has(word)) continue;
-    out.add(word);
-    for (const [ko, en] of Object.entries(SYNONYMS)) {
-      if (word === ko || (ko.length >= 2 && word.startsWith(ko))) for (const e of en) out.add(e);
-    }
+    const same = Object.entries(SYNONYMS).filter(
+      ([ko]) => word === ko || (ko.length >= 2 && word.startsWith(ko)),
+    );
+    const key = same[0]?.[0] ?? word;
+    const group = out.get(key) ?? new Set<string>();
+    group.add(word);
+    for (const [, en] of same) for (const e of en) group.add(e);
+    out.set(key, group);
   }
-  return [...out];
+  return [...out.values()].map((g) => [...g]);
 }
 
-/** How well `c` matches the draft's words; 0 for no match. */
-function score(words: string[], c: Candidate): number {
+/** Lower-case words of text, Korean endings dropped, synonyms added. */
+export function tokens(text: string): string[] {
+  return [...new Set(concepts(text).flat())];
+}
+
+/** How well c matches: each concept counts once, by its best word. strong is how
+ * many hit the name or a keyword. */
+function score(words: string[][], c: Candidate): { total: number; strong: number } {
   const name = c.name.toLowerCase();
   const nameWords = tokens(c.name.replace(/[-_:]/g, " "));
   const desc = new Set(tokens(c.description));
   const keywords = new Set((c.keywords ?? []).map((k) => k.toLowerCase()));
   let total = 0;
-  for (const w of words) {
-    if (name === w || nameWords.includes(w)) total += 3;
-    else if (w.length >= 4 && nameWords.some((n) => n.startsWith(w) || w.startsWith(n))) total += 2;
-    if (keywords.has(w)) total += 2;
-    if (desc.has(w)) total += 1;
-    else if (w.length >= 5 && [...desc].some((d) => d.startsWith(w))) total += 1;
+  let strong = 0;
+  for (const group of words) {
+    let best = 0;
+    for (const w of group) {
+      let s = 0;
+      if (name === w || nameWords.includes(w)) s += 3;
+      else if (
+        w.length >= 4 &&
+        nameWords.some(
+          (n) => n.length >= 4 && (n.startsWith(w.replace(/s$/, "")) || w.startsWith(n)),
+        )
+      )
+        s += 2;
+      if (keywords.has(w)) s += 2;
+      if (desc.has(w)) s += 1;
+      else if (w.length >= 5 && [...desc].some((d) => d.startsWith(w))) s += 1;
+      best = Math.max(best, s);
+    }
+    total += best;
+    if (best >= 2) strong++;
   }
-  return total;
+  return { total, strong };
 }
 
 /** The best keyword matches, installed ones first when equal. */
@@ -459,8 +524,9 @@ export function keywordRank(
   candidates: Candidate[],
   limit = MAX_ITEMS,
 ): Candidate[] {
-  const words = tokens(draft);
+  const words = concepts(draft.slice(0, MAX_MATCHED));
   if (!words.length) return [];
+  const work = ASKS_FOR_WORK.some((r) => r.test(draft));
   const order = {
     installed: 0,
     library: 1,
@@ -469,12 +535,26 @@ export function keywordRank(
     extension: 4,
     automation: 5,
   } as const;
-  return candidates
-    .map((c) => ({ c, s: score(words, c) }))
-    .filter((x) => x.s >= 2)
-    .sort((a, b) => b.s - a.s || order[a.c.source] - order[b.c.source])
-    .slice(0, limit)
-    .map((x) => ({ ...x.c, confidence: keywordConfidence(x.s) }));
+  return (
+    candidates
+      .map((c) => ({ c, ...score(words, c) }))
+      .filter((x) => x.total >= 2)
+      // One word in common is a lead, not a fit, unless the prompt asks for
+      // work and the word is the thing's name or one of its keywords.
+      .map((x) => ({ ...x, sure: x.strong >= 2 || (x.strong >= 1 && work) }))
+      .sort(
+        (a, b) =>
+          Number(b.strong >= 2) - Number(a.strong >= 2) ||
+          Number(b.sure) - Number(a.sure) ||
+          b.total - a.total ||
+          order[a.c.source] - order[b.c.source],
+      )
+      .slice(0, limit)
+      .map((x) => ({
+        ...x.c,
+        confidence: x.sure ? keywordConfidence(x.total) : Math.min(2, keywordConfidence(x.total)),
+      }))
+  );
 }
 
 export const AI_SYSTEM =
