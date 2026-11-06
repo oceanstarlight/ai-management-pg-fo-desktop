@@ -57,13 +57,16 @@ function moduleCandidates(hub: Hub): Candidate[] {
       kind: "mcp" as const,
       source: "installed" as const,
       name: m.name,
-      description: [m.description, m.tools.map((t) => t.name).join(" ")].join(" "),
+      description: [
+        m.description,
+        m.tools.map((t) => t.name).join(" "),
+        ...m.inputs,
+        ...m.outputs,
+      ].join(" "),
       // Its own words count as keywords too: a module described in Korean
       // then matches a Korean request.
       keywords: [
-        ...[...m.tags, ...m.capabilities, ...m.inputs, ...m.outputs].flatMap((k) =>
-          k.toLowerCase().split(/[\s,/-]+/),
-        ),
+        ...[...m.tags, ...m.capabilities].flatMap((k) => k.toLowerCase().split(/[\s,/-]+/)),
         ...tokens(m.description),
       ],
     }));
@@ -81,12 +84,14 @@ export function recommend(prompt: string, hub: Hub, min = 1, l: Lang = lang()): 
   const moduleHits = keywordRank(prompt, moduleCandidates(hub), 20);
   const sure = new Map(moduleHits.map((c) => [c.name, c.confidence ?? 0]));
 
+  const memberWords = new Map(moduleCandidates(hub).map((c) => [c.name, c.keywords ?? []]));
   const comboCandidates: Candidate[] = hub.combos.map((c) => ({
     key: `combo:${c.name}`,
     kind: "mcp",
     source: "installed",
     name: c.name,
     description: `${c.goal} ${c.members.map((m) => `${m.module} ${m.role}`).join(" ")}`,
+    keywords: [...tokens(c.goal), ...c.members.flatMap((m) => memberWords.get(m.module) ?? [])],
   }));
   const own = new Map(
     keywordRank(prompt, comboCandidates, 20).map((c) => [c.name, c.confidence ?? 0]),
@@ -95,11 +100,8 @@ export function recommend(prompt: string, hub: Hub, min = 1, l: Lang = lang()): 
     .map((c) => {
       const members = c.members.map((m) => sure.get(m.module) ?? 0);
       // A combination fits when it matches itself, or when several members do.
-      const matched = members.filter((s) => s > 0).length;
-      const confidence = Math.max(
-        own.get(c.name) ?? 0,
-        matched >= 2 ? Math.min(6, Math.max(...members) + 1) : 0,
-      );
+      const matched = members.filter((s) => s >= 3).length;
+      const confidence = Math.max(own.get(c.name) ?? 0, matched >= 2 ? Math.max(...members) : 0);
       return { name: c.name, goal: c.goal, members: c.members, confidence };
     })
     .filter((c) => c.confidence >= Math.max(min, 1))

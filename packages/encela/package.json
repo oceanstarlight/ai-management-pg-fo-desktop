@@ -1,6 +1,6 @@
 {
   "name": "encela",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Encela for Claude Code without the app: finds the modules (MCP servers, CLIs), skills and rules a prompt needs, asks before applying them, and runs modules on demand through one MCP hub.",
   "license": "Apache-2.0",
   "repository": {

@@ -8,6 +8,7 @@ import {
   blockContext,
   buildCandidates,
   type Candidate,
+  concepts,
   draftWith,
   draftWithBlock,
   installedCandidate,
@@ -124,6 +125,59 @@ describe("keyword matching", () => {
     expect(wantsSuggestions("/review this please")).toBe(false);
     expect(wantsSuggestions("!git status --short")).toBe(false);
     expect(wantsSuggestions("review my last commit")).toBe(true);
+  });
+
+  const item = (name: string, description: string, keywords?: string[]): Candidate => ({
+    key: `m:${name}`,
+    kind: "mcp",
+    source: "installed",
+    name,
+    description,
+    keywords,
+  });
+
+  test("messages relayed from other sessions and tasks are not requests", () => {
+    expect(wantsSuggestions("<task-notification>\n<task-id>a1</task-id>review done")).toBe(false);
+    expect(wantsSuggestions('<agent-message from="x">please review the PR')).toBe(false);
+    expect(wantsSuggestions("Another Claude session sent a message: review it")).toBe(false);
+    expect(wantsSuggestions("review this <task-notification> format")).toBe(true);
+  });
+
+  test("short English words don't count", () => {
+    expect(tokens("what is it in an hour")).toEqual(["hour"]);
+  });
+
+  test("a prefix match needs a real word on both sides", () => {
+    const go = item("go-tools", "Go language tools");
+    expect(keywordRank("load the props into a godot scene, please make it", [go])).toEqual([]);
+  });
+
+  test("a word and its synonyms count once", () => {
+    expect(concepts("테스트")).toEqual([["테스트", "test"]]);
+    const t = item("tester", "test test", ["test"]);
+    expect(keywordRank("테스트 관련해서", [t])[0]?.confidence ?? 0).toBeLessThan(3);
+  });
+
+  test("one word in common is sure only when the prompt asks for work", () => {
+    const mermaid = item("mcp-mermaid", "Draws diagrams", ["diagram", "mermaid"]);
+    expect(keywordRank("이 저장소 구조 순서도로 그려줘", [mermaid])[0]?.confidence).toBe(3);
+    expect(keywordRank("순서도라는 말이 어디서 왔을까", [mermaid])[0]?.confidence).toBe(2);
+    const tdd = item("test-driven-development", "Write the test first", ["test", "tdd"]);
+    for (const ask of ["이 함수 단위 테스트 추가해줄래?", "TDD로 로그인 기능 구현하자"]) {
+      expect(keywordRank(ask, [tdd])[0]?.confidence ?? 0).toBeGreaterThanOrEqual(3);
+    }
+    // 작성자 (author) is not 작성 + 자 (let's).
+    expect(keywordRank("작성자 test 정보", [tdd])[0]?.confidence).toBe(2);
+  });
+
+  test("only the start of a long prompt is matched", () => {
+    const m = item("mcp-mermaid", "Draws diagrams", ["diagram", "mermaid"]);
+    const long = `${"그냥 긴 설명. ".repeat(200)} mermaid diagram`;
+    expect(keywordRank(long, [m])).toEqual([]);
+  });
+
+  test("고도화 is not the Godot engine", () => {
+    expect(tokens("검색 기능 고도화해줘")).not.toContain("godot");
   });
 });
 

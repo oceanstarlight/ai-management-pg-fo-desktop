@@ -295,3 +295,51 @@ test("an English flowchart request finds the diagram modules and their combinati
   );
   assert.match(context, /combination "코드베이스 지도"/);
 });
+
+const mod = (name, fields) => ({
+  name,
+  description: "",
+  tags: [],
+  kind: "mcp",
+  config: { command: name, args: [] },
+  inHub: true,
+  tools: [],
+  checkedAt: null,
+  source: null,
+  guide: "",
+  capabilities: [],
+  inputs: [],
+  outputs: [],
+  install: [],
+  installedDir: null,
+  warnings: [],
+  ...fields,
+});
+
+test("a module's inputs and outputs are a weak hint, not a keyword", () => {
+  const hub = { modules: [mod("pdfkit", { inputs: ["file"], outputs: ["text"] })], combos: [] };
+  assert.deepEqual(lib.recommend("이 file을 text로 바꿔줘", hub, 3).modules, []);
+  const tagged = {
+    modules: [mod("pdfkit", { tags: ["pdf"], description: "Reads PDF files" })],
+    combos: [],
+  };
+  assert.equal(lib.recommend("이 pdf 내용을 정리해줘", tagged, 3).modules[0]?.name, "pdfkit");
+});
+
+test("a combination needs more than one weak member", () => {
+  const hub = {
+    modules: [mod("alpha", { tags: ["screenshot"] }), mod("beta", { tags: ["diagram"] })],
+    combos: [
+      {
+        name: "pair",
+        goal: "Whatever",
+        members: [
+          { module: "alpha", role: "a" },
+          { module: "beta", role: "b" },
+        ],
+      },
+    ],
+  };
+  assert.deepEqual(lib.recommend("screenshot 얘기 좀 하자면 그냥 궁금해서", hub, 3).combos, []);
+  assert.equal(lib.recommend("screenshot 찍고 diagram도 그려줘", hub, 3).combos[0]?.name, "pair");
+});
