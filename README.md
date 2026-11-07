@@ -8,6 +8,7 @@
 
 [![Latest release](https://img.shields.io/github/v/release/oceanstarlight/ai-management-pg-fo-desktop?label=download)](https://github.com/oceanstarlight/ai-management-pg-fo-desktop/releases/latest)
 ![Platform](https://img.shields.io/badge/platform-Windows-0078d4)
+[![npm](https://img.shields.io/npm/v/encela?label=npm)](https://www.npmjs.com/package/encela)
 [![License](https://img.shields.io/badge/license-Apache--2.0-green)](LICENSE)
 
 <img src="docs/images/live-en.png" alt="The Live screen: Claude in the middle, five subagents around it, and the web pages and documents each one works on further out" width="900">
@@ -16,6 +17,16 @@
 
 > [!NOTE]
 > Early development. Windows comes first; Linux and macOS are planned.
+
+## Download
+
+| You want | How |
+|---|---|
+| **The desktop app** (Windows) | Download the latest `*-setup.exe` from **[Releases](https://github.com/oceanstarlight/ai-management-pg-fo-desktop/releases/latest)** and run it ([details](#install)) |
+| **Only the Claude Code plugin**, no app (Windows, Linux, macOS; Node.js 20+) | `npm install --global encela` then `encela setup`, or without installing: `npx encela setup` ([details](packages/encela/README.md)) |
+
+> [!IMPORTANT]
+> Already using `encela` 0.1.2 or 0.1.3? Update and run `encela setup` again: on Windows, the prompt hook those versions wrote can run your prompt as `cmd` commands.
 
 ## Why
 
